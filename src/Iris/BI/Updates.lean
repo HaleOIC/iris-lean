@@ -79,23 +79,23 @@ macro_rules
 
 class BIUpdate (PROP : Type _) [BI PROP] extends BUpd PROP where
   [bupd_ne : OFE.NonExpansive (BUpd.bupd (PROP := PROP))]
-  intro {P : PROP} : iprop(P ⊢ |==> P)
-  mono {P Q : PROP} : iprop(P ⊢ Q) → iprop(|==> P ⊢ |==> Q)
-  trans {P : PROP} : iprop(|==> |==> P ⊢ |==> P)
-  frame_r {P R : PROP} : iprop((|==> P) ∗ R ⊢ |==> (P ∗ R))
+  intro {P : PROP} : P ⊢ |==> P
+  mono {P Q : PROP} : (P ⊢ Q) → |==> P ⊢ |==> Q
+  trans {P : PROP} : |==> |==> P ⊢ |==> P
+  frame_r {P R : PROP} : (|==> P) ∗ R ⊢ |==> (P ∗ R)
 
 class BIFUpdate (PROP : Type _) [BI PROP] extends FUpd PROP where
   [ne {E1 E2 : CoPset} : OFE.NonExpansive (FUpd.fupd E1 E2 (PROP := PROP))]
-  subset {E1 E2 : CoPset} : Subset E2 E1 → ⊢ |={E1, E2}=> |={E2, E1}=> (emp : PROP)
-  except0 {E1 E2 : CoPset} (P : PROP) : (◇ |={E1, E2}=> P) ⊢ |={E1, E2}=> P
-  trans {E1 E2 E3 : CoPset} (P : PROP) : (|={E1, E2}=> |={E2, E3}=> P) ⊢ |={E1, E3}=> P
-  mask_frame_r' {E1 E2 Ef : CoPset} (P : PROP) :
-    E1 ## Ef → (|={E1,E2}=> ⌜E2 ## Ef⌝ → P) ⊢ |={CoPset.union E1 Ef, CoPset.union E2 Ef}=> P
-  frame_r {E1 E2 : CoPset} (P R : PROP) :
-    iprop((|={E1, E2}=> P) ∗ R ⊢ |={E1, E2}=> P ∗ R)
+  subset {E1 E2 : CoPset} : E2 ⊆ E1 → ⊢ |={E1,E2}=> |={E2,E1}=> (emp : PROP)
+  except0 {E1 E2 : CoPset} {P : PROP} : (◇ |={E1,E2}=> P) ⊢ |={E1,E2}=> P
+  mono {E1 E2 : CoPset} {P Q : PROP} : (P ⊢ Q) → (|={E1,E2}=> P) ⊢ |={E1,E2}=> Q
+  trans {E1 E2 E3 : CoPset} {P : PROP} : (|={E1,E2}=> |={E2,E3}=> P) ⊢ |={E1,E3}=> P
+  mask_frame_r' {E1 E2 Ef : CoPset} {P : PROP} :
+    E1 ## Ef → (|={E1,E2}=> ⌜E2 ## Ef⌝ → P) ⊢ |={E1 ∪ Ef,E2 ∪ Ef}=> P
+  frame_r {E1 E2 : CoPset} {P R : PROP} : (|={E1,E2}=> P) ∗ R ⊢ |={E1,E2}=> P ∗ R
 
 class BIUpdateFUpdate (PROP : Type _) [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] where
-  fupd_of_bupd {P : PROP} {E : CoPset} : iprop(⊢ |==> P) → iprop(⊢ |={E}=> P)
+  fupd_of_bupd {P : PROP} {E : CoPset} : iprop(|==> P) ⊢ iprop(|={E}=> P)
 
 class BIBUpdatePlainly (PROP : Type _) [BI PROP] [BIUpdate PROP] [Sbi PROP] where
   bupd_plainly {P : PROP} : iprop((|==> ■ P)) ⊢ P
@@ -112,38 +112,38 @@ variable [BI PROP] [BIUpdate PROP]
 
 open BIUpdate
 
-theorem bupd_frame_l {P Q : PROP} : iprop(P ∗ |==> Q ⊢ |==> (P ∗ Q)) :=
+theorem bupd_frame_l {P Q : PROP} : P ∗ |==> Q ⊢ |==> (P ∗ Q) :=
   sep_symm.trans <| frame_r.trans <| mono sep_symm
 
-theorem bupd_frame_r {P Q : PROP} : iprop(|==> P ∗ Q ⊢ |==> (P ∗ Q)) :=
+theorem bupd_frame_r {P Q : PROP} : |==> P ∗ Q ⊢ |==> (P ∗ Q) :=
   frame_r
 
-theorem bupd_wand_l {P Q : PROP} : iprop((P -∗ Q) ∗ (|==> P) ⊢ |==> Q) :=
+theorem bupd_wand_l {P Q : PROP} : (P -∗ Q) ∗ (|==> P) ⊢ |==> Q :=
   bupd_frame_l.trans <| mono <| wand_elim .rfl
 
-theorem bupd_wand_r {P Q : PROP} : iprop((|==> P) ∗ (P -∗ Q) ⊢ |==> Q) :=
+theorem bupd_wand_r {P Q : PROP} : (|==> P) ∗ (P -∗ Q) ⊢ |==> Q :=
   sep_symm.trans bupd_wand_l
 
-theorem bupd_sep {P Q : PROP} : iprop((|==> P) ∗ (|==> Q) ⊢ |==> (P ∗ Q)) :=
+theorem bupd_sep {P Q : PROP} : (|==> P) ∗ (|==> Q) ⊢ |==> (P ∗ Q) :=
   bupd_frame_l.trans <| (mono <| frame_r).trans BIUpdate.trans
 
-theorem bupd_idem {P : PROP} : iprop((|==> |==> P) ⊣⊢ |==> P) :=
+theorem bupd_idem {P : PROP} : (|==> |==> P) ⊣⊢ |==> P :=
   ⟨BIUpdate.trans, BIUpdate.intro⟩
 
-theorem bupd_or {P Q: PROP} : iprop((|==> P) ∨ (|==> Q) ⊢ |==> (P ∨ Q)) :=
+theorem bupd_or {P Q: PROP} : (|==> P) ∨ (|==> Q) ⊢ |==> (P ∨ Q) :=
   or_elim (mono or_intro_l) (mono or_intro_r)
 
-theorem bupd_and {P Q : PROP} : iprop((|==> (P ∧ Q)) ⊢ (|==> P) ∧ (|==> Q)) :=
+theorem bupd_and {P Q : PROP} : (|==> (P ∧ Q)) ⊢ (|==> P) ∧ (|==> Q) :=
   and_intro (mono and_elim_l) (mono and_elim_r)
 
 theorem bupd_exist {Φ : A → PROP} : (∃ x : A, |==> Φ x) ⊢ |==> ∃ x : A, Φ x :=
   exists_elim (mono <| exists_intro ·)
 
 theorem bupd_forall {Φ : A → PROP} :
-    iprop(|==> «forall» fun x : A => Φ x) ⊢ «forall» fun x : A => iprop(|==> Φ x) :=
+    (|==> «forall» fun x : A => Φ x) ⊢ «forall» fun x : A => iprop(|==> Φ x) :=
   forall_intro (mono <| forall_elim ·)
 
-theorem bupd_except0 {P : PROP} : iprop(◇ (|==> P) ⊢ (|==> ◇ P)) :=
+theorem bupd_except0 {P : PROP} : (◇ (|==> P) ⊢ (|==> ◇ P)) :=
   or_elim (or_intro_l.trans intro) (mono or_intro_r)
 
 instance {P : PROP} [Absorbing P] : Absorbing iprop(|==> P) :=
@@ -170,3 +170,23 @@ instance {P : PROP} [Plain P] : Plain iprop(|==> P) :=
   ⟨(mono Plain.plain).trans <| (bupd_elim).trans <| plainly_mono intro⟩
 
 end BUpdPlainlyLaws
+
+section FUpdLaws
+
+variable [BI PROP] [BIFUpdate PROP]
+
+open BIFUpdate
+
+theorem fupd_frame_l {E1 E2 : CoPset} {P Q : PROP} : P ∗ (|={E1,E2}=> Q) ⊢ |={E1,E2}=> P ∗ Q :=
+  sep_symm.trans <| frame_r.trans <| mono sep_symm
+
+theorem fupd_frame_r {E1 E2 : CoPset} {P Q : PROP} : (|={E1,E2}=> P) ∗ Q ⊢ |={E1,E2}=> P ∗ Q :=
+  frame_r
+
+theorem fupd_wand_l {E1 E2 : CoPset} {P Q : PROP} : (P -∗ Q) ∗ (|={E1,E2}=> P) ⊢ |={E1,E2}=> Q :=
+  fupd_frame_l.trans <| mono <| wand_elim .rfl
+
+theorem fupd_wand_r {E1 E2 : CoPset} {P Q : PROP} : (|={E1,E2}=> P) ∗ (P -∗ Q) ⊢ |={E1,E2}=> Q :=
+  sep_symm.trans fupd_wand_l
+
+end FUpdLaws
