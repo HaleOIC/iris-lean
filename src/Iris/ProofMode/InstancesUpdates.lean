@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2026 Michael Sammler. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Michael Sammler
+Authors: Michael Sammler, Yunsong Yang
 -/
 module
 
@@ -69,6 +69,10 @@ instance fromModal_bupd [BIUpdate PROP] (P : PROP) :
 instance elimModal_bupd [BIUpdate PROP] p (P Q : PROP) :
   ElimModal True p false iprop(|==> P) P iprop(|==> Q) iprop(|==> Q) where
   elim_modal _ := (sep_mono_l intuitionisticallyIf_elim).trans $ bupd_frame_r.trans $ (BIUpdate.mono wand_elim_r).trans BIUpdate.trans
+
+instance addModal_bupd [BIUpdate PROP] (P Q : PROP) :
+  AddModal iprop(|==> P) P iprop(|==> Q) where
+  add_modal := bupd_frame_r.trans <| (BIUpdate.mono wand_elim_r).trans BIUpdate.trans
 
 end Iris.ProofMode
 

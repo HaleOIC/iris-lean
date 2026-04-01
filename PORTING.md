@@ -261,8 +261,9 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [ ] instances for big ops
   - [ ] MaybeCombineSepAs instances
   - [ ] CombineSepGives instances
+  - [x] FromModal instances
   - [x] ElimModal instances
-  - [ ] AddModal instances
+  - [x] AddModal instances
   - [ ] ElimInv instances
 - [ ] `class_instances_cmra.v`
 - [ ] `class_instances_embedding.v`
@@ -272,7 +273,7 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [x] basic instances
   - [x] FromModal
   - [x] ElimModal
-  - [ ] AddModal
+  - [x] AddModal
   - [x] IntoLater
 - [ ] `class_instances_make.v`
   - [ ] QuickAffine
@@ -299,7 +300,7 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [ ] FromModal fupd
   - [x] ElimModal bupd
   - [ ] ElimModal fupd
-  - [ ] AddModal bupd
+  - [x] AddModal bupd
   - [ ] AddModal fupd
   - [ ] ElimAcc bupd
   - [ ] ElimAcc fupd
@@ -330,7 +331,7 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [ ] MaybeCombineSepAs
   - [ ] CombineSepGives
   - [x] ElimModal
-  - [ ] AddModal
+  - [x] AddModal
   - [ ] Frame
   - [x] IntoExcept0
   - [x] MaybeIntoLaterN / IntoLaterN
@@ -432,8 +433,10 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [ ] IAll
   - [ ] IClear
   - [ ] IClearFrame
-- [ ] `modalities.v`
+- [x] `modalities.v`
 - [ ] `modality_instances.v`
+  - [ ] modality_embed 
+  - [x] others
 - [ ] `monpred.v`
 - [x] `proofmode.v` (ProofMode.lean)
 - [-] `reduction.v` (not necessary in Lean)

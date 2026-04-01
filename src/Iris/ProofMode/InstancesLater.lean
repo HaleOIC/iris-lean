@@ -269,6 +269,27 @@ instance (priority := default - 10) elimModal_timeless [BI PROP] p (P P' Q : PRO
   ElimModal True p p P P' Q Q where
   elim_modal _ := ((sep_mono ((intuitionisticallyIf_mono into_except0).trans except0_intuitionisticallyIf_2) except0_intro).trans $ except0_sep.2.trans (except0_mono wand_elim_r)).trans is_except0
 
+/-- AddModal -/
+instance (priority := high) addModal_later_except0 [BI PROP] (P Q : PROP) [Timeless P] :
+  AddModal iprop(▷ P) P iprop(◇ Q) where
+  add_modal := (sep_mono Timeless.timeless except0_intro).trans <|
+    except0_sep.2.trans <| (except0_mono wand_elim_r).trans except0_idemp.1
+
+instance (priority := high) addModal_later [BI PROP] (P Q : PROP) [Timeless P] :
+  AddModal iprop(▷ P) P iprop(▷ Q) where
+  add_modal := (sep_mono Timeless.timeless except0_intro).trans <|
+    except0_sep.2.trans <| (except0_mono wand_elim_r).trans except0_later
+
+instance addModal_except0 [BI PROP] (P Q : PROP) :
+  AddModal iprop(◇ P) P iprop(◇ Q) where
+  add_modal := (sep_mono .rfl except0_intro).trans <|
+    except0_sep.2.trans <| (except0_mono wand_elim_r).trans except0_idemp.1
+
+instance addModal_except0_later [BI PROP] (P Q : PROP) :
+  AddModal iprop(◇ P) P iprop(▷ Q) where
+  add_modal := (sep_mono .rfl except0_intro).trans <|
+    except0_sep.2.trans <| (except0_mono wand_elim_r).trans except0_later
+
 /-- IntoLaterN -/
 instance (priority := low) intoLaterN_default [BI PROP] only_head n (P : PROP) :
   IntoLaterN only_head n P P where

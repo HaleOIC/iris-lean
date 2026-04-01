@@ -676,3 +676,14 @@ instance elimModal_forall [BI PROP] φ p p' P P' (Φ Ψ : α → PROP) [h : ∀ 
 instance elimModal_absorbingly_here [BI PROP] p (P Q : PROP) [Absorbing Q] :
   ElimModal True p false iprop(<absorb> P) P Q Q where
   elim_modal _ := (sep_mono_l intuitionisticallyIf_elim).trans $ absorbingly_sep_l.1.trans $ absorbing_absorbingly.1.trans wand_elim_r
+
+-- AddModal
+instance addModal_wand [BI PROP] (P P' Q R : PROP) [h : AddModal P P' Q] :
+  AddModal P P' iprop(R -∗ Q) where
+  add_modal := wand_intro <| sep_assoc.mp.trans <|
+    (sep_mono_r <| wand_intro' <| sep_assoc.mpr.trans <| (sep_mono_l wand_elim_r).trans wand_elim_l).trans
+     h.add_modal
+
+instance addModal_forall [BI PROP] (P P') (Φ : a → PROP) [h : ∀ x, AddModal P P' (Φ x)] :
+  AddModal P P' iprop(∀ x, Φ x) where
+  add_modal := forall_intro fun x => (sep_mono_r (wand_mono_r (forall_elim x))).trans (h x).add_modal
