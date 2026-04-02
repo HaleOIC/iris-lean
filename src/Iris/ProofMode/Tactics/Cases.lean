@@ -63,8 +63,7 @@ public meta section
 open Lean Elab Tactic Meta Qq Std
 
 private def iCasesEmptyConj {prop : Q(Type u)} (bi : Q(BI $prop))
-    {P} (_hyps : Hyps bi P) (Q A' : Q($prop)) (p : Q(Bool))
-    (_k : ∀ {P}, Hyps bi P → ProofModeM Q($P ⊢ $Q)) :
+    {P} (_hyps : Hyps bi P) (Q A' : Q($prop)) (p : Q(Bool)) :
     ProofModeM (Q($P ∗ □?$p $A' ⊢ $Q)) := do
   if let .defEq _ ← isDefEqQ A' q(iprop(False)) then
     return q(false_elim')
@@ -104,29 +103,36 @@ private def iCasesAndLR {prop : Q(Type u)} (bi : Q(BI $prop)) (P Q A' : Q($prop)
     return some q(sep_and_elim_l $(← k A1' A1 ⟨⟩))
 
 private def iCasesSep {prop : Q(Type u)} (bi : Q(BI $prop))
-    {P} (hyps : Hyps bi P) (Q A' : Q($prop)) (p : Q(Bool))
-    (k : ∀ {P}, Hyps bi P → ProofModeM Q($P ⊢ $Q))
-    (k1 k2 : ∀ {P}, Hyps bi P → (Q B B' : Q($prop)) → (_ : $B =Q iprop(□?$p $B')) →
-      (∀ {P}, Hyps bi P → ProofModeM Q($P ⊢ $Q)) → ProofModeM Q($P ∗ $B ⊢ $Q)) :
-    ProofModeM (Q($P ∗ □?$p $A' ⊢ $Q)) := do
+    {P} (hyps : Hyps bi P) (goal A' : Q($prop)) (p : Q(Bool))
+    (k : ∀ {P}, Hyps bi P → (goal : Q($prop)) → ProofModeM Q($P ⊢ $goal))
+    (k1 k2 : ∀ {P}, Hyps bi P → (goal B B' : Q($prop)) → (_ : $B =Q iprop(□?$p $B')) →
+      (∀ {P}, Hyps bi P → (goal : Q($prop)) → ProofModeM Q($P ⊢ $goal)) →
+      ProofModeM Q($P ∗ $B ⊢ $goal)) :
+    ProofModeM (Q($P ∗ □?$p $A' ⊢ $goal)) := do
   let A1 ← mkFreshExprMVarQ q($prop)
   let A2 ← mkFreshExprMVarQ q($prop)
   match matchBool p with
   | .inl _ =>
     let .some _ ← ProofModeM.trySynthInstanceQ q(IntoAnd $p $A' $A1 $A2)
       | throwError "icases: cannot destruct {A'}"
-    let Q' := q(iprop(□ $A2 -∗ $Q))
-    let pf ← k1 hyps Q' q(iprop(□ $A1)) A1 ⟨⟩ fun hyps => do
-      let pf ← k2 hyps Q q(iprop(□ $A2)) A2 ⟨⟩ k
-      return q(wand_intro $pf)
+    let goal' := q(iprop(□ $A2 -∗ $goal))
+    let pf ← k1 hyps goal' q(iprop(□ $A1)) A1 ⟨⟩ fun hyps goal' => do
+      let goal'' ← mkFreshExprMVarQ q($prop)
+      let .some _ ← ProofModeM.trySynthInstanceQ q(FromWand $goal' iprop(□ $A2) $goal'')
+        | throwError "icases: internal error: {goal'} is not a wand"
+      let pf ← k2 hyps goal'' q(iprop(□ $A2)) A2 ⟨⟩ k
+      return q((wand_intro $pf).trans from_wand)
     return q(and_elim_intuitionistic (A := $A') $pf)
   | .inr _ =>
     let .some _ ← ProofModeM.trySynthInstanceQ q(IntoSep $A' $A1 $A2)
       | throwError "icases: cannot destruct {A'}"
-    let Q' := q(iprop($A2 -∗ $Q))
-    let pf ← k1 hyps Q' A1 A1 ⟨⟩ fun hyps => do
-      let pf ← k2 hyps Q A2 A2 ⟨⟩ k
-      return q(wand_intro $pf)
+    let goal' := q(iprop($A2 -∗ $goal))
+    let pf ← k1 hyps goal' A1 A1 ⟨⟩ fun hyps goal' => do
+      let goal'' ← mkFreshExprMVarQ q($prop)
+      let .some _ ← ProofModeM.trySynthInstanceQ q(FromWand $goal' $A2 $goal'')
+        | throwError "icases: internal error: {goal'} is not a wand"
+      let pf ← k2 hyps goal'' A2 A2 ⟨⟩ k
+      return q((wand_intro $pf).trans from_wand)
     return q(sep_elim_spatial (A := $A') $pf)
 
 private def iCasesOr {prop : Q(Type u)} (bi : Q(BI $prop)) (P Q A' : Q($prop)) (p : Q(Bool))
@@ -164,12 +170,34 @@ private def iCasesSpatial {prop : Q(Type u)} (_bi : Q(BI $prop)) (P Q A' : Q($pr
   let _ ← ProofModeM.synthInstanceQ q(FromAffinely $B' $A' $p)
   return q(spatial_elim (A := $A') $(← k B'))
 
--- TODO: Why does this function require both A and A' instead of just A'?
-variable {u : Level} {prop : Q(Type u)} (bi : Q(BI $prop)) in
-partial def iCasesCore
-    {P} (hyps : Hyps bi P) (Q : Q($prop)) (p : Q(Bool))
-    (A A' : Q($prop)) (_ : $A =Q iprop(□?$p $A'))
-    (pat : iCasesPat) (k : ∀ {P}, Hyps bi P → ProofModeM Q($P ⊢ $Q)) : ProofModeM (Q($P ∗ $A ⊢ $Q)) :=
+variable {prop : Q(Type u)} (bi : Q(BI $prop)) in
+/--
+Recursively destruct the current Iris hypothesis according to a cases pattern.
+
+The hypothesis being destructed is represented in two forms:
+- `A'`: the payload proposition stored in the proof-mode context
+- `A`: the wrapped proposition that is actually consumed by this step, with
+  `A = □?p A'`
+
+After processing `pat`, the continuation `k` is called with the updated proof-mode
+context (and potentially an updated goal).
+
+## Parameters
+- `hyps`: The current proof mode hypothesis context
+- `goal`: The current BI goal
+- `pat`: The cases pattern to apply to the current hypothesis
+- `p`: Persistence flag for the current hypothesis
+- `A`: The current hypothesis in wrapped form
+- `A'`: The payload proposition of the current hypothesis
+- `k`: Continuation that continues the proof after destructing `pat`
+
+## Returns
+A proof of `hyps ∗ A ⊢ goal`
+-/
+partial def iCasesCore {P} (hyps : Hyps bi P) (goal : Q($prop)) (pat : iCasesPat)
+    (p : Q(Bool)) (A A' : Q($prop)) (_ : $A =Q iprop(□?$p $A'))
+    (k : ∀ {P}, Hyps bi P → (goal' : Q($prop)) → ProofModeM Q($P ⊢ $goal)) :
+    ProofModeM (Q($P ∗ $A ⊢ $goal)) :=
   match pat with
   | .one name => do
     -- TODO: use Hyps.addWithInfo here?
@@ -177,61 +205,58 @@ partial def iCasesCore
     let uniq ← mkFreshId
     addHypInfo ref name uniq prop A' (isBinder := true)
     let hyp := .mkHyp bi name uniq p A' A
-    if let .emp _ := hyps then
-      let pf : Q($A ⊢ $Q) ← k hyp
-      pure q(of_emp_sep $pf)
-    else
-      k (.mkSep hyps hyp)
+    if let .emp _ := hyps then pure q(of_emp_sep $(← k hyp goal))
+    else k (.mkSep hyps hyp) goal
 
   | .clear => do
-    let pf ← iClearCore bi q(iprop($P ∗ $A)) P p A' Q q(.rfl)
-    pure q($pf $(← k hyps))
+    let pf ← iClearCore bi q(iprop($P ∗ $A)) P p A' goal q(.rfl)
+    pure q($pf $(← k hyps goal))
 
-  | .conjunction [arg] | .disjunction [arg] => iCasesCore hyps Q p A A' ⟨⟩ arg @k
+  | .conjunction [arg] | .disjunction [arg] => iCasesCore hyps goal arg p A A' ⟨⟩ @k
 
   | .disjunction [] => throwUnsupportedSyntax
 
-  | .conjunction [] => iCasesEmptyConj bi hyps Q A' p @k
+  | .conjunction [] => iCasesEmptyConj bi hyps goal A' p
 
   -- pure conjunctions are always handled as existentials. There is
   -- intoExist_and_pure and intoExist_sep_pure to make this work as
   -- expected for pure assertions that are not explicit existentials.
   | .conjunction (.pure arg :: args) => do
-    iCasesExists bi P Q A' p arg
-      (iCasesCore hyps Q p · · · (.conjunction args) k)
+    iCasesExists bi P goal A' p arg
+      (fun B B' h => iCasesCore hyps goal (.conjunction args) p B B' h k)
   | .conjunction (arg :: args) => do
     if arg matches .clear then
-      let pf ← iCasesAndLR bi P Q A' p (right := true) fun B B' h =>
-        iCasesCore hyps Q p B B' h (.conjunction args) @k
+      let pf ← iCasesAndLR bi P goal A' p (right := true) fun B B' h =>
+        iCasesCore hyps goal (.conjunction args) p B B' h @k
       if let some pf := pf then return pf
     if args matches [.clear] then
-      let pf ← iCasesAndLR bi P Q A' p (right := false) fun B B' h =>
-        iCasesCore hyps Q p B B' h arg @k
+      let pf ← iCasesAndLR bi P goal A' p (right := false) fun B B' h =>
+        iCasesCore hyps goal arg p B B' h @k
       if let some pf := pf then return pf
-    iCasesSep bi hyps Q A' p @k
-      (iCasesCore · · p · · · arg)
-      (iCasesCore · · p · · · (.conjunction args))
+    iCasesSep bi hyps goal A' p @k
+      (fun hyps goal B B' h cont => iCasesCore hyps goal arg p B B' h cont)
+      (fun hyps goal B B' h cont => iCasesCore hyps goal (.conjunction args) p B B' h cont)
 
   | .disjunction (arg :: args) =>
-    iCasesOr bi P Q A' p
-      (iCasesCore hyps Q p · · · arg @k)
-      (iCasesCore hyps Q p · · · (.disjunction args) @k)
+    iCasesOr bi P goal A' p
+      (fun B B' h => iCasesCore hyps goal arg p B B' h k)
+      (fun B B' h => iCasesCore hyps goal (.disjunction args) p B B' h k)
 
   | .pure arg => do
-    iPureCore bi q(iprop($P ∗ $A)) P p A' Q arg q(.rfl) fun _ _ => k hyps
+    iPureCore bi q(iprop($P ∗ $A)) P p A' goal arg q(.rfl) fun _ _ => k hyps goal
 
   | .intuitionistic arg =>
-    iCasesIntuitionistic bi P Q A' p fun B' =>
-      iCasesCore hyps Q q(true) q(iprop(□ $B')) B' ⟨⟩ arg @k
+    iCasesIntuitionistic bi P goal A' p fun B' =>
+      iCasesCore hyps goal arg q(true) q(iprop(□ $B')) B' ⟨⟩ @k
 
   | .spatial arg =>
-    iCasesSpatial bi P Q A' p fun B' =>
-      iCasesCore hyps Q q(false) B' B' ⟨⟩ arg @k
+    iCasesSpatial bi P goal A' p fun B' =>
+      iCasesCore hyps goal arg q(false) B' B' ⟨⟩ @k
 
   | .mod arg =>
-    iModCore bi P Q p A' fun p' A' Q' =>
+    iModCore bi P goal p A' fun p' A' goal' =>
       have ⟨A'', eq⟩ := mkIntuitionisticIf bi p' A'
-      iCasesCore hyps Q' p' A'' A' eq arg @k
+      iCasesCore hyps goal' arg p' A'' A' eq @k
 
 elab "icases" keep:("+keep")? colGt pmt:pmTerm "with" colGt pat:icasesPat : tactic => do
   -- parse syntax
@@ -244,7 +269,7 @@ elab "icases" keep:("+keep")? colGt pmt:pmTerm "with" colGt pat:icasesPat : tact
 
   -- process pattern
   have ⟨B, eq⟩ := mkIntuitionisticIf bi p A
-  let pf2 ← iCasesCore bi hyps goal p B A eq pat (λ hyps => addBIGoal hyps goal)
+  let pf2 ← iCasesCore bi hyps goal pat p B A eq (λ hyps goal => addBIGoal hyps goal)
 
   mvar.assign q(($pf).trans $pf2)
 

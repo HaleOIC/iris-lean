@@ -1613,12 +1613,106 @@ example [BI PROP] (P : PROP) : □ P ⊢ □ <pers> P := by
   imodintro
   iexact HP
 
+/-- Tests `imodintro` for bupd with single hypothesis -/
+example [BI PROP] [BIUpdate PROP] (P : PROP) : P ⊢ |==> P := by
+  iintro HP
+  imodintro
+  iexact HP
+
+/-- Tests `imodintro` for fupd -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : P ⊢ |={E}=> P := by
+  iintro HP
+  imodintro
+  iexact HP
+
+/-- Tests `imodintro` for bupd preserves both intuitionistic and spatial -/
+example [BI PROP] [BIUpdate PROP] (P Q : PROP) : □ P ∗ Q ⊢ |==> Q := by
+  iintro ⟨□HP, HQ⟩
+  imodintro
+  iexact HQ
+
+/-- Tests `imodintro` for persistently with only intuitionistic context -/
+example [BI PROP] (P : PROP) : □ P ∗ □ P ⊢ <pers> P := by
+  iintro ⟨□HP1, □HP2⟩
+  imodintro
+  iexact HP1
+
+/-- Tests `imodintro` for nested bupd -/
+example [BI PROP] [BIUpdate PROP] (P : PROP) : P ⊢ |==> |==> P := by
+  iintro HP
+  imodintro
+  imodintro
+  iexact HP
+
+/-- Tests `imodintro` for later with multiple later hypotheses -/
+example [BI PROP] (P Q : PROP) : ▷ P ∗ ▷ Q ⊢ ▷ (P ∗ Q) := by
+  iintro ⟨HP, HQ⟩
+  imodintro
+  isplitl [HP]
+  · iexact HP
+  · iexact HQ
+
+/-- Tests `imodintro` for later with intuitionistic later hypothesis -/
+example [BI PROP] (P : PROP) : □ ▷ P ∗ ▷ P ⊢ ▷ P := by
+  iintro ⟨□HP, HQ⟩
+  imodintro
+  iexact HQ
+
+/-- Tests `imodintro` followed by `imod` -/
+example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> P ⊢ |==> P := by
+  iintro HP
+  imod HP
+  imodintro
+  iexact HP
+
+/-- Tests `imodintro` with explicit pattern for persistently -/
+example [BI PROP] (P : PROP) : □ P ⊢ <pers> P := by
+  iintro □HP
+  imodintro (<pers> _)
+  iexact HP
+
+/-- Tests `imodintro` for affinely with multiple spatial hypotheses -/
+example [BI PROP] (P Q : PROP) [Affine P] [Affine Q] : <affine> P ∗ <affine> Q ⊢ <affine> P := by
+  iintro ⟨HP, HQ⟩
+  imodintro
+  iexact HP
+
+/-- Tests `imodintro` for triple nested modalities -/
+example [BI PROP] (P : PROP) : □ P ⊢ □ <pers> <absorb> P := by
+  iintro □HP
+  imodintro
+  imodintro
+  imodintro
+  iexact HP
+
+/-- Tests `inext` as shorthand for imodintro on later goals -/
+example [BI PROP] (P : PROP) : ▷ P ⊢ ▷ P := by
+  iintro HP
+  inext
+  iexact HP
+
+/-- Tests `imodintro` for fupd then bupd -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : P ⊢ |={E}=> |==> P := by
+  iintro HP
+  imodintro
+  imodintro
+  iexact HP
+
 end imodintro
 
 section imod
 
 /-- Tests `imod` for bupd -/
 example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> P ⊢ |==> P := by
+  iintro HP
+  imod HP
+  iexact HP
+
+/-- Tests `imod` for fupd -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : ((|={E}=> P) ⊢ (|={E}=> P)) := by
   iintro HP
   imod HP
   iexact HP
@@ -1636,14 +1730,36 @@ example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> P ⊢ emp -∗ |==> P := by
   iintro _
   iexact HP
 
+/-- Tests `imod` for fupd under wand -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : (|={E}=> P) ⊢ emp -∗ |={E}=> P := by
+  iintro HP
+  imod HP
+  iintro _
+  iexact HP
+
 /-- Tests `imod` with destructuring pattern -/
 example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> (P ∗ emp) ⊢ |==> P := by
   iintro HP
   imod HP with ⟨HP, _⟩
   iexact HP
 
+/-- Tests `imod` with destructuring pattern for fupd -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : (|={E}=> P ∗ emp) ⊢ |={E}=> P := by
+  iintro HP
+  imod HP with ⟨HP, _⟩
+  iexact HP
+
 /-- Tests `icases` with mod pattern -/
 example [BI PROP] [BIUpdate PROP] (P : PROP) : emp ∗ |==> P ⊢ |==> P := by
+  iintro HP
+  icases HP with ⟨_, >HP⟩
+  iexact HP
+
+/-- Tests `icases` with mod pattern for fupd -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : emp ∗ (|={E}=> P) ⊢ |={E}=> P := by
   iintro HP
   icases HP with ⟨_, >HP⟩
   iexact HP
@@ -1659,6 +1775,64 @@ example [BI PROP] (P : PROP) : P ⊢ P := by
 example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> |==> P ⊢ |==> P := by
   iintro HP
   imod HP
+  imod HP
+  iexact HP
+
+/-- Tests `imod` eliminating nested fupd modalities -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : (|={E}=> |={E}=> P) ⊢ |={E}=> P := by
+  iintro HP
+  imod HP
+  imod HP
+  iexact HP
+
+/-- Tests `imod` for nested mask-changing fupd. -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP]
+    (E1 E2 E3 : CoPset) (P : PROP) : (|={E1,E2}=> |={E2,E3}=> P) ⊢ |={E1,E3}=> P := by
+  iintro HP
+  imod HP
+  iexact HP
+
+/-- Tests `imod` for fupd with a plain goal. -/
+example [Sbi PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    [BIFUpdatePlainly PROP] [BIAffine PROP] (E : CoPset) (P : PROP) [Plain P] :
+    (|={E}=> P) ⊢ P := by
+  iintro HP
+  imod HP
+  iexact HP
+
+/-- Tests `imod` with destructuring nested separating conjunction -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E1 E2 : CoPset) (P Q R : PROP) :
+    (|={E1,E2}=> P ∗ Q ∗ R) ⊢ |={E1,E2}=> (P ∗ Q ∗ R) := by
+  iintro HP
+  imod HP with ⟨HP, HQ, HR⟩
+  isplitl [HP]
+  · iexact HP
+  isplitl [HQ]
+  · iexact HQ
+  · iexact HR
+
+/-- Tests `imod` for later with timeless under except0 goal -/
+example [BI PROP] (P Q : PROP) [Timeless P] : ▷ P ∗ Q ⊢ ◇ (P ∗ Q) := by
+  iintro ⟨HP, HQ⟩
+  imod HP
+  isplitl [HP]
+  · iexact HP
+  · iexact HQ
+
+/-- Tests `icases` with multiple mod patterns -/
+example [BI PROP] [BIUpdate PROP] (P Q : PROP) : (|==> P) ∗ (|==> Q) ⊢ |==> (P ∗ Q) := by
+  iintro H
+  icases H with ⟨>HP, >HQ⟩
+  isplitl [HP]
+  · iexact HP
+  · iexact HQ
+
+/-- Tests `imod` for fupd with intuitionistic hypothesis -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E : CoPset) (P : PROP) : □ (|={E}=> P) ⊢ |={E}=> P := by
+  iintro □HP
   imod HP
   iexact HP
 
