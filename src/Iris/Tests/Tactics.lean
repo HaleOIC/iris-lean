@@ -1459,6 +1459,38 @@ example [BI PROP] P (Q : Nat → PROP) :
   icases Hwand $$ HP with ⟨%_, -, HQ⟩
   iexact HQ
 
+/-- Tests `icases` with a comprehensive nested pattern combining existential, pure,
+intuitionistic, spatial, disjunction, and clearing. -/
+example [BI PROP] (φ : Prop) (Q : PROP) :
+    □ (∃ _ : Nat, ⌜φ⌝ ∧ Q) ∗ (Q ∨ False) ⊢ Q := by
+  iintro H
+  icases H with ⟨#⟨%_, %_hφ, *HQ⟩, (HQ' | -)⟩
+  · iexact HQ'
+  · iexact HQ
+
+/-- Tests `icases` with multiple mod patterns -/
+example [BI PROP] [BIUpdate PROP] (P Q : PROP) : (|==> P) ∗ (|==> Q) ⊢ |==> (P ∗ Q) := by
+  iintro H
+  icases H with ⟨>HP, >HQ⟩
+  isplitl [HP]
+  · iexact HP
+  · iexact HQ
+
+/-- Tests `icases` with a comprehensive nested fancy-update pattern combining mask changes,
+existential, pure, disjunction, conjunction, clearing, and multiple mod eliminations. -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E1 E2 E3 : CoPset) (φ : Prop) (P Q : PROP) :
+    (|={E1,E2}=> ∃ _ : Nat, ⌜φ⌝ ∧ P) ∗
+      ((|={E2,E3}=> Q ∗ emp) ∨ (|={E2,E3}=> emp ∗ Q)) ⊢
+      |={E1,E3}=> (P ∗ Q) := by
+  iintro H
+  icases H with ⟨>⟨%_, %_hφ, HP⟩, (>⟨HQ, -⟩ | >⟨-, HQ⟩)⟩
+  all_goals
+    imodintro
+    isplitl [HP]
+    · iexact HP
+    · iexact HQ
+
 /-- Tests `icases` duplicating the context -/
 example [BI PROP] (Q : PROP) (n : Nat) :
   □ (∀ x, Q -∗ ⌜x = n⌝) ⊢ Q -∗ False := by
@@ -1817,14 +1849,6 @@ example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
 example [BI PROP] (P Q : PROP) [Timeless P] : ▷ P ∗ Q ⊢ ◇ (P ∗ Q) := by
   iintro ⟨HP, HQ⟩
   imod HP
-  isplitl [HP]
-  · iexact HP
-  · iexact HQ
-
-/-- Tests `icases` with multiple mod patterns -/
-example [BI PROP] [BIUpdate PROP] (P Q : PROP) : (|==> P) ∗ (|==> Q) ⊢ |==> (P ∗ Q) := by
-  iintro H
-  icases H with ⟨>HP, >HQ⟩
   isplitl [HP]
   · iexact HP
   · iexact HQ
