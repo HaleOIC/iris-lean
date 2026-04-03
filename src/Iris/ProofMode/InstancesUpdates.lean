@@ -171,35 +171,24 @@ section SBIFancyUpdate
 
 variable {PROP} [Sbi PROP] [BIFUpdate PROP] [BIFUpdatePlainly PROP] [BIAffine PROP]
 
-instance fromForall_fupd E1 E2 (P : PROP) (Φ : α → PROP)
-    [h : FromForall P Φ] [∀ a, Plain (Φ a)] :
-    FromForall iprop(|={E1,E2}=> P) (fun a => iprop(|={E1,E2}=> Φ a)) where
-  from_forall := by
-    sorry
+-- instance fromForall_fupd E1 E2 (P : PROP) (Φ : α → PROP)
+--     [h : FromForall P Φ] [∀ a, Plain (Φ a)] :
+--     FromForall iprop(|={E1,E2}=> P) (fun a => iprop(|={E1,E2}=> Φ a)) where
+--   from_forall := sorry
 
-instance fromForall_stepFupd E (P : PROP) (Φ : α → PROP)
-    [h : FromForall P Φ] [∀ a, Plain (Φ a)] :
-    FromForall iprop(|={E}▷=> P) (fun a => iprop(|={E}▷=> Φ a)) where
-  from_forall := by
-    sorry
+-- instance fromForall_stepFupd E (P : PROP) (Φ : α → PROP)
+--     [h : FromForall P Φ] [∀ a, Plain (Φ a)] :
+--     FromForall iprop(|={E}▷=> P) (fun a => iprop(|={E}▷=> Φ a)) where
+--   from_forall := sorry
 
-@[ipm_backtrack]
-instance elimModal_fupd_plain_goal p E (P Q : PROP) [Plain Q] :
-    ElimModal True p false iprop(|={E}=> P) P Q Q where
-  elim_modal _ := by
-    apply (sep_mono_l intuitionisticallyIf_elim).trans
-    simp
-    apply fupd_frame_r.trans
-    apply  (BIFUpdate.mono wand_elim_r).trans
+-- @[ipm_backtrack]
+-- instance elimModal_fupd_plain_goal p E (P Q : PROP) [Plain Q] :
+--     ElimModal True p false iprop(|={E}=> P) P Q Q where
+--   elim_modal _ := sorry
 
-    -- fupd_frame_r.trans <| (BIFUpdate.mono wand_elim_r).trans fupd_elim
-    sorry
-
-@[ipm_backtrack]
-instance elimModal_fupd_plain p E (P Q : PROP) [Plain P] :
-    ElimModal True p p iprop(|={E}=> P) P Q Q where
-  elim_modal _ :=
-    sorry
-    -- (sep_mono_l (intuitionisticallyIf_mono fupd_elim)).trans wand_elim_r
+-- @[ipm_backtrack]
+-- instance elimModal_fupd_plain p E (P Q : PROP) [Plain P] :
+--     ElimModal True p p iprop(|={E}=> P) P Q Q where
+--   elim_modal _ := sorry
 
 end SBIFancyUpdate

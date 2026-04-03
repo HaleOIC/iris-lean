@@ -237,7 +237,11 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
 - [ ] `sbi_unfold.v`
 - [ ] `telescopes.v`
 - [ ] `updates.v`
-  - [x] FUpd class
+  - [x] Bupd laws 
+  - [x] Fupd basic laws 
+  - [ ] Fupd mask change laws
+  - [ ] Fupd step derived rules 
+  - [ ] Fupd plainly general laws
   - [ ] Big op lemmas
 - [ ] `weakestpre.v`
 - [ ] `lib/atomic.v`
@@ -295,13 +299,14 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [ ] IntoLaterN
 - [ ] `class_instances_updates.v` (InstancesUpdates.lean)
   - [x] Basic instances for bupd
-  - [ ] Basic instances for fupd
+  - [x] Basic instances for fupd
   - [x] FromModal bupd
-  - [ ] FromModal fupd
+  - [x] FromModal fupd
   - [x] ElimModal bupd
-  - [ ] ElimModal fupd
+  - [x] ElimModal fupd
   - [x] AddModal bupd
-  - [ ] AddModal fupd
+  - [x] AddModal fupd
+  - [ ] FromForall fupd / FromForall step_fupd
   - [ ] ElimAcc bupd
   - [ ] ElimAcc fupd
 - [ ] `classes.v` (Classes.lean)

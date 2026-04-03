@@ -241,14 +241,9 @@ theorem fupd_mask_frame_r {E1 E2 Ef : CoPset} {P : PROP} :
     E1 ## Ef → (|={E1,E2}=> P) ⊢ |={E1 ∪ Ef,E2 ∪ Ef}=> P :=
   fun h => (mono <| imp_intro' and_elim_r).trans <| mask_frame_r' h
 
+-- TODO: the following theorems can be proved only with CoPSet extensional-equality
 -- theorem fupd_mask_frame {E E' E1 E2 : CoPset} {P : PROP} :
---     E1 ⊆ E → (|={E1,E2}=> |={E2 ∪ (E \ E1),E'}=> P) ⊢ |={E,E'}=> P := by
---   intro h;
---   have hset : E1 ## E \ E1 := sorry
---   have h' := fupd_mask_frame_r (PROP := PROP) (E1 := E1) (E2 := E2) (Ef := E \ E1) (P := iprop(|={E2 ∪ E \ E1,E'}=> P)) hset
---   apply h'.trans
---   apply trans.trans
-  -- sorry
+--     E1 ⊆ E → (|={E1,E2}=> |={E2 ∪ (E \ E1),E'}=> P) ⊢ |={E,E'}=> P := sorry
 
 -- theorem fupd_mask_frame_acc {E E' E1 E2 : CoPset} {P Q : PROP}:
 --     E1 ⊆ E →
@@ -256,13 +251,12 @@ theorem fupd_mask_frame_r {E1 E2 Ef : CoPset} {P : PROP} :
 --     (Q -∗ |={E \ E2,E'}=> (∀ R, (|={E1 \ E2,E1}=> R) -∗ |={E \ E2,E}=> R) -∗  P) -∗
 --     (|={E,E'}=> P) := sorry
 
-theorem fupd_mask_subseteq_emptyset_difference {E1 E2 : CoPset} :
-    E2 ⊆ E1 → ⊢ |={E1,E2}=> |={∅,E1\E2}=> (emp: PROP) := by
-  intro h;
-  -- Similar to above but with Ef as E1\E2
-  sorry
+-- theorem fupd_mask_mono {E1 E2 : CoPset} {P : PROP} :
+--     E1 ⊆ E2 → (|={E1}=> P) ⊢ |={E2}=> P := sorry
 
-theorem fupd_trans_frame {E1 E2 E3 : CoPset} {P Q : PROP} : ((Q ={E2,E3}=∗ emp) ∗ |={E1,E2}=> (Q ∗ P)) ⊢ |={E1,E3}=> P := sorry
+-- theorem fupd_mask_subseteq_emptyset_difference {E1 E2 : CoPset} :
+--     E2 ⊆ E1 → ⊢ |={E1,E2}=> |={∅,E1\E2}=> (emp: PROP) := sorry
 
+-- theorem fupd_trans_frame {E1 E2 E3 : CoPset} {P Q : PROP} : ((Q ={E2,E3}=∗ emp) ∗ |={E1,E2}=> (Q ∗ P)) ⊢ |={E1,E3}=> P := sorry
 
 end FUpdLaws
