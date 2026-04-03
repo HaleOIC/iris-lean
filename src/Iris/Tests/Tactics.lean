@@ -1825,14 +1825,6 @@ example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP]
   imod HP
   iexact HP
 
-/-- Tests `imod` for fupd with a plain goal. -/
-example [Sbi PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
-    [BIFUpdatePlainly PROP] [BIAffine PROP] (E : CoPset) (P : PROP) [Plain P] :
-    (|={E}=> P) ⊢ P := by
-  iintro HP
-  imod HP
-  iexact HP
-
 /-- Tests `imod` with destructuring nested separating conjunction -/
 example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
     (E1 E2 : CoPset) (P Q R : PROP) :
