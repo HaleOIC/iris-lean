@@ -267,5 +267,5 @@ macro "imod" colGt pmt:pmTerm "with" colGt pat:icasesPat : tactic => `(tactic | 
 macro "imod" colGt hyp:ident : tactic => `(tactic | imod $hyp:ident with $hyp:ident)
 
 -- TODO: remove these shortcuts if they are not used
-macro "iintuitionistic" hyp:ident : tactic => `(tactic | icases $hyp:ident with □$hyp:ident)
+macro "iintuitionistic" hyp:ident : tactic => `(tactic | icases $hyp:ident with #$hyp:ident)
 macro "ispatial" hyp:ident : tactic => `(tactic | icases $hyp:ident with ∗$hyp:ident)
