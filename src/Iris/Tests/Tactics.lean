@@ -1144,6 +1144,144 @@ example [BI PROP] (P Q : PROP) :
   · rfl
   iexact H
 
+/-- Tests `ispecialize` with modal subgoal via `AddModal`. -/
+example [BI PROP] [BIPositive PROP] [Timeless P] (Q : PROP) :
+    ▷ P ⊢ (P -∗ ▷ Q) -∗ ▷ Q := by
+  iintro Hlater H
+  ispecialize H $$ [> Hlater]
+  · iexact Hlater
+  iexact H
+
+/-- Tests `ispecialize` with named modal subgoal via `AddModal`. -/
+example [BI PROP] [BIPositive PROP] [Timeless P] (Q : PROP) :
+    ▷ P ⊢ (P -∗ ▷ Q) -∗ ▷ Q := by
+  iintro Hlater H
+  ispecialize H $$ [> Hlater] as G
+  · iexact Hlater
+  iexact H
+
+/-- Tests `ispecialize` with bupd modal subgoal via `AddModal`. -/
+example [BI PROP] [BIUpdate PROP] (P Q : PROP) :
+    |==> P ⊢ (P -∗ |==> Q) -∗ |==> Q := by
+  iintro Hbupd H
+  ispecialize H $$ [> Hbupd]
+  · iexact Hbupd
+  iexact H
+
+/-- Tests `ispecialize` with negated bupd modal subgoal. -/
+example [BI PROP] [BIUpdate PROP] (P Q R : PROP) :
+    |==> Q ⊢ P -∗ (Q -∗ |==> R) -∗ P ∗ |==> R := by
+  iintro Hbupd HQ H
+  ispecialize H $$ [>- HQ]
+  · iexact Hbupd
+  isplitl [HQ]
+  · iexact HQ
+  · iexact H
+
+/-- Tests `ispecialize` with mask-changing fupd modal subgoal. -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E1 E2 : CoPset) (P Q : PROP) :
+    (|={E1}=> P) ⊢ (P -∗ |={E1,E2}=> Q) -∗ |={E1,E2}=> Q := by
+  iintro Hfupd H
+  ispecialize H $$ [> Hfupd]
+  · iexact Hfupd
+  iexact H
+
+/-- Tests `ispecialize` with named mask-changing fupd modal subgoal. -/
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E1 E2 : CoPset) (P Q : PROP) :
+    (|={E1}=> P) ⊢ (P -∗ |={E1,E2}=> Q) -∗ |={E1,E2}=> Q := by
+  iintro Hfupd H
+  ispecialize H $$ [> Hfupd] as G
+  · iexact Hfupd
+  iexact H
+
+/-- error: iexact: cannot unify iprop(|={E1}=> P) and iprop(|={E2}=> P)
+---
+error: imod: iprop(|={E2,E3}=> Q) is not a modality -/
+#guard_msgs in
+example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+    (E1 E2 E3 : CoPset) (P Q : PROP) :
+    (|={E1}=> P) ⊢ (P -∗ |={E2,E3}=> Q) -∗ |={E1,E3}=> Q := by
+  iintro Hfupd H
+  ispecialize H $$ [> Hfupd] as G
+  · iexact Hfupd
+  imod H
+  iexact H
+
+/-- Tests `ispecialize` with negated spatial subgoal. -/
+example [BI PROP] (P Q R : PROP) :
+    ⊢ (Q -∗ P -∗ R) -∗ P -∗ Q -∗ R := by
+  iintro H HP HQ
+  ispecialize H $$ [- HP]
+  · iexact HQ
+  ispecialize H $$ HP
+  iexact H
+
+/-- Tests `ispecialize` with negated modal subgoal. -/
+example [BI PROP] [BIPositive PROP] [Timeless Q] (P R : PROP) :
+    ▷ Q ⊢ P -∗ (Q -∗ ▷ R) -∗ P ∗ ▷ R := by
+  iintro Hlater HQ H
+  ispecialize H $$ [>- HQ]
+  · iexact Hlater
+  isplitl [HQ]
+  · iexact HQ
+  · iexact H
+
+/-- Tests `ispecialize` with persistent subgoal. -/
+example [BI PROP] (P Q : PROP) :
+    □ P ⊢ (□ P -∗ Q) -∗ Q := by
+  iintro HP H
+  ispecialize H $$ [#]
+  · exact absorbingly_intro
+  iexact H
+
+/-- Tests `ispecialize` preserves persistence for spatial subgoals in intuitionistic contexts. -/
+example [BI PROP] [BIPositive PROP] (P Q : PROP) :
+    □ P ⊢ □ (P -∗ P -∗ Q) -∗ Q := by
+  iintro □HP □H
+  ispecialize H $$ [HP]
+  · iexact HP
+  icases H with □H
+  ispecialize H $$ HP
+  iexact H
+
+/-- Tests `ispecialize` preserves persistence after a named spatial subgoal using multiple hypotheses. -/
+example [BI PROP] [BIPositive PROP] (P Q R S : PROP) :
+    □ P ⊢ □ Q -∗ □ R -∗ □ (P ∗ Q -∗ R -∗ S) -∗ S := by
+  iintro □HP □HQ □HR □H
+  ispecialize H $$ [HP HQ] as G
+  case G =>
+    isplitl [HP]
+    · iexact HP
+    · iexact HQ
+  icases H with □H
+  ispecialize H $$ [HR]
+  · iexact HR
+  iexact H
+
+/-- Tests `ispecialize` preserves persistence for negated spatial subgoals in intuitionistic contexts. -/
+example [BI PROP] [BIPositive PROP] (P Q R : PROP) :
+    □ P ⊢ □ Q -∗ □ (P -∗ Q -∗ R) -∗ R := by
+  iintro □HP □HQ □H
+  ispecialize H $$ [- HQ]
+  · iexact HP
+  icases H with □H
+  ispecialize H $$ [HQ]
+  · iexact HQ
+  iexact H
+
+/-- Tests `ispecialize` preserves persistence after mixed pure and spatial specialization. -/
+example [BI PROP] [BIPositive PROP] (P Q : PROP) :
+    □ P ⊢ □ (∀ x, P -∗ ⌜x = 1⌝ -∗ P -∗ Q) -∗ Q := by
+  iintro □HP □H
+  ispecialize H $$ %1 [HP] as G %rfl
+  case G => iexact HP
+  icases H with □H
+  ispecialize H $$ [HP]
+  · iexact HP
+  iexact H
+
 end specialize
 
 -- split
