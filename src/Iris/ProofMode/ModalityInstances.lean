@@ -26,9 +26,6 @@ def modality_persistently [BI PROP] : Modality PROP PROP where
   mono := (persistently_mono ·)
   sep := persistently_sep_2
 
-unif_hint [BIBase PROP] (P : PROP) where |- iprop(□?false P) ≟ iprop(P)
-unif_hint [BIBase PROP] (P : PROP) where |- iprop(□?true P) ≟ iprop(□ P)
-
 def modality_affinely [BI PROP] : Modality PROP PROP where
   M := affinely
   action
@@ -41,7 +38,7 @@ def modality_affinely [BI PROP] : Modality PROP PROP where
   mono := (affinely_mono ·)
   sep := affinely_sep_2
 
-def modality_intuitionistically[BI PROP] : Modality PROP PROP where
+def modality_intuitionistically [BI PROP] : Modality PROP PROP where
   M := intuitionistically
   action
   | true => .id
