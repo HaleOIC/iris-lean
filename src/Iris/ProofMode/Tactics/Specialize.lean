@@ -137,7 +137,6 @@ private def SpecializeState.processWandGoalSpatial
   | .inr _ =>
     return { e := el, hyps := hypsl, p := q(false), out := out₂, pf := pfSpatial }
 
-
 private def SpecializeState.processWandGoalModal
     (self : @SpecializeState u prop bi orig)
     (neg : Bool) (ns : List Ident) (g : Name)
@@ -150,10 +149,10 @@ private def SpecializeState.processWandGoalModal
   let out₂ ← mkFreshExprMVarQ prop
   let some hwand ← ProofModeM.trySynthInstanceQ q(IntoWand $p false $out .out $out₁ .out $out₂)
     | throwError m!"ispecialize: {out} is not a wand"
-  let some hmod ← ProofModeM.trySynthInstanceQ q(AddModal $out₁' $out₁ $out₂)
+  let some _ ← ProofModeM.trySynthInstanceQ q(AddModal $out₁' $out₁ $out₂)
     | throwError m!"ispecialize: cannot generate a specialization subgoal for {out}"
   let pf' ← addBIGoal hypsr out₁' g
-  let pf := q(specialize_subgoal_modal (q := $p) $pf $h $pf' (inst := $hwand) (hmod := $hmod))
+  let pf := q(specialize_subgoal_modal (q := $p) $pf $h $pf' (inst := $hwand))
   return { e := el, hyps := hypsl, p := q(false), out := out₂, pf }
 
 private def SpecializeState.processWandGoalIntuitionistic
@@ -164,17 +163,14 @@ private def SpecializeState.processWandGoalIntuitionistic
   let out₂ ← mkFreshExprMVarQ prop
   let some _ ← ProofModeM.trySynthInstanceQ q(IntoWand $p true $out .out $out₁ .out $out₂)
     | throwError m!"ispecialize: {out} does not have a persistent premise"
-  let some hpers ← ProofModeM.trySynthInstanceQ q(Persistent $out₁)
+  let some _ ← ProofModeM.trySynthInstanceQ q(Persistent $out₁)
     | throwError m!"ispecialize: persistent specialization requires a persistent premise"
   let some hwand ← ProofModeM.trySynthInstanceQ q(IntoWand $p true $out .in $out₁ .out $out₂)
     | throwError m!"ispecialize: {out} does not have a persistent premise"
-  let some habs ← ProofModeM.trySynthInstanceQ q(IntoAbsorbingly iprop(<absorb> $out₁) $out₁)
+  let some _ ← ProofModeM.trySynthInstanceQ q(IntoAbsorbingly iprop(<absorb> $out₁) $out₁)
     | throwError m!"ispecialize: cannot generate a persistent specialization subgoal for {out}"
   let pf' ← addBIGoal hyps q(iprop(<absorb> $out₁)) g
-  let pf := q(
-    let _ : Persistent $out₁ := $hpers
-    let _ : IntoAbsorbingly iprop(<absorb> $out₁) $out₁ := $habs
-    specialize_subgoal_persistent (q := $p) $pf $pf' (inst := $hwand))
+  let pf := q(specialize_subgoal_persistent (q := $p) $pf $pf' (inst := $hwand))
   return { e, hyps, p, out := out₂, pf }
 
 /-- `iCasesPat.should_try_dup_context` determines when iSpecializeCore should try to duplicate the separation context.
