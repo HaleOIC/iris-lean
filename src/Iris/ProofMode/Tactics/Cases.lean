@@ -131,7 +131,7 @@ private def iCasesSep {prop : Q(Type u)} (bi : Q(BI $prop))
         | throwError "icases: internal error: {goal'} is not a wand"
       let pf ← k2 hyps goal'' A2 k
       return q((wand_intro $pf).trans from_wand)
-    return q(sep_elim_spatial $pf)
+    return q(sep_elim_spatial (A := $A) $pf)
 
 /-- Destruct a disjunction hypothesis [A] into two cases and continue separately on each branch. -/
 private def iCasesOr {prop : Q(Type u)} (bi : Q(BI $prop))
@@ -158,7 +158,7 @@ private def iCasesIntuitionistic {prop : Q(Type u)} (_bi : Q(BI $prop))
   | .inr _ =>
     let .some _ ← trySynthInstanceQ q(TCOr (Affine $A) (Absorbing $goal))
       | throwError "icases: {A} not affine and the goal not absorbing"
-    return q(intuitionistic_elim_spatial $(← k B))
+    return q(intuitionistic_elim_spatial (A := $A) $(← k B))
 
 /-- Destruct an affine/spatial hypothesis [A] by removing the affinely wrapper and continuing with the spatial body. -/
 private def iCasesSpatial {prop : Q(Type u)} (_bi : Q(BI $prop))
