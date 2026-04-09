@@ -11,7 +11,7 @@
 | `iassumption`                              | Solve the goal with a hypothesis from any context (pure, intuitionistic or spatial).                                                                                                                                                 |
 | `iex_falso`                                | Change the goal to `False`.                                                                                                                                                                                                          |
 | `ipure` *hyp*                              | Move the hypothesis *hyp* to the pure context.                                                                                                                                                                                       |
-| `iintuitionistic` *hyp*                    | Move the hypothesis *hyp* to the intuitionistic context. Equivalent to `icases hyp with #hyp`.                                                                                                                                      |
+| `iintuitionistic` *hyp*                    | Move the hypothesis *hyp* to the intuitionistic context. Equivalent to `icases hyp with #hyp`.                                       |
 | `ispatial` *hyp*                           | Move the hypothesis *hyp* to the spatial context.                                                                                                                                                                                    |
 | `iemp_intro`                               | Solve the goal if it is `emp` and discard all hypotheses.                                                                                                                                                                            |
 | `ipure_intro`                              | Turn a goal of the form `⌜φ⌝` into a Lean goal `φ`.                                                                                                                                                                                  |
@@ -42,8 +42,6 @@
 | `#`*pat*                        | Move the hypothesis to the intuitionistic context and further destruct it using the pattern *pat*.                                                                                  |
 | `∗`*pat*                        | Move the hypothesis to the spatial context and further destruct it using the pattern *pat*.                                                                                         |
 | `>`*pat*                        | Eliminate the modality at the top of the hypothesis and further destruct the result using the pattern *pat*.                                                                        |
-
-The supported shorthand patterns are `%` for pure hypotheses and `#` for intuitionistic ones. The older spellings `⌜name⌝`, `□pat`, and `*pat` are no longer supported.
 
 Example:
 ```lean

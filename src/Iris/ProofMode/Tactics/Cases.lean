@@ -216,37 +216,32 @@ partial def iCasesCore {P} (hyps : Hyps bi P) (goal : Q($prop)) (pat : iCasesPat
   -- intoExist_and_pure and intoExist_sep_pure to make this work as
   -- expected for pure assertions that are not explicit existentials.
   | .conjunction (.pure arg :: args) => do
-    iCasesExists bi arg p P A goal
-      (fun B => iCasesCore hyps goal (.conjunction args) p B k)
+    iCasesExists bi arg p P A goal (iCasesCore hyps goal (.conjunction args) p · k)
   | .conjunction (arg :: args) => do
     if arg matches .clear then
-      if let some pf ← iCasesAndLR bi p P A goal true fun B =>
+      if let some pf ← iCasesAndLR bi p P A goal true λ B =>
         iCasesCore hyps goal (.conjunction args) p B @k then return pf
     if args matches [.clear] then
-      if let some pf ← iCasesAndLR bi p P A goal false fun B =>
+      if let some pf ← iCasesAndLR bi p P A goal false λ B =>
         iCasesCore hyps goal arg p B @k then return pf
-    iCasesSep bi hyps p A goal @k
-      (fun hyps goal B cont => iCasesCore hyps goal arg p B cont)
-      (fun hyps goal B cont => iCasesCore hyps goal (.conjunction args) p B cont)
+    iCasesSep bi hyps p A goal @k (iCasesCore · · arg p · ·)
+      (iCasesCore · · (.conjunction args) p · ·)
 
   | .disjunction (arg :: args) =>
-    iCasesOr bi p P A goal
-      (fun B => iCasesCore hyps goal arg p B k)
-      (fun B => iCasesCore hyps goal (.disjunction args) p B k)
+    iCasesOr bi p P A goal (iCasesCore hyps goal arg p · k)
+      (iCasesCore hyps goal (.disjunction args) p · k)
 
   | .pure arg => do
-    iPureCore bi q(iprop($P ∗ □?$p $A)) P p A goal arg q(.rfl) fun _ _ => k hyps goal
+    iPureCore bi q(iprop($P ∗ □?$p $A)) P p A goal arg q(.rfl) λ _ _ => k hyps goal
 
   | .intuitionistic arg =>
-    iCasesIntuitionistic bi p P A goal fun B =>
-      iCasesCore hyps goal arg q(true) B @k
+    iCasesIntuitionistic bi p P A goal (iCasesCore hyps goal arg q(true) · @k)
 
   | .spatial arg =>
-    iCasesSpatial bi p P A goal fun B =>
-      iCasesCore hyps goal arg q(false) B @k
+    iCasesSpatial bi p P A goal (iCasesCore hyps goal arg q(false) · @k)
 
   | .mod arg =>
-    iModCore bi P goal p A fun p' A goal' =>
+    iModCore bi P goal p A λ p' A goal' =>
       iCasesCore hyps goal' arg p' A @k
 
 elab "icases" keep:("+keep")? colGt pmt:pmTerm "with" colGt pat:icasesPat : tactic => do
@@ -259,7 +254,7 @@ elab "icases" keep:("+keep")? colGt pmt:pmTerm "with" colGt pat:icasesPat : tact
   let ⟨_, hyps, p, A, pf⟩ ← iHave hyps pmt (keep.isSome || pmt.is_nontrivial) (try_dup_context := pat.should_try_dup_context)
 
   -- process pattern
-  let pf2 ← iCasesCore bi hyps goal pat p A (λ hyps goal => addBIGoal hyps goal)
+  let pf2 ← iCasesCore bi hyps goal pat p A λ hyps goal => addBIGoal hyps goal
 
   mvar.assign q(($pf).trans $pf2)
 

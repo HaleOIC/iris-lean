@@ -150,11 +150,23 @@ instance fromModal_fupd E (P : PROP) :
     FromModal True modality_id iprop(|={E}=> P) iprop(|={E}=> P) P where
   from_modal := by simp [modality_id]; exact fupd_intro
 
+instance (priority := low) fromModal_fupd_wrongMask E1 E2 (P : PROP) :
+    FromModal (PMError "Only non-mask-changing update modalities can be introduced directly.
+      Use `iapply (fupd_mask_intro ...)` to introduce a mask-changing fancy update.")
+      modality_id iprop(|={E1,E2}=> P) iprop(|={E1,E2}=> P) P where
+  from_modal h := by cases h
+
 instance elimModal_bupd_fupd p E1 E2 (P Q : PROP) :
     ElimModal True p false iprop(|==> P) P iprop(|={E1,E2}=> Q) iprop(|={E1,E2}=> Q) where
   elim_modal _ := (sep_mono_l intuitionisticallyIf_elim).trans <|
     (sep_mono_l BIUpdateFUpdate.fupd_of_bupd).trans <|
     fupd_frame_r.trans <| (BIFUpdate.mono wand_elim_r).trans BIFUpdate.trans
+
+instance (priority := low) elimModal_fupd_fupd_wrongMask p E0 E1 E2 E3 (P Q : PROP) :
+    ElimModal (PMError "Goal and eliminated modality must have the same mask.
+      Use `BIFUpdate.subset` to adjust the goal mask before using `imod`.")
+      p false iprop(|={E1,E2}=> P) iprop(False) iprop(|={E0,E3}=> Q) iprop(False) where
+  elim_modal h := by cases h
 
 instance (priority := high) elimModal_fupd_fupd p E1 E2 E3 (P Q : PROP) :
     ElimModal True p false iprop(|={E1,E2}=> P) P iprop(|={E1,E3}=> Q) iprop(|={E2,E3}=> Q) where
@@ -171,7 +183,11 @@ section SBIFancyUpdate
 
 variable {PROP} [Sbi PROP] [BIFUpdate PROP] [BIFUpdatePlainly PROP] [BIAffine PROP]
 
--- instance fromForall_fupd E1 E2 (P : PROP) (Φ : α → PROP)
+-- TODO:
+-- `fromForall_fupd` needs a derived plain/fupd/forall lemma.
+-- `fromForall_stepFupd` additionally needs a step-fupd/forall theorem in `BI/Updates.lean`.
+-- instance fromForall_fupd E1 E2 (P : PROP) {α : Type _} (Φ : α → PROP)
+--     [hmask : TCOr (E1 = E2) (TCOr (E1 = ⊤) (E2 = ∅))]
 --     [h : FromForall P Φ] [∀ a, Plain (Φ a)] :
 --     FromForall iprop(|={E1,E2}=> P) (fun a => iprop(|={E1,E2}=> Φ a)) where
 --   from_forall := sorry
@@ -180,15 +196,5 @@ variable {PROP} [Sbi PROP] [BIFUpdate PROP] [BIFUpdatePlainly PROP] [BIAffine PR
 --     [h : FromForall P Φ] [∀ a, Plain (Φ a)] :
 --     FromForall iprop(|={E}▷=> P) (fun a => iprop(|={E}▷=> Φ a)) where
 --   from_forall := sorry
-
--- @[ipm_backtrack]
--- instance elimModal_fupd_plain_goal p E (P Q : PROP) [Plain Q] :
---     ElimModal True p false iprop(|={E}=> P) P Q Q where
---   elim_modal _ := sorry
-
--- @[ipm_backtrack]
--- instance elimModal_fupd_plain p E (P Q : PROP) [Plain P] :
---     ElimModal True p p iprop(|={E}=> P) P Q Q where
---   elim_modal _ := sorry
 
 end SBIFancyUpdate

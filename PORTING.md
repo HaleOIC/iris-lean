@@ -198,7 +198,7 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
 - [ ] `lib/proph_map.v`
 - [ ] `lib/saved_prop.v`
 - [ ] `lib/token.v`
-- [ ] `lib/wsat.v`
+- [x] `lib/wsat.v`
 
 ## BI
 
@@ -244,7 +244,6 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [ ] Fupd mask change laws
   - [ ] Fupd step derived rules 
   - [ ] Fupd plainly general laws
-  - [ ] Big op lemmas
 - [ ] `weakestpre.v`
 - [ ] `lib/atomic.v`
 - [ ] `lib/core.v`
@@ -306,9 +305,8 @@ Some porting tasks will require other tasks as dependencies, the GitHub issues p
   - [x] FromModal fupd
   - [x] ElimModal bupd
   - [x] ElimModal fupd
-  - [x] AddModal bupd
-  - [x] AddModal fupd
-  - [ ] FromForall fupd / FromForall step_fupd
+  - [ ] AddModal bupd
+  - [ ] AddModal fupd
   - [ ] ElimAcc bupd
   - [ ] ElimAcc fupd
 - [ ] `classes.v` (Classes.lean)
