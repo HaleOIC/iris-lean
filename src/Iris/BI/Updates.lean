@@ -142,11 +142,7 @@ theorem bupd_wand_r {P Q : PROP} : (|==> P) ∗ (P -∗ Q) ⊢ |==> Q :=
   sep_symm.trans bupd_wand_l
 
 theorem bupd_sep {P Q : PROP} : (|==> P) ∗ (|==> Q) ⊢ |==> (P ∗ Q) :=
-<<<<<<< HEAD
-  bupd_frame_l.trans <| (mono frame_r).trans BIUpdate.trans
-=======
   bupd_frame_l.trans <| (mono <| frame_r).trans BIUpdate.trans
->>>>>>> master
 
 theorem bupd_idem {P : PROP} : (|==> |==> P) ⊣⊢ |==> P :=
   ⟨BIUpdate.trans, BIUpdate.intro⟩

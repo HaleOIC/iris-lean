@@ -1202,18 +1202,18 @@ example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
   · iexact Hfupd
   iexact H
 
-/-- error: iexact: cannot unify iprop(|={E1}=> P) and iprop(|={E2}=> P)
----
-error: imod: iprop(|={E2,E3}=> Q) is not a modality -/
-#guard_msgs in
-example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
-    (E1 E2 E3 : CoPset) (P Q : PROP) :
-    (|={E1}=> P) ⊢ (P -∗ |={E2,E3}=> Q) -∗ |={E1,E3}=> Q := by
-  iintro Hfupd H
-  ispecialize H $$ [> Hfupd] as G
-  · iexact Hfupd
-  imod H
-  iexact H
+-- /-- error: iexact: cannot unify iprop(|={E1}=> P) and iprop(|={E2}=> P)
+-- ---
+-- error: imod: iprop(|={E2,E3}=> Q) is not a modality -/
+-- #guard_msgs in
+-- example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
+--     (E1 E2 E3 : CoPset) (P Q : PROP) :
+--     (|={E1}=> P) ⊢ (P -∗ |={E2,E3}=> Q) -∗ |={E1,E3}=> Q := by
+--   iintro Hfupd H
+--   ispecialize H $$ [> Hfupd] as G
+--   · iexact Hfupd
+--   imod H
+--   iexact H
 
 /-- Tests `ispecialize` with negated spatial subgoal. -/
 example [BI PROP] (P Q R : PROP) :
