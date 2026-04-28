@@ -11,4 +11,5 @@ public import Iris.ProofMode.InstancesPlainly
 public import Iris.ProofMode.InstancesUpdates
 public import Iris.ProofMode.Patterns
 public meta import Iris.ProofMode.Tactics
+public meta import Iris.ProofMode.Aesop
 public import Iris.ProofMode.UnifHints
