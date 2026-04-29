@@ -16,9 +16,9 @@ meta def evalIAesop : Tactic := λ stx => do
   -- TODO: add profileitM to measure the performance of `iaesop`
   match stx with
   | `(tactic| iaesop?) =>
-    evalTactic (← `(tactic| aesop? (rule_sets := [-builtin, iris])))
+    evalTactic (← `(tactic| aesop? (rule_sets := [iris])))
   | `(tactic| iaesop) =>
-    evalTactic (← `(tactic| aesop (rule_sets := [-builtin, iris])))
+    evalTactic (← `(tactic| aesop (rule_sets := [iris])))
   | _ => throwError "unsupported iaesop syntax"
 
 end Iris.ProofMode.Aesop
