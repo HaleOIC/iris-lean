@@ -60,8 +60,9 @@ instance angelicEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] {α : Typ
     simp [angelicH, angelicEH] at Hhandle ⊢
     iintro Hwp Hinv; icases Hwp with ⟨%a, HΦ⟩
     imodintro; iexists a, s
-    isplitl []; ipure_intro; sorry
-    isplitl [Hinv]; iexact Hinv; iexact HΦ
+    isplitl []
+    · ipure_intro; exact Hhandle a.1 a.2
+    · isplitl [Hinv]; iexact Hinv; iexact HΦ
 
 end exec
 

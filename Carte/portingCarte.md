@@ -17,12 +17,12 @@ The `islaris` folder should not be ported, all filenames below are relative to t
 
 ## `src`
 
-- [ ] `angelic_choice.v`
+- [x] `angelic_choice.v`
   - `angelicE`: part of itree library
   - [x] `angelicH`
   - [x] wpi rules
   - `angelicEH`: part of itree library
-  - [ ] exec adequacy
+  - [x] exec adequacy
 - `axioms.v`: not necessary in Lean
 - [x] `choice.v`
   - `demonicE`: part of the itree library
