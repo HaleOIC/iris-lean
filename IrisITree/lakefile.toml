@@ -1,5 +1,5 @@
-name = "carte"
-defaultTargets = ["Carte"]
+name = "irisitree"
+defaultTargets = ["IrisITree"]
 
 [[require]]
 name = "iris"
@@ -11,4 +11,4 @@ scope = "ISTA-PLV"
 rev = "2d17379a8ba89d4e7892d70ac75ed7aab1090caa"
 
 [[lean_lib]]
-name = "Carte"
+name = "IrisITree"

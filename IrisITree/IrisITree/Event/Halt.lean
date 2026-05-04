@@ -1,12 +1,12 @@
 module
 
-public import Carte.Core.HandlerAdequate
-public import Carte.Core.WpiMask
+public import IrisITree.Core.HandlerAdequate
+public import IrisITree.Core.WpiMask
 public import ITree
 
 @[expose] public section
 
-namespace Carte.Event
+namespace IrisITree.Event
 
 open Iris BI ITree Effects
 
@@ -50,7 +50,7 @@ end wpi_rules
 
 section exec
 
-open ITree.Exec ITree.Effects Carte.Core
+open ITree.Exec ITree.Effects IrisITree.Core
 
 instance haltEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] :
     SEHandlerAdequate (haltH (PROP := PROP)) haltEH where
@@ -69,4 +69,4 @@ theorem exec_assume {E : Effect} {σ : Type _}
 
 end exec
 
-end Carte.Event
+end IrisITree.Event

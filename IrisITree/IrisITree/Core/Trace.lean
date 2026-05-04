@@ -1,6 +1,6 @@
 module
 
-public import Carte.Core.ITree
+public import IrisITree.Core.ITree
 public import ITree.Definition
 public import ITree.Effect
 
@@ -8,7 +8,7 @@ public import ITree.Effect
 
 open ITree
 
-namespace Carte.Core
+namespace IrisITree.Core
 
 /- A [trace] records one finite execution path of an `ITree`. Silent `tau` steps are ignored. -/
 inductive trace (E : Effect) (R : Type _) where
@@ -115,4 +115,4 @@ theorem interp_tr_is_postfix {E E' : Effect} {R : Type _} :
 
 end trace_postfix
 
-end Carte.Core
+end IrisITree.Core

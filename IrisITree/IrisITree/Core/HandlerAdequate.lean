@@ -1,12 +1,12 @@
 module
 
-public import Carte.Core.WpiMask
-public import Carte.Core.WpiExec
+public import IrisITree.Core.WpiMask
+public import IrisITree.Core.WpiExec
 public import Iris.Instances.Lib.FUpd
 
 @[expose] public section
 
-namespace Carte.Core
+namespace IrisITree.Core
 
 open Iris BI ITree Std OFE
 
@@ -106,4 +106,4 @@ theorem wpi_adequate (Φ : R → PROP) (H : IHandler (PROP := PROP) E)
 
 end wpi_adequate
 
-end Carte.Core
+end IrisITree.Core

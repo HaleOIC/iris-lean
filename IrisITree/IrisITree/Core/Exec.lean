@@ -1,7 +1,7 @@
 module
 
-public import Carte.Core.Handler
-public import Carte.Core.Wpi
+public import IrisITree.Core.Handler
+public import IrisITree.Core.Wpi
 public import Iris.ProofMode
 public import Iris.BI.Lib.Fixpoint
 public import Iris.BI.BigOp.BigSepList
@@ -10,7 +10,7 @@ public import ITree.Exec
 
 @[expose] public section
 
-namespace Carte.Core
+namespace IrisITree.Core
 
 open Iris BI ITree Std OFE
 
@@ -333,4 +333,4 @@ theorem lfp_tp_intro {PROP : Type _} [BI PROP] [BIAffine PROP]
   ⟩
   sorry
 
-end Carte.Core
+end IrisITree.Core

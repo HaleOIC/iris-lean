@@ -1,12 +1,12 @@
 module
 
-public import Carte.Core.HandlerAdequate
-public import Carte.Core.WpiMask
+public import IrisITree.Core.HandlerAdequate
+public import IrisITree.Core.WpiMask
 public import ITree.Effects.State
 
 @[expose] public section
 
-namespace Carte.Event
+namespace IrisITree.Event
 
 open Iris BI ITree Effects
 
@@ -86,4 +86,4 @@ theorem wpi_set_state (st' : S) (M : CoPset) (Ψ : PUnit → PROP) :
 
 end wpi_rules
 
-end Carte.Event
+end IrisITree.Event

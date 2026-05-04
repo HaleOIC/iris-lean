@@ -1,5 +1,5 @@
-namespace Carte.ThreadPool
+namespace IrisITree.ThreadPool
 
 /- Scheduling interfaces for thread-pool style concurrency. -/
 
-end Carte.ThreadPool
+end IrisITree.ThreadPool

@@ -1,5 +1,5 @@
-namespace Carte.ThreadPool
+namespace IrisITree.ThreadPool
 
 /- Concurrent trace representations for thread-pool executions. -/
 
-end Carte.ThreadPool
+end IrisITree.ThreadPool

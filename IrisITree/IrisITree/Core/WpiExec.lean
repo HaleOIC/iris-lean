@@ -1,10 +1,10 @@
 module
 
-public import Carte.Core.Exec
+public import IrisITree.Core.Exec
 
 @[expose] public section
 
-namespace Carte.Core
+namespace IrisITree.Core
 
 open Iris BI ITree Std OFE
 
@@ -103,4 +103,4 @@ theorem wpi_tp_perm (H : IHandler (PROP := PROP) E) (Φ : R → PROP)
 
 end wpi_tp_section
 
-end Carte.Core
+end IrisITree.Core

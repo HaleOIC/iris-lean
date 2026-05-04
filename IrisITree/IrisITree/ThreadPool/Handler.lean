@@ -1,5 +1,5 @@
-namespace Carte.ThreadPool
+namespace IrisITree.ThreadPool
 
 /- Event handlers specialized to thread-pool concurrency. -/
 
-end Carte.ThreadPool
+end IrisITree.ThreadPool

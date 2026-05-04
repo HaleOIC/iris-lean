@@ -1,5 +1,5 @@
-namespace Carte.ThreadPool
+namespace IrisITree.ThreadPool
 
 /- Interleaving semantics for schedules over runnable threads. -/
 
-end Carte.ThreadPool
+end IrisITree.ThreadPool

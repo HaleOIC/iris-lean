@@ -32,14 +32,14 @@ jobs:
           path: Iris/.lake/porting_data.json
           retention-days: 1
 
-  build-carte:
+  build-itree:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: leanprover/lean-action@v1
         with:
-          lake-package-directory: Carte
+          lake-package-directory: IrisITree
 
   build-math:
     needs: build

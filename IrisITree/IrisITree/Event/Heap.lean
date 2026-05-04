@@ -4,6 +4,6 @@ module
 
 -- A heap, represented as a [gmap] of [option val]s, with [None] representing deallocated locations.
 
-namespace Carte.Event
+namespace IrisITree.Event
 
-end Carte.Event
+end IrisITree.Event

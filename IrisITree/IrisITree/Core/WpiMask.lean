@@ -1,8 +1,8 @@
 module
 
-public import Carte.Core.Handler
-public import Carte.Core.ITree
-public import Carte.Core.Wpi
+public import IrisITree.Core.Handler
+public import IrisITree.Core.ITree
+public import IrisITree.Core.Wpi
 public import Iris.ProofMode
 public import Iris.BI.Lib.Fixpoint
 public import ITree.Definition

@@ -1,11 +1,11 @@
 module
 
-public import Carte.Core.Handler
+public import IrisITree.Core.Handler
 public import ITree
 
 @[expose] public section
 
-namespace Carte.Event
+namespace IrisITree.Event
 
 open Iris BI ITree Effects
 
@@ -26,4 +26,4 @@ end handler
 def insert_emptyE {E R} (t : ITree E R) : ITree (E ⊕ₑ emptyE) R :=
   ITree.interp (fun i => ITree.trigger E i) t
 
-end Carte.Event
+end IrisITree.Event

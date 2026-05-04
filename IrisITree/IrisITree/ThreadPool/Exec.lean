@@ -1,5 +1,5 @@
-namespace Carte.ThreadPool
+namespace IrisITree.ThreadPool
 
 /- Thread-pool execution rules and orchestration hooks. -/
 
-end Carte.ThreadPool
+end IrisITree.ThreadPool
