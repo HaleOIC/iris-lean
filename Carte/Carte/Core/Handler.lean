@@ -61,8 +61,8 @@ def sumH : IHandler (PROP := PROP) (E₁ ⊕ₑ E₂) where
   ihandle_mono := by
     iintro %e %Φ %Φ' %s %s' HΦwand #Hswand HH
     cases e with
-    | inl e1 => simp at Φ Φ' s s' ⊢; iapply H₁.ihandle_mono $$ HΦwand Hswand HH
-    | inr e2 => simp at Φ Φ' s s' ⊢; iapply H₂.ihandle_mono $$ HΦwand Hswand HH
+    | inl e1 => simp only [SumE] at Φ Φ' s s' ⊢; iapply H₁.ihandle_mono $$ HΦwand Hswand HH
+    | inr e2 => simp only [SumE] at Φ Φ' s s' ⊢; iapply H₂.ihandle_mono $$ HΦwand Hswand HH
 infixr:30 " ⊕ₕ " => sumH
 
 theorem sumH_ihandle_inl (i : E₁.I) (Φ s) : (H₁ ⊕ₕ H₂).ihandle (.inl i) Φ s = H₁.ihandle i Φ s := rfl
@@ -142,7 +142,7 @@ instance {PROP E₁ E₂} [BI PROP]
     refine ⟨?_⟩
     iintro %e %Φ %s H
     cases e with
-    | inl e1 => simp [sumH_ihandle_inl, sumE_O_inl]; iapply Hs1.is_seq $$ H
-    | inr e2 => simp [sumH_ihandle_inr, sumE_O_inr]; iapply Hs2.is_seq $$ H
+    | inl e1 => simp [SumE, sumH_ihandle_inl]; iapply Hs1.is_seq $$ H
+    | inr e2 => simp [SumE, sumH_ihandle_inr]; iapply Hs2.is_seq $$ H
 
 end handler_Sequential
