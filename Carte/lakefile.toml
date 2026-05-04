@@ -7,7 +7,8 @@ path = "../Iris"
 
 [[require]]
 name = "Coinductive"
-path = "../../coinductive"
+scope = "ISTA-PLV"
+rev = "1b88cd53fecf491831656b23bb5421d3448910ba"
 
 [[lean_lib]]
 name = "Carte"
