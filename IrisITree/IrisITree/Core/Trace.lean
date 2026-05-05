@@ -64,7 +64,7 @@ end is_trace
 
 section decidable_eq
 
-/-- Event interfaces whose answer type has decidable equality at every input. -/
+/-- Effect interfaces whose answer type has decidable equality at every input. -/
 class AnswerEqDecision (E : Effect) where
   is_AnswerEqDecision : (i : E.I) → DecidableEq (E.O i)
 

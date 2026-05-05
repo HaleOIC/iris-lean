@@ -15,7 +15,7 @@ open ITree.Exec
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]
 
 public class EHandlerAdequate {E GE : Effect.{u} } {R σ : Type _}
-    (H : IHandler (PROP := PROP) E) (EH : EHandler E GE R σ) where
+    (H : IHandler PROP E) (EH : EHandler E GE R σ) where
   ehandler_inv : σ → List (((ITree GE R → PROP) → PROP)) → PROP
   ehandler_adequate :
     ∀ (G : ITree GE R → PROP) (i : E.I) (s : σ)
@@ -32,7 +32,7 @@ public class EHandlerAdequate {E GE : Effect.{u} } {R σ : Type _}
 
 /-- Logical adequacy interface for simple executable handlers. -/
 public class SEHandlerAdequate {E : Effect.{u} } {σ : Type _}
-    (H : IHandler (PROP := PROP) E) (EH : SEHandler E σ) where
+    (H : IHandler PROP E) (EH : SEHandler E σ) where
   sehandler_inv : σ → PROP
   sehandler_adequate :
     ∀ (i : E.I) (s : σ) (C : E.O i → σ → Prop) (Φ1 Φ2 : E.O i → PROP),
@@ -42,7 +42,7 @@ public class SEHandlerAdequate {E : Effect.{u} } {σ : Type _}
       |={∅}=> ∃ a s', ⌜C a s'⌝ ∗ sehandler_inv s' ∗ Φ1 a
 
 instance handler_adequate_from_simple {E GE : Effect.{u} } {R σ : Type _}
-    (H : IHandler (PROP := PROP) E) (EH : SEHandler E σ)
+    (H : IHandler PROP E) (EH : SEHandler E σ)
     [A : SEHandlerAdequate (PROP := PROP) H EH] :
     EHandlerAdequate (PROP := PROP) (GE := GE) (R := R) H (EH : EHandler E GE R σ) where
   ehandler_inv s _ := A.sehandler_inv s
@@ -71,7 +71,7 @@ open ITree.Exec
 
 variable {E : Effect.{u} } {R : Type u} {σ : Type _} [BIAffine PROP]
 
-theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler (PROP := PROP) E)
+theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler PROP E)
     (EH : EHandler E E R σ) [A : EHandlerAdequate (PROP := PROP) H EH]
     (t : ITree E R) (s : σ)
     (Ms : List (((LeibnizO (ITree E R) → PROP) → PROP)))
@@ -90,7 +90,7 @@ theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler (PROP := PROP) E)
         wpi_tp H (M' :: Ms'.map (λ M'' P => M'' (λ t => P ⟨t⟩))) Φ := by
   sorry
 
-theorem wpi_adequate (Φ : R → PROP) (H : IHandler (PROP := PROP) E)
+theorem wpi_adequate (Φ : R → PROP) (H : IHandler PROP E)
     (EH : EHandler E E R σ) [A : EHandlerAdequate (PROP := PROP) H EH]
     (t : ITree E R) (s : σ)
     (C : ITree E R → σ → Prop) (m : CoPset)

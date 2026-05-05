@@ -6,7 +6,7 @@ public import ITree
 
 @[expose] public section
 
-namespace IrisITree.Event
+namespace IrisITree.Effect
 
 open Iris BI ITree Effects
 
@@ -14,7 +14,7 @@ section handler
 
 variable {PROP : Type _} [BI PROP]
 
-def failH : IHandler (PROP := PROP) failE where
+def failH : IHandler PROP failE where
   ihandle := λ _ _ _ => iprop(False)
   ihandle_mono := by
     iintro %i %Φ %Φ' %s %s' HΦwand #Hswand HH
@@ -30,7 +30,7 @@ end handler
 section wpi_rules
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {E : Effect}
-  {H : IHandler (PROP := PROP) E} [sub : failE -< E] [Hin : InH failH H]
+  {H : IHandler PROP E} [sub : failE -< E] [Hin : InH failH H]
 
 theorem wpi_fail {R} (M : CoPset) (Φ : R → PROP) (s : String) :
     (WPi fail s @> H; M {{ Φ }}) ⊢ |={M}=> iprop(False) := by
@@ -99,4 +99,4 @@ theorem exec_assert {E : Effect} {σ : Type _}
 
 end exec
 
-end IrisITree.Event
+end IrisITree.Effect

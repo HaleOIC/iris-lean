@@ -6,7 +6,7 @@ public import ITree
 
 @[expose] public section
 
-namespace IrisITree.Event
+namespace IrisITree.Effect
 
 open Iris BI ITree Effects
 
@@ -14,7 +14,7 @@ section handler
 
 variable {PROP : Type _} [BI PROP]
 
-def demonicH (α : Type _) : IHandler (PROP := PROP) (demonicE α) where
+def demonicH (α : Type _) : IHandler PROP (demonicE α) where
   ihandle := λ _ Φ _ => iprop(∀ a, Φ a)
   ihandle_mono := by
     iintro %i %Φ %Φ' %s %s' HΦwand #Hswand H %a
@@ -31,7 +31,7 @@ end handler
 section wpi_rules
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {E : Effect}
-  {H : IHandler (PROP := PROP) E} {α : Type _}
+  {H : IHandler PROP E} {α : Type _}
   [sub : demonicE α -< E] [Hin : InH (demonicH (PROP := PROP) α) H]
 
 theorem wpi_demonic (M : CoPset) (Φ : α → Prop) [Hdec : DecidablePred Φ]
@@ -67,4 +67,4 @@ instance demonicEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] {α : Typ
 
 end exec
 
-end IrisITree.Event
+end IrisITree.Effect

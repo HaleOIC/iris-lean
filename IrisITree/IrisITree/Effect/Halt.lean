@@ -6,7 +6,7 @@ public import ITree
 
 @[expose] public section
 
-namespace IrisITree.Event
+namespace IrisITree.Effect
 
 open Iris BI ITree Effects
 
@@ -14,7 +14,7 @@ section handler
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]
 
-def haltH : IHandler (PROP := PROP) haltE where
+def haltH : IHandler PROP haltE where
   ihandle := λ _ _ _ => iprop(|={∅, ⊤}=> True)
   ihandle_mono := by
     iintro %i %Φ %Φ' %s %s' HΦwand #Hswand HH
@@ -30,7 +30,7 @@ end handler
 section wpi_rules
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]  {E : Effect}
-  {H : IHandler (PROP := PROP) E} [sub: haltE -< E] [Hin : InH haltH H]
+  {H : IHandler PROP E} [sub: haltE -< E] [Hin : InH haltH H]
 
 theorem wpi_halt {R} (Φ : R → PROP) :
     ⊢ (WPi HaltE.halt @> H; ⊤ {{ Φ }}) := by
@@ -69,4 +69,4 @@ theorem exec_assume {E : Effect} {σ : Type _}
 
 end exec
 
-end IrisITree.Event
+end IrisITree.Effect

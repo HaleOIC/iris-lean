@@ -6,7 +6,7 @@ public import ITree
 
 @[expose] public section
 
-namespace IrisITree.Event
+namespace IrisITree.Effect
 
 open Iris BI ITree Effects
 
@@ -14,7 +14,7 @@ section handler
 
 variable {PROP : Type _} [BI PROP]
 
-def angelicH (α : Type _) : IHandler (PROP := PROP) (angelicE α) where
+def angelicH (α : Type _) : IHandler PROP (angelicE α) where
   ihandle := λ _ Φ _ => iprop(∃ a, Φ a)
   ihandle_mono := by
     iintro %p %Φ %Φ' %s %s' HΦwand #Hswand H
@@ -34,7 +34,7 @@ section wpi_rules
 open ITree
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {E : Effect}
-  {H : IHandler (PROP := PROP) E} {α : Type _}
+  {H : IHandler PROP E} {α : Type _}
   [sub : angelicE α -< E] [Hin : InH (angelicH (PROP := PROP) α) H]
 
 theorem wpi_angelic (M : CoPset) (p : α → Prop) (a : {x // p x}) (Ψ : {x // p x} → PROP) :
@@ -66,4 +66,4 @@ instance angelicEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] {α : Typ
 
 end exec
 
-end IrisITree.Event
+end IrisITree.Effect

@@ -6,7 +6,7 @@ public import ITree.Effects.State
 
 @[expose] public section
 
-namespace IrisITree.Event
+namespace IrisITree.Effect
 
 open Iris BI ITree Effects
 
@@ -14,7 +14,7 @@ section handler
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]
 
-def stateH {S : Type _} (state_interp : S → PROP) : IHandler (PROP := PROP) (stateE S) where
+def stateH {S : Type _} (state_interp : S → PROP) : IHandler PROP (stateE S) where
   ihandle := fun i Φ _ => iprop(∀ s, state_interp s ={∅}=∗ state_interp (i s) ∗ Φ s)
   ihandle_mono := by
     iintro %i %Φ %Φ' %s %s' HΦwand #Hswand HH
@@ -36,7 +36,7 @@ section wpi_rules
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {S : Type _}
   (state_interp : S → PROP)
-  {E : Effect} {H : IHandler (PROP := PROP) E}
+  {E : Effect} {H : IHandler PROP E}
   [stateE S -< E] [Hin : InH (stateH (PROP := PROP) state_interp) H]
 
 theorem wpi_get_state (M : CoPset) (Φ : S → PROP) :
@@ -86,4 +86,4 @@ theorem wpi_set_state (st' : S) (M : CoPset) (Ψ : PUnit → PROP) :
 
 end wpi_rules
 
-end IrisITree.Event
+end IrisITree.Effect

@@ -6,6 +6,6 @@ module
 -- termination insensitive reasoning in spite of our [WPi] being defined as a
 -- least fixpoint (and thus being termination sensitive "by default").
 
-namespace IrisITree.Event
+namespace IrisITree.Effect
 
-end IrisITree.Event
+end IrisITree.Effect

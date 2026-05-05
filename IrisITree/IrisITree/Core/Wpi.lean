@@ -13,7 +13,7 @@ open Iris BI ITree
 
 section wp_itree_def
 
-variable {E} {PROP : Type _} [BI PROP] [BIFUpdate PROP] (H : IHandler (PROP := PROP) E)
+variable {E} {PROP : Type _} [BI PROP] [BIFUpdate PROP] (H : IHandler PROP E)
 
 -- The definition of the weakest precondition, prior to taking the fixpoint.
 def wpiF {R} (wpi : ITree E R → (R → PROP) → PROP) :
@@ -87,7 +87,7 @@ instance {R} : BIMonoPred (λ wp_itree : LeibnizO (ITree E R) × (R → PROP) �
       · apply BIFUpdate.ne.ne <| Hwp.ne ⟨rfl, λ _ => .rfl⟩
 
 /-- The weakest precondition is defined as the least fixpoint of [wpiF']. -/
-def wpi {E R} (H : IHandler (PROP := PROP) E) (t : ITree E R) (Φ : R → PROP) : PROP :=
+def wpi {E R} (H : IHandler PROP E) (t : ITree E R) (Φ : R → PROP) : PROP :=
   bi_least_fixpoint (wpiF' H) (⟨t⟩, Φ)
 
 /-- Unfolding [wpi] reveals one step of the weakest precondition functional. -/
@@ -109,7 +109,7 @@ section wp_itree_def
 open OFE
 
 variable {E R} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
-  (H : IHandler (PROP := PROP) E) (t : ITree E R)
+  (H : IHandler PROP E) (t : ITree E R)
 
 instance : NonExpansive (λ Φ => WPi t @> H {{ Φ }}) := by
   constructor; intro n Φ₁ Φ₂ HΦ
@@ -126,7 +126,7 @@ section wp_itree_stepping
 
 open ITree BIUpdate OFE
 
-variable {E} {PROP : Type _} [BI PROP] [BIFUpdate PROP] (H : IHandler (PROP := PROP) E)
+variable {E} {PROP : Type _} [BI PROP] [BIFUpdate PROP] (H : IHandler PROP E)
 
 -- Lean's `rw` does not work with BI equivalences, so we package this update-absorption step as a lemma.
 theorem wpi_update_emp_mask {R} (Φ : R → PROP) (t : ITree E R) :
@@ -178,7 +178,7 @@ section wp_itree_induction
 open ITree BIUpdate OFE
 
 variable {E R} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
-  (H : IHandler (PROP := PROP) E) (G : ITree E R → (R → PROP) → PROP)
+  (H : IHandler PROP E) (G : ITree E R → (R → PROP) → PROP)
 
 theorem wpi_ind_emp_mask : (∀ t, NonExpansive (G t)) →
     ⊢ □ (∀ t Φ, wpiF H (λ t' Ψ => iprop(G t' Ψ ∧ (WPi t' @> H {{Ψ}}))) t Φ -∗ G t Φ) -∗
@@ -232,7 +232,7 @@ section wp_itree_derived
 open ITree OFE
 
 variable {E R} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
-  (H : IHandler (PROP := PROP) E) (t : ITree E R)
+  (H : IHandler PROP E) (t : ITree E R)
 
 theorem wpi_upd_wand_emp_mask (Φ Ψ : R → PROP) :
     ⊢ (∀ r, iprop((|={∅}=> Φ r) -∗ (|={∅}=> Ψ r))) -∗
@@ -329,7 +329,7 @@ section wp_itree_structural
 open ITree BIUpdate OFE
 
 variable {E R} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
-  (H : IHandler (PROP := PROP) E) (Φ : R → PROP) (t : ITree E R)
+  (H : IHandler PROP E) (Φ : R → PROP) (t : ITree E R)
 
 theorem wpi_frame_l_emp_mask (P : PROP) :
     ⊢ P ∗ (WPi t @> H {{ Φ }}) -∗

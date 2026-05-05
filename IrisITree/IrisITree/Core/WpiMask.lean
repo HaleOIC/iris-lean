@@ -16,7 +16,7 @@ variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]
 
 section wpi_tree_mask_def
 
-variable {E} (M : CoPset) (H : IHandler (PROP := PROP) E)
+variable {E} (M : CoPset) (H : IHandler PROP E)
 
 open OFE
 
@@ -44,7 +44,7 @@ section wpi_tree_mask_def
 
 open OFE
 
-variable {E} {M : CoPset} {H : IHandler (PROP := PROP) E}
+variable {E} {M : CoPset} {H : IHandler PROP E}
 
 theorem wpi_empty_mask_equiv {R} (t : ITree E R) (Φ : R → PROP) :
     (WPi t @> H;∅ {{ Φ }}) ⊣⊢ (WPi t @> H {{ Φ }}) :=
@@ -75,7 +75,7 @@ section wp_itree_induction
 
 open OFE ITree
 
-variable {E R} {H : IHandler (PROP := PROP) E} (G : ITree E R → (R → PROP) → PROP)
+variable {E R} {H : IHandler PROP E} (G : ITree E R → (R → PROP) → PROP)
 
 theorem wpi_ind : (∀ t, NonExpansive (G t)) →
     □ (∀ t Φ, wpiF H (λ t' Ψ => iprop(G t' Ψ ∧ (WPi t' @> H;∅ {{ Ψ }}))) t Φ -∗ G t Φ) ⊢
@@ -114,7 +114,7 @@ section wp_itree_derived
 
 open ITree BIUpdate OFE
 
-variable {E R} {H : IHandler (PROP := PROP) E} (t : ITree E R)
+variable {E R} {H : IHandler PROP E} (t : ITree E R)
 
 theorem wpi_wand (M : CoPset) (Φ Ψ : R → PROP) :
     (∀ r, iprop(Φ r -∗ Ψ r)) ⊢
@@ -154,7 +154,7 @@ section wp_itree_mask_manipulation
 
 open ITree BIUpdate OFE
 
-variable {E R} {H : IHandler (PROP := PROP) E}
+variable {E R} {H : IHandler PROP E}
 
 theorem wpi_shift_mask (M' M : CoPset) (Φ : R → PROP) (t : ITree E R) :
     ⊢ (|={M, M'}=> WPi t @> H; M' {{ v, iprop(|={M', M}=> Φ v) }}) -∗
@@ -204,7 +204,7 @@ section wp_itree_stepping
 
 open ITree BIUpdate OFE
 
-variable {E} {H : IHandler (PROP := PROP) E}
+variable {E} {H : IHandler PROP E}
 
 theorem wpi_ret' {R} (M : CoPset) (Φ : R → PROP) (r : R) :
     (|={M}=> Φ r) ⊣⊢
@@ -256,7 +256,7 @@ theorem wpi_vis {R} (M : CoPset) (Φ : R → PROP) (i : E.I) (k : E.O i → ITre
       (WPi (vis i k) @> H; M {{ Φ }}) := by
   iintro HH; iapply wpi_vis' M Φ i k $$ HH
 
-theorem wpi_trigger {E'} [E' -< E] (H' : IHandler (PROP := PROP) E') [InH H' H]
+theorem wpi_trigger {E'} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     (M : CoPset) (i : E'.I) (Φ : E'.O i → PROP) :
     ⊢ (|={M, ∅}=> H'.ihandle i
       (λ a => iprop(|={∅, M}=> Φ a))
@@ -275,7 +275,7 @@ section wp_itree_structural
 
 open ITree BIUpdate OFE
 
-variable {E R} {H : IHandler (PROP := PROP) E} (Φ : R → PROP) (t : ITree E R)
+variable {E R} {H : IHandler PROP E} (Φ : R → PROP) (t : ITree E R)
 
 theorem wpi_frame_l (M : CoPset) (P : PROP) :
     ⊢ P ∗ (WPi t @> H; M {{ Φ }}) -∗
@@ -302,7 +302,7 @@ open ITree BIUpdate OFE
 -- `f` can interpret each event `E1` as an `itree E2 E1.I`, as a way to
 -- "translate" from events `E1` to `E2`
 variable {E1 E2 : Effect} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
-  {H1 : IHandler (PROP := PROP) E1} {H2 : IHandler (PROP := PROP) E2}
+  {H1 : IHandler PROP E1} {H2 : IHandler PROP E2}
   (f : (i : E1.I) → ITree E2 (E1.O i))
 
 /-- Translate a WPi proof across handlers by interpreting each `E₁` event as an `E₂` itree. -/
@@ -365,7 +365,7 @@ section wp_itree_mono
 open ITree BIUpdate OFE
 
 variable {E : Effect} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
-  {H1 : IHandler (PROP := PROP) E} {H2 : IHandler (PROP := PROP) E}
+  {H1 : IHandler PROP E} {H2 : IHandler PROP E}
   [Hwand : WandH H1 H2]
 
 theorem wpi_wandH {R} (M : CoPset) (t : ITree E R) (Φ : R → PROP) :
@@ -390,7 +390,7 @@ section wp_itree_inH
 open ITree BIUpdate OFE
 
 variable {E1 E2 : Effect} {PROP : Type _} [BI PROP] [BIFUpdate PROP] [BIAffine PROP]
-  {H1 : IHandler (PROP := PROP) E1} {H2 : IHandler (PROP := PROP) E2}
+  {H1 : IHandler PROP E1} {H2 : IHandler PROP E2}
   [sub : E1 -< E2] [Hin : InH H1 H2]
 
 theorem wpi_inH_emp_mask {R} (t : ITree E1 R) (Φ : R → PROP) :
