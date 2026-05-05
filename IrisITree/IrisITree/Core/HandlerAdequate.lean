@@ -95,7 +95,7 @@ theorem wpi_adequate (Φ : R → PROP) (H : IHandler PROP E)
     (t : ITree E R) (s : σ)
     (C : ITree E R → σ → Prop) (m : CoPset)
     (Hexec : exec EH t s C) :
-    ⊢ iprop(|={m,∅}=> wpi H t (λ v => iprop(|={∅,m}=> Φ v))) -∗
+    ⊢ iprop(|={m,∅}=> WPi t @> H {{v, iprop(|={∅,m}=> Φ v)}}) -∗
       A.ehandler_inv s [] -∗
       |={m, ∅}=> ∃ t' s' Ms' M',
       ⌜C t' s'⌝ ∗

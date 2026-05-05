@@ -41,7 +41,7 @@ variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {S : Type _}
 
 theorem wpi_get_state (M : CoPset) (Φ : S → PROP) :
     ⊢ (∀ s, state_interp s ={∅}=∗ state_interp s ∗ Φ s) -∗
-      wpi_mask (H := H) M (StateE.get (α := S)) Φ := by
+      wpi (H := H) M (StateE.get (α := S)) Φ := by
   let m : Σ i : E.I, E.O i → S := @Subeffect.map (stateE S) E _ (id : S → S)
   have Hvis :
       ⊢ (∀ s, state_interp s ={∅}=∗ state_interp s ∗ Φ s) -∗
@@ -81,7 +81,7 @@ theorem wpi_get_state (M : CoPset) (Φ : S → PROP) :
 
 theorem wpi_set_state (st' : S) (M : CoPset) (Ψ : PUnit → PROP) :
     ⊢ (∀ s, state_interp s ={∅}=∗ state_interp st' ∗ Ψ PUnit.unit) -∗
-      wpi_mask (H := H) M (StateE.set (α := S) st') Ψ := by
+      wpi (H := H) M (StateE.set (α := S) st') Ψ := by
   sorry
 
 end wpi_rules

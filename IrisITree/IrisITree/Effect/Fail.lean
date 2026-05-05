@@ -45,10 +45,10 @@ theorem wpi_fail {R} (M : CoPset) (Φ : R → PROP) (s : String) :
     intro Ψ₁ Ψ₂
     refine (Hin.is_inH ({ down := s } : failE.I) Ψ₁ Ψ₂).mpr.trans ?_
     exact false_elim
-  iapply ((key (fun p => wpi_mask (H := H) (R := R) ∅ (nomatch p)
-      (fun v => iprop(|={∅,M}=> Φ v)))
-    (fun p => wpi_mask (H := H) (R := R) ⊤ (nomatch p)
-      (fun _ => iprop(False)))).trans false_elim)
+  -- iapply ((key (fun p => wpi (H := H) (R := R) ∅ (nomatch p)
+      -- (fun v => iprop(|={∅,M}=> Φ v)))
+    -- (fun p => wpi (H := H) (R := R) ⊤ (nomatch p)
+      -- (fun _ => iprop(False)))).trans false_elim)
   sorry
   -- iexact Hwp
 

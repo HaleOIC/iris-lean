@@ -13,7 +13,7 @@ open Iris BI ITree
   weakest precondition [WPi]. It specifies how to interpret an effect
   logically, given weakest preconditions for continuations of the itree.
 -/
-structure IHandler (PROP) [BI PROP] (E : Effect.{u}) where
+structure IHandler (PROP : Type u) [BI PROP] (E : Effect.{v}) where
   ihandle :
       (i : E.I) →
       -- Continuation conditions [λ a, ▷ WPi k a @ H; ∅ {{ Φ }}]
@@ -61,13 +61,15 @@ def sumH : IHandler PROP (E₁ ⊕ₑ E₂) where
   ihandle_mono := by
     iintro %e %Φ %Φ' %s %s' HΦwand #Hswand HH
     cases e with
-    | inl e1 => simp only [SumE] at Φ Φ' s s' ⊢; iapply H₁.ihandle_mono $$ HΦwand Hswand HH
-    | inr e2 => simp only [SumE] at Φ Φ' s s' ⊢; iapply H₂.ihandle_mono $$ HΦwand Hswand HH
+    | inl e1 => iapply H₁.ihandle_mono $$ HΦwand Hswand HH
+    | inr e2 => iapply H₂.ihandle_mono $$ HΦwand Hswand HH
 infixr:30 " ⊕ₕ " => sumH
 
-theorem sumH_ihandle_inl (i : E₁.I) (Φ s) : (H₁ ⊕ₕ H₂).ihandle (.inl i) Φ s = H₁.ihandle i Φ s := rfl
+@[simp]
+theorem sumH_inl (i : E₁.I) (Φ s) : (H₁ ⊕ₕ H₂).ihandle (.inl i) Φ s = H₁.ihandle i Φ s := rfl
 
-theorem sumH_ihandle_inr (i : E₂.I) (Φ s) : (H₁ ⊕ₕ H₂).ihandle (.inr i) Φ s = H₂.ihandle i Φ s := rfl
+@[simp]
+theorem sumH_inr (i : E₂.I) (Φ s) : (H₁ ⊕ₕ H₂).ihandle (.inr i) Φ s = H₂.ihandle i Φ s := rfl
 
 end handler_sumH
 
@@ -124,8 +126,8 @@ instance {PROP E₁ E₂} [BI PROP]
     constructor
     iintro %e %Φ %s H
     cases e with
-    | inl e1 => simp [sumH]; iapply Hwand1.is_wandH $$ H
-    | inr e2 => simp [sumH]; iapply Hwand2.is_wandH $$ H
+    | inl e1 => simp only [sumH_inl]; iapply Hwand1.is_wandH $$ H
+    | inr e2 => simp only [sumH_inr]; iapply Hwand2.is_wandH $$ H
 
 end handler_WandH
 
@@ -142,7 +144,7 @@ instance {PROP E₁ E₂} [BI PROP]
     refine ⟨?_⟩
     iintro %e %Φ %s H
     cases e with
-    | inl e1 => simp [SumE, sumH_ihandle_inl]; iapply Hs1.is_seq $$ H
-    | inr e2 => simp [SumE, sumH_ihandle_inr]; iapply Hs2.is_seq $$ H
+    | inl e1 => simp only [sumH_inl]; iapply Hs1.is_seq $$ H
+    | inr e2 => simp only [sumH_inr]; iapply Hs2.is_seq $$ H
 
 end handler_Sequential
