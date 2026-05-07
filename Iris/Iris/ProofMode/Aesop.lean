@@ -1,6 +1,5 @@
 module
 
-public meta import Aesop
 public meta import Iris.ProofMode.Aesop.Attr
 public meta import Iris.ProofMode.Aesop.Frontend
 public meta import Iris.ProofMode.Aesop.Rules

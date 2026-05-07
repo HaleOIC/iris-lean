@@ -132,7 +132,6 @@ theorem Agree.validN_ne {x y : Agree α} : x ≡{n}≡ y → x.validN n → y.va
 theorem Agree.op_ne {x : Agree α} : OFE.NonExpansive x.op := by
   constructor; simp only [OFE.Dist, dist, op, List.mem_append, and_imp]
   intro n y₁ y₂ heq₁ heq₂; constructor
-  -- This would probably be dealt with by aesop easily
   · rintro a (hx | hy)
     · exists a; simp [hx]
     · obtain ⟨b, hb, heq⟩ := heq₁ _ hy

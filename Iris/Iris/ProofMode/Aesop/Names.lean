@@ -1,7 +1,9 @@
 module
 
-public meta import Aesop.RuleTac.Basic
+public meta import Lean
 public meta import Iris.ProofMode.Expr
+
+public meta section
 
 namespace Iris.ProofMode.Aesop
 
@@ -29,16 +31,16 @@ public meta def freshIdent2 (used : NameSet) (pref1 pref2 : Name) : Ident × Ide
   let name2 := firstUnusedName used pref2
   (mkIdent name1, mkIdent name2)
 
-public meta def collectUsedNames (input : Aesop.RuleTacInput) : MetaM NameSet := do
-  input.goal.withContext do
+public meta def collectUsedNames (goal : MVarId) : MetaM NameSet := do
+  goal.withContext do
     let mut used : NameSet := {}
     for localDecl in ← getLCtx do
       used := used.insert localDecl.userName
-    if let some irisGoal := parseIrisGoal? (← input.goal.getType) then
+    if let some irisGoal := parseIrisGoal? (← goal.getType) then
       used := used ∪ hypNames irisGoal.hyps
     return used
 
-public meta def freshIdentM (input : Aesop.RuleTacInput) (pref : Name) : MetaM Ident := do
-  return freshIdent (← collectUsedNames input) pref
+public meta def freshIdentM (goal : MVarId) (pref : Name) : MetaM Ident := do
+  return freshIdent (← collectUsedNames goal) pref
 
 end Iris.ProofMode.Aesop

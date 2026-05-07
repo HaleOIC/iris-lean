@@ -1,8 +1,7 @@
 module
 
-public meta import Aesop
-public meta import Iris.ProofMode.Aesop.Frontend
-public meta import Iris.ProofMode.Aesop.Rules
+public meta import Iris.ProofMode.Aesop.Frontend.Tactic
+public meta import Iris.ProofMode.Aesop.Search
 
 public section
 
@@ -11,14 +10,16 @@ open Lean.Elab.Tactic
 
 namespace Iris.ProofMode.Aesop
 
+private meta def evalIAesopCore (stx : Syntax) : TacticM Unit := do
+  withRef stx do
+  let config ← Frontend.TacticConfig.parse stx
+  -- TODO: add [getRuleSet] here
+  ProofModeM.runTactic λ mvar irisGoal => do
+    let goals ← search mvar irisGoal { traceScript := config.traceScript }
+    goals.forM Iris.ProofMode.addMVarGoal
+
 @[tactic Frontend.Parser.iaesopTactic, tactic Frontend.Parser.iaesopTactic?]
-meta def evalIAesop : Tactic := λ stx => do
-  -- TODO: add profileitM to measure the performance of `iaesop`
-  match stx with
-  | `(tactic| iaesop?) =>
-    evalTactic (← `(tactic| aesop? (rule_sets := [iris])))
-  | `(tactic| iaesop) =>
-    evalTactic (← `(tactic| aesop (rule_sets := [iris])))
-  | _ => throwError "unsupported iaesop syntax"
+meta def evalIAesop : Tactic := λ stx =>
+  evalIAesopCore stx
 
 end Iris.ProofMode.Aesop
