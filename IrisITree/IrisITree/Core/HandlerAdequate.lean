@@ -1,6 +1,6 @@
 module
 
-public import IrisITree.Core.WpiMask
+public import IrisITree.Core.Wpi
 public import IrisITree.Core.WpiExec
 public import Iris.Instances.Lib.FUpd
 

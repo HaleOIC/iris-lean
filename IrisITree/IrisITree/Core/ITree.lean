@@ -1,9 +1,11 @@
 module
 
+public import Iris.Algebra.OFE
 public import ITree.Definition
 
 @[expose] public section
 
+-- TODO: upstream?
 namespace ITree
 
 open ITree
@@ -69,3 +71,12 @@ theorem interp_vis_inv {E1 E2 R} [sub : E1 -< E2] {t : ITree E1 R} {i : E2.I} {k
 end interp_inverse
 
 end ITree
+
+namespace IrisITree
+open ITree Iris
+
+instance {E R} : COFE (ITree E R) := COFE.ofDiscrete _ Eq_Equivalence
+instance {E R} : OFE.Leibniz (ITree E R) := ⟨(·)⟩
+instance {E R} : OFE.Discrete (ITree E R) := ⟨congrArg id⟩
+
+end IrisITree

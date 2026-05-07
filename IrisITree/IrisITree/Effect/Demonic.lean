@@ -1,7 +1,7 @@
 module
 
 public import IrisITree.Core.HandlerAdequate
-public import IrisITree.Core.WpiMask
+public import IrisITree.Core.Wpi
 public import ITree
 
 @[expose] public section
