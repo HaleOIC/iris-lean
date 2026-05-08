@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Search.SearchM
+public meta import Iris.ProofMode.Aesop.Search.Expansion
 
 public meta section
 
@@ -20,10 +21,17 @@ private meta partial def nextActiveGoal : SearchM Q GoalRef := do
   else nextActiveGoal
 
 private meta def expandNextGoal : SearchM Q Unit := do
-  let _ ← nextActiveGoal
-  -- let result ← expandGoal gref
-  -- match result with
-  -- | .proved newRapps |
+  let gref ← nextActiveGoal
+  let result ← expandGoal gref
+  let currentIteration ← getIteration
+  gref.modify λ g => g.setLastExpandedInIteration currentIteration
+  if ← (← gref.get).isActive then enqueueGoals #[gref]
+  match result with
+  | .failed => return
+  | .proved newRapps | .succeeded newRapps =>
+    for rref in newRapps do
+      -- [Note]: Trace some information here about new generated Rapps
+      let _ ← rref.get
 
 private meta def finalizeProof : SearchM Q Unit := do
   (← getRootMVar).withContext do

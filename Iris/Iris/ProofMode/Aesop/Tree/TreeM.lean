@@ -49,7 +49,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     successProbability := .hundred
     addedInIteration := 1
     lastExpandedInIteration := 1
-    rulesQueue := #[]
+    rulesQueue := {}
   }
 
   -- Patch Obun's goals

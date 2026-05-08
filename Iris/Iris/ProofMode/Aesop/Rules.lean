@@ -1,6 +1,6 @@
 module
 
-public import Iris.ProofMode.Aesop.Rule.Data
+public import Iris.ProofMode.Aesop.Rule.Match
 
 public section
 

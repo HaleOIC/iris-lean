@@ -105,6 +105,4 @@ def mkUnsafe (name : RuleName) (successProbability : Percent := Percent.fifty) :
 
 end RegularRule
 
-abbrev UnsafeQueue := Array RegularRule
-
 end Iris.ProofMode.Aesop

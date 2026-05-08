@@ -1,6 +1,6 @@
 module
 
-public import Iris.ProofMode.Aesop.Rule.Data
+public import Iris.ProofMode.Aesop.Rule.Match
 public import Iris.ProofMode.Aesop.Tree.Types
 public import Iris.ProofMode.Expr
 import Batteries.Lean.HashSet
@@ -32,8 +32,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   addedInIteration : Iteration
   lastExpandedInIteration : Iteration
 
-  -- TODO: Not sure about regularRule
-  rulesQueue : UnsafeQueue
+  rulesQueue : RuleQueue
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where

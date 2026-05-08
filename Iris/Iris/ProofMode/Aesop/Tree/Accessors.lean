@@ -187,7 +187,7 @@ def lastExpandedInIteration (g : Goal) : Iteration :=
   g.elim.lastExpandedInIteration
 
 @[inline]
-def rulesQueue (g : Goal) : UnsafeQueue :=
+def rulesQueue (g : Goal) : RuleQueue :=
   g.elim.rulesQueue
 
 @[inline]
@@ -257,7 +257,7 @@ def setLastExpandedInIteration
   g.modify fun g => { g with lastExpandedInIteration }
 
 @[inline]
-def setRulesQueue (rulesQueue : UnsafeQueue) (g : Goal) : Goal :=
+def setRulesQueue (rulesQueue : RuleQueue) (g : Goal) : Goal :=
   g.modify fun g => { g with rulesQueue }
 
 @[inline]
@@ -281,6 +281,9 @@ namespace Goal
 
 protected def isActive (g : Goal) : BaseIO Bool :=
   return !g.rulesQueue.isEmpty
+
+protected def isNormalized (g : Goal) : BaseIO Bool :=
+  return g.normalizationState.isNormal
 
 end Goal
 
