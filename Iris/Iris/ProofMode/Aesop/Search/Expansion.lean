@@ -7,16 +7,14 @@ public meta import Iris.ProofMode.Aesop.Search.RuleSelection
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Search
+namespace Iris.ProofMode.Aesop
 
 open Lean Tactic Meta
-open Iris.ProofMode.Aesop.Tree
 
 variable {Q : Type} [Queue Q]
 
-private def runRule (parentRef : GoalRef) (matchResult : RuleMatch) :
+private def runRule (_parentRef : GoalRef) (_matchResult : RuleMatch) :
     SearchM Q RuleResult := do
-  let rule := matchResult.rule
   -- [TODO] connect this to the actual rule application implementation.
   return .failed
 
@@ -45,4 +43,4 @@ def expandGoal (gref : GoalRef) : SearchM Q RuleResult := do
   -- run first rule that selected and return back result
   runFirstRule gref
 
-end Search
+end Aesop

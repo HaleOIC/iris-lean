@@ -6,9 +6,9 @@ public meta import Batteries.Data.BinomialHeap.Basic
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Search
+namespace Iris.ProofMode.Aesop
 
-open Lean Tree
+open Lean
 open Iris.ProofMode.Aesop.Util
 open Batteries (BinomialHeap)
 
@@ -97,4 +97,4 @@ meta instance : Queue FIFOQueue where
 -- TODO: add a function here to return a corresponding instance
 -- according to the strategy given by option
 
-end Search
+end Aesop

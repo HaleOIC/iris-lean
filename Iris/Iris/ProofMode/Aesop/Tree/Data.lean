@@ -1,17 +1,16 @@
 module
 
-public import Iris.ProofMode.Aesop.Rule.Match
+public import Iris.ProofMode.Aesop.Rule.Types.Match
 public import Iris.ProofMode.Aesop.Tree.Types
 public import Iris.ProofMode.Expr
-import Batteries.Lean.HashSet
 
 public meta section
+
+namespace Iris.ProofMode.Aesop
 
 open Lean Lean.Meta Std
 open Iris.ProofMode.Aesop
 open Iris.ProofMode.Aesop.Util
-
-namespace Iris.ProofMode.Aesop.Tree
 
 structure GoalData (RappRef ObunRef : Type) : Type where
   id : GoalId
@@ -27,7 +26,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   isForcedUnprovable : Bool
   preNormGoal : MVarId
   normalizationState : NormalizationState
-  unassignedMvars : HashSet MVarId
+  unassignedMvars : Std.HashSet MVarId
   successProbability : Percent
   addedInIteration : Iteration
   lastExpandedInIteration : Iteration
@@ -72,11 +71,11 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   metaState : SavedState
     -- This is the state *after* the rule was successfully applied, so the goal
     -- mvar is assigned in this state.
-  introducedMVars : HashSet MVarId
+  introducedMVars : Std.HashSet MVarId
     -- Unassigned expression mvars introduced by this rapp. These are exactly
     -- the unassigned expr mvars that are declared in `metaState`, but not in
     -- the meta state of the parent rapp of `parent`.
-  assignedMVars : HashSet MVarId
+  assignedMVars : Std.HashSet MVarId
     -- Expression mvars that were previously unassigned but were assigned by
     -- this rapp. These are exactly the expr mvars that (a) are declared and
     -- unassigned in the meta state of the parent rapp of `parent` and (b) are

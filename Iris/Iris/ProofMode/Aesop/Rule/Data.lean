@@ -1,6 +1,7 @@
 module
 
 public import Lean
+public import Iris.ProofMode.Aesop.Rule.Types.Name
 public import Iris.ProofMode.Aesop.Util.Percent
 
 public section
@@ -9,22 +10,6 @@ namespace Iris.ProofMode.Aesop
 
 open Lean
 open Iris.ProofMode.Aesop.Util
-
-inductive RulePhase where
-  | norm
-  | safe
-  | «unsafe»
-  deriving Inhabited, BEq, Hashable
-
-namespace RulePhase
-
-instance : ToString RulePhase where
-  toString
-    | norm => "norm"
-    | safe => "safe"
-    | «unsafe» => "unsafe"
-
-end RulePhase
 
 inductive RuleBuilder where
   | tactic
@@ -35,7 +20,7 @@ inductive RuleBuilder where
   | ileft
   | iright
   | custom
-  deriving Inhabited, BEq, Hashable
+  deriving Inhabited, BEq, Hashable, Ord
 
 namespace RuleBuilder
 
@@ -56,9 +41,17 @@ structure RuleName where
   name : Name
   phase : RulePhase
   builder : RuleBuilder
-  deriving Inhabited, BEq
+  deriving Inhabited, BEq, Hashable
 
 namespace RuleName
+
+protected def compare (r s : RuleName) : Ordering :=
+  compare r.phase s.phase |>.then $
+  compare r.builder s.builder |>.then $
+  r.name.cmp s.name
+
+instance : Ord RuleName where
+  compare := RuleName.compare
 
 instance : ToString RuleName where
   toString rule :=
@@ -72,13 +65,13 @@ end RuleName
 inductive RuleSafety where
   | safe
   | «unsafe»
-  deriving Inhabited, BEq
+  deriving Inhabited, BEq, Hashable, Ord
 
 structure RegularRule where
   name : RuleName
   safety : RuleSafety
   successProbability : Percent
-  deriving Inhabited, BEq
+  deriving Inhabited, BEq, Ord
 
 namespace RegularRule
 

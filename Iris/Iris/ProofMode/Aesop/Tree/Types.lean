@@ -1,7 +1,7 @@
 module
 
 public meta import Lean.Meta.Basic
-public import Iris.ProofMode.Aesop.Rule.Name
+public import Iris.ProofMode.Aesop.Rule.Types.Name
 public import Iris.ProofMode.Aesop.Script.Basic
 
 public meta section
@@ -9,7 +9,7 @@ public meta section
 open Lean Lean.Meta
 open Iris.ProofMode.Aesop
 
-namespace Iris.ProofMode.Aesop.Tree
+namespace Iris.ProofMode.Aesop
 
 abbrev Iteration := Nat
 
@@ -174,9 +174,9 @@ end GoalState
 inductive NormalizationState
   | notNormal
   | normal (postGoal : MVarId) (postState : Meta.SavedState)
-      (script : Array (Rule.DisplayRuleId × Option (Array Script.LazyStep)))
+      (script : Array (DisplayRuleId × Option (Array Script.LazyStep)))
   | provenByNorm (postState : Meta.SavedState)
-      (script : Array (Rule.DisplayRuleId × Option (Array Script.LazyStep)))
+      (script : Array (DisplayRuleId × Option (Array Script.LazyStep)))
   deriving Inhabited
 
 namespace NormalizationState
@@ -234,5 +234,3 @@ def isManaged : ObunKind → Bool
   | _ => false
 
 end ObunKind
-
-end Tree

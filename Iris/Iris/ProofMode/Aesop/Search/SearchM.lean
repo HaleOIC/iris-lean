@@ -4,10 +4,10 @@ public meta import Iris.ProofMode.Aesop.Search.Queue
 public meta import Iris.ProofMode.Aesop.Tree.TreeM
 
 public meta section
-namespace Iris.ProofMode.Aesop.Search
+
+namespace Iris.ProofMode.Aesop
 
 open Lean Std
-open Iris.ProofMode.Aesop.Tree
 open Iris.ProofMode.Aesop.Util
 
 structure SearchConfig where
@@ -95,4 +95,4 @@ def setMaxRuleApplicationDepthReached : SearchM Q Unit :=
 def wasMaxRuleApplicationDepthReached : SearchM Q Bool :=
   return (← get).maxRuleApplicationDepthReached
 
-end Iris.ProofMode.Aesop.Search
+end Aesop

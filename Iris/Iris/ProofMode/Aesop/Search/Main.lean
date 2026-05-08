@@ -8,8 +8,6 @@ public meta section
 namespace Iris.ProofMode.Aesop.Search
 
 open Lean Elab Tactic Meta
-open Iris.ProofMode.Aesop.Search
-open Iris.ProofMode.Aesop.Tree
 
 variable {Q : Type} [Queue Q]
 

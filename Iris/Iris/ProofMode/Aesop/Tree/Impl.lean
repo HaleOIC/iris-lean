@@ -6,7 +6,7 @@ public section
 
 open Lean Lean.Meta Std
 
-namespace Iris.ProofMode.Aesop.Tree
+namespace Iris.ProofMode.Aesop
 
 structure TreeSpec where
   Goal : Type

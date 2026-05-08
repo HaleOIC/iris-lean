@@ -4,10 +4,9 @@ public meta import Iris.ProofMode.Aesop.Tree.Basic
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Search
+namespace Iris.ProofMode.Aesop
 
 open Lean Lean.Meta
-open Iris.ProofMode.Aesop.Tree
 
 inductive RuleResult
   | proved (newRapps : Array RappRef)
@@ -23,4 +22,4 @@ protected def isSuccessful
 
 end RuleResult
 
-end Search
+end Aesop

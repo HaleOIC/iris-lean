@@ -6,7 +6,7 @@ public section
 
 open Lean Lean.Meta
 
-namespace Iris.ProofMode.Aesop.Rule
+namespace Iris.ProofMode.Aesop
 
 inductive RulePhase
   | norm
@@ -97,3 +97,9 @@ instance : ToString DisplayRuleId where
     | normUnfold => "<norm unfold>"
 
 end DisplayRuleId
+
+
+
+-- structure Rule (α : Type) where
+--   id : RuleId
+--   indexingMode

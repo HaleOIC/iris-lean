@@ -8,7 +8,7 @@ open Lean Lean.Meta Std
 open Iris.ProofMode.Aesop
 open Iris.ProofMode.Aesop.Util
 
-namespace Iris.ProofMode.Aesop.Tree
+namespace Iris.ProofMode.Aesop
 
 namespace Obun
 
@@ -413,4 +413,4 @@ instance : Hashable Rapp where
 
 end Rapp
 
-end Iris.ProofMode.Aesop.Tree
+end Iris.ProofMode.Aesop

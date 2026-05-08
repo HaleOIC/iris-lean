@@ -1,31 +1,15 @@
 module
 
 public import Batteries.Data.Array.Basic
+public meta import Iris.ProofMode.Aesop.Index.Types
+public import Iris.ProofMode.Aesop.Rule.Basic
 public import Iris.ProofMode.Aesop.Rule.Data
 
 public section
 
 namespace Iris.ProofMode.Aesop
 
-open Lean
-
-inductive IndexMatchLocation
-  | target
-  | hyp (fvarId : FVarId)
-  deriving Inhabited, BEq
-
-structure RulePatternSubst where
-  exprs : Array Expr := #[]
-  levels : Array Level := #[]
-  deriving Inhabited
-
-structure IndexMatchResult (α : Type) where
-  rule : α
-  locations : Array IndexMatchLocation := #[]
-  patternSubsts? : Option (Array RulePatternSubst) := none
-  deriving Inhabited
-
-abbrev RuleMatch := IndexMatchResult RegularRule
+abbrev RuleMatch := IndexMatchResult (Rule RegularRule)
 
 abbrev RuleQueue := Subarray RuleMatch
 

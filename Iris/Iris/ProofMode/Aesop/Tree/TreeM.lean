@@ -7,7 +7,7 @@ public meta section
 
 open Lean Lean.Meta
 
-namespace Iris.ProofMode.Aesop.Tree
+namespace Iris.ProofMode.Aesop
 
 structure SearchTree where
   root : ObunRef
@@ -119,4 +119,4 @@ def getAndIncrementNextObunId : TreeM ObunId := do
     let id := t.nextObunId
     (id, { t with nextObunId := id.succ })
 
-end Iris.ProofMode.Aesop.Tree
+end Iris.ProofMode.Aesop
