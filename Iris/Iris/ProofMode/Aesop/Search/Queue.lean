@@ -16,6 +16,7 @@ class Queue (Q : Type) where
   init : BaseIO Q
   addGoals : Q → Array GoalRef → BaseIO Q
   popGoal : Q → BaseIO (Option GoalRef × Q)
+  toArray : Q → BaseIO (Array GoalRef)
 
 namespace Queue
 
@@ -66,6 +67,7 @@ meta instance : Queue BestFirstQueue where
     match q.deleteMin with
     | none => (none, q)
     | some (ag, q) => (some ag.goal, q)
+  toArray q := pure <| q.toArray.map (·.goal)
 
 structure LIFOQueue where
   goals : Array GoalRef
@@ -77,6 +79,7 @@ meta instance : Queue LIFOQueue where
     match q.goals.back? with
     | none => (none, q)
     | some g => (some g, ⟨q.goals.pop⟩)
+  toArray q := pure q.goals
 
 structure FIFOQueue where
   goals : Array GoalRef
@@ -89,6 +92,7 @@ meta instance : Queue FIFOQueue where
     if h: q.pos < q.goals.size then
       (some q.goals[q.pos], ⟨q.goals, q.pos + 1⟩)
     else (none, q)
+  toArray q := pure <| q.goals.extract q.pos q.goals.size
 
 -- TODO: add a function here to return a corresponding instance
 -- according to the strategy given by option

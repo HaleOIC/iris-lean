@@ -2,6 +2,7 @@ module
 
 public import Iris.ProofMode.Aesop.Rule.Data
 public import Iris.ProofMode.Aesop.Tree.Types
+public import Iris.ProofMode.Expr
 import Batteries.Lean.HashSet
 
 public meta section
@@ -15,7 +16,7 @@ namespace Iris.ProofMode.Aesop.Tree
 structure GoalData (RappRef ObunRef : Type) : Type where
   id : GoalId
   parent : ObunRef
-  children : GoalChildren RappRef ObunRef
+  children : Array RappRef
   origin : GoalOrigin
 
   depth : Nat
@@ -29,17 +30,15 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   unassignedMvars : HashSet MVarId
   successProbability : Percent
   addedInIteration : Iteration
-  -- 0 means the node has never been expanded
   lastExpandedInIteration : Iteration
+
   -- TODO: Not sure about regularRule
-  failedRapps : Array RegularRule
-  unsafeRulesSelected : Bool
-  unsafeQueue : UnsafeQueue
+  rulesQueue : UnsafeQueue
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where
   id : ObunId
-  parent : ObunParent GoalRef RappRef
+  parent? : Option RappRef
   goals : Array GoalRef
 
   state : NodeState
@@ -48,7 +47,10 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   kind : ObunKind
   scriptSteps? : Option (Array Script.LazyStep)
   metaState? : Option SavedState
+
   -- TODO: add some view from proof mode
+  -- Context : Hyps
+  -- IrisGoal : Goal
   deriving Nonempty
 
 structure RappData (GoalRef ObunRef : Type) : Type where
@@ -63,7 +65,11 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   successProbability : Percent
   scriptSteps? : Option (Array Script.LazyStep)
 
-  originalSubgoals : Array MVarId
+  -- [Note] we drop this field since rapp does not always have result in MVarId
+  -- originalSubgoals : Array MVarId
+  -- since we may not fillin the context split cases for each branch
+  irisSubgoals : Array IrisGoal
+
   metaState : SavedState
     -- This is the state *after* the rule was successfully applied, so the goal
     -- mvar is assigned in this state.

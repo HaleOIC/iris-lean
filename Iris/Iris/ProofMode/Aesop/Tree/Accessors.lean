@@ -17,7 +17,16 @@ protected def mk : ObunData GoalRef RappRef → Obun :=
   tree.introObun
 
 instance : Nonempty Obun :=
-  ⟨Obun.mk Classical.ofNonempty⟩
+  ⟨Obun.mk {
+    id := .zero
+    parent? := none
+    goals := #[]
+    state := .unknown
+    isIrrelevant := false
+    kind := .plain
+    scriptSteps? := none
+    metaState? := none
+  }⟩
 
 @[inline]
 protected def elim : Obun → ObunData GoalRef RappRef :=
@@ -34,8 +43,8 @@ def id (o : Obun) : ObunId :=
   o.elim.id
 
 @[inline]
-def parent (o : Obun) : ObunParent GoalRef RappRef :=
-  o.elim.parent
+def parent? (o : Obun) : Option RappRef :=
+  o.elim.parent?
 
 @[inline]
 def goals (o : Obun) : Array GoalRef :=
@@ -66,8 +75,8 @@ def setId (id : ObunId) (o : Obun) : Obun :=
   o.modify fun o => { o with id }
 
 @[inline]
-def setParent (parent : ObunParent GoalRef RappRef) (o : Obun) : Obun :=
-  o.modify fun o => { o with parent }
+def setParent (parent : RappRef) (o : Obun) : Obun :=
+  o.modify fun o => { o with parent? := some parent }
 
 @[inline]
 def setGoals (goals : Array GoalRef) (o : Obun) : Obun :=
@@ -130,7 +139,7 @@ def parent (g : Goal) : ObunRef :=
   g.elim.parent
 
 @[inline]
-def children (g : Goal) : GoalChildren RappRef ObunRef :=
+def children (g : Goal) : Array RappRef :=
   g.elim.children
 
 @[inline]
@@ -178,38 +187,16 @@ def lastExpandedInIteration (g : Goal) : Iteration :=
   g.elim.lastExpandedInIteration
 
 @[inline]
-def failedRapps (g : Goal) : Array RegularRule :=
-  g.elim.failedRapps
-
-@[inline]
-def unsafeRulesSelected (g : Goal) : Bool :=
-  g.elim.unsafeRulesSelected
-
-@[inline]
-def unsafeQueue (g : Goal) : UnsafeQueue :=
-  g.elim.unsafeQueue
-
-@[inline]
-def unsafeQueue? (g : Goal) : Option UnsafeQueue :=
-  if g.unsafeRulesSelected then some g.unsafeQueue else none
+def rulesQueue (g : Goal) : UnsafeQueue :=
+  g.elim.rulesQueue
 
 @[inline]
 def rappChildren? (g : Goal) : Option (Array RappRef) :=
-  match g.children with
-  | .rapps rapps => some rapps
-  | _ => none
-
-@[inline]
-def obunChild? (g : Goal) : Option ObunRef :=
-  match g.children with
-  | .obun obun => some obun
-  | _ => none
+  some g.children
 
 @[inline]
 def hasNoChildren (g : Goal) : Bool :=
-  match g.children with
-  | .none => true
-  | _ => false
+  g.children.isEmpty
 
 @[inline]
 def setId (id : GoalId) (g : Goal) : Goal :=
@@ -220,20 +207,8 @@ def setParent (parent : ObunRef) (g : Goal) : Goal :=
   g.modify fun g => { g with parent }
 
 @[inline]
-def setChildren (children : GoalChildren RappRef ObunRef) (g : Goal) : Goal :=
-  g.modify fun g => { g with children }
-
-@[inline]
-def setRappChildren (rapps : Array RappRef) (g : Goal) : Goal :=
-  g.setChildren (.rapps rapps)
-
-@[inline]
-def setObunChild (obun : ObunRef) (g : Goal) : Goal :=
-  g.setChildren (.obun obun)
-
-@[inline]
-def setNoChildren (g : Goal) : Goal :=
-  g.setChildren .none
+def setChildren (children : Array RappRef) (g : Goal) : Goal :=
+  g.modify λ g => { g with children }
 
 @[inline]
 def setOrigin (origin : GoalOrigin) (g : Goal) : Goal :=
@@ -282,16 +257,8 @@ def setLastExpandedInIteration
   g.modify fun g => { g with lastExpandedInIteration }
 
 @[inline]
-def setFailedRapps (failedRapps : Array RegularRule) (g : Goal) : Goal :=
-  g.modify fun g => { g with failedRapps }
-
-@[inline]
-def setUnsafeRulesSelected (unsafeRulesSelected : Bool) (g : Goal) : Goal :=
-  g.modify fun g => { g with unsafeRulesSelected }
-
-@[inline]
-def setUnsafeQueue (unsafeQueue : UnsafeQueue) (g : Goal) : Goal :=
-  g.modify fun g => { g with unsafeQueue }
+def setRulesQueue (rulesQueue : UnsafeQueue) (g : Goal) : Goal :=
+  g.modify fun g => { g with rulesQueue }
 
 @[inline]
 def mvar (g : Goal) : MVarId :=
@@ -306,6 +273,14 @@ instance : BEq Goal where
 
 instance : Hashable Goal where
   hash g := hash g.id
+
+end Goal
+
+-- Goal related query during search
+namespace Goal
+
+protected def isActive (g : Goal) : BaseIO Bool :=
+  return !g.rulesQueue.isEmpty
 
 end Goal
 
@@ -360,9 +335,9 @@ def successProbability (r : Rapp) : Percent :=
 def scriptSteps? (r : Rapp) : Option (Array Script.LazyStep) :=
   r.elim.scriptSteps?
 
-@[inline]
-def originalSubgoals (r : Rapp) : Array MVarId :=
-  r.elim.originalSubgoals
+-- @[inline]
+-- def originalSubgoals (r : Rapp) : Array MVarId :=
+--   r.elim.originalSubgoals
 
 @[inline]
 def metaState (r : Rapp) : SavedState :=
@@ -409,9 +384,9 @@ def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
     (r : Rapp) : Rapp :=
   r.modify fun r => { r with scriptSteps? }
 
-@[inline]
-def setOriginalSubgoals (originalSubgoals : Array MVarId) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with originalSubgoals }
+-- @[inline]
+-- def setOriginalSubgoals (originalSubgoals : Array MVarId) (r : Rapp) : Rapp :=
+--   r.modify fun r => { r with originalSubgoals }
 
 @[inline]
 def setMetaState (metaState : SavedState) (r : Rapp) : Rapp :=

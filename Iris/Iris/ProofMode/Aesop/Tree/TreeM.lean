@@ -26,7 +26,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
   let rootMetaState ← liftM Meta.saveState
   let rootObunRef ← IO.mkRef $ Obun.mk {
     id := .zero
-    parent := .root
+    parent? := none
     goals := #[]
     isIrrelevant := false
     state := .unknown
@@ -37,7 +37,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
   let rootGoalRef ← IO.mkRef $ Goal.mk {
     id := .zero
     parent := rootObunRef
-    children := GoalChildren.none
+    children := #[]
     origin := .subgoal
     depth := 0
     state := .unknown
@@ -49,9 +49,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     successProbability := .hundred
     addedInIteration := 1
     lastExpandedInIteration := 1
-    unsafeRulesSelected := false
-    unsafeQueue := {}
-    failedRapps := #[]
+    rulesQueue := #[]
   }
 
   -- Patch Obun's goals

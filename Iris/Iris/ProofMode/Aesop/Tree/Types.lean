@@ -235,27 +235,4 @@ def isManaged : ObunKind → Bool
 
 end ObunKind
 
-/--
-  [Type-level] Invariant:
-  Goal either has many Rapps, or exactly one direct Obun, but not both.
--/
-inductive GoalChildren (RappRef ObunRef : Type) where
-  | none
-  | rapps (rapps : Array RappRef)
-  | obun (obun : ObunRef)
-  deriving Inhabited
-
-/--
-  [Type-level] invariant:
-  Obun's parent has three cases:
-  1. empty, means it serves as a root
-  2. goal, from goal and requires context split operation
-  3. rapp, generated from a rule application
--/
-inductive ObunParent (GoalRef RappRef : Type) where
-  | root
-  | goal (g : GoalRef)
-  | rapp (r : RappRef)
-  deriving Inhabited
-
 end Tree

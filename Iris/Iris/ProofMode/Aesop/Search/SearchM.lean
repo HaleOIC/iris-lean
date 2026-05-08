@@ -4,12 +4,11 @@ public meta import Iris.ProofMode.Aesop.Search.Queue
 public meta import Iris.ProofMode.Aesop.Tree.TreeM
 
 public meta section
+namespace Iris.ProofMode.Aesop.Search
 
 open Lean Std
 open Iris.ProofMode.Aesop.Tree
 open Iris.ProofMode.Aesop.Util
-
-namespace Iris.ProofMode.Aesop.Search
 
 structure SearchConfig where
   traceScript : Bool := false
@@ -23,114 +22,77 @@ structure Context where
   -- ruleSet : RuleSet
   -- statsRef : IO.Ref Stats
 
-structure State where
-  iteration : Iteration := 0
-  queue : BestFirstQueue
-  stuck : Array MVarId := #[]
+structure State (Q : Type) where
+  iteration : Iteration
+  queue : Q
+  maxRuleApplicationDepthReached : Bool
+  deriving Inhabited
 
 end SearchM
 
-abbrev SearchM :=
-  ReaderT SearchM.Context $
-    StateRefT SearchM.State $
-      StateRefT SearchTree ProofModeM
+abbrev SearchM (Q : Type) [Queue Q] :=
+  ReaderT SearchM.Context $ StateRefT (SearchM.State Q) $ StateRefT SearchTree ProofModeM
 
+variable {Q : Type} [Queue Q]
 namespace SearchM
 
-instance : Monad SearchM :=
-  { (inferInstance : Monad SearchM) with }
+instance : Monad (SearchM Q) :=
+  { (inferInstance : Monad (SearchM Q)) with }
 
-instance : MonadRef SearchM :=
-  { (inferInstance : MonadRef SearchM) with }
+instance : MonadRef (SearchM Q) :=
+  { (inferInstance : MonadRef (SearchM Q)) with }
 
-instance : Inhabited (SearchM α) where
+instance : Inhabited (SearchM Q α) where
   default := failure
 
-instance : MonadState State SearchM :=
-  { (inferInstance : MonadStateOf State SearchM) with }
+instance : MonadState (State Q) (SearchM Q) :=
+  { (inferInstance : MonadStateOf (State Q) (SearchM Q)) with }
 
-instance : MonadReader Context SearchM :=
-  { (inferInstance : MonadReaderOf Context SearchM) with }
+instance : MonadReader Context (SearchM Q) :=
+  { (inferInstance : MonadReaderOf Context (SearchM Q)) with }
 
-instance : MonadLift TreeM SearchM where
+instance : MonadLift TreeM (SearchM Q) where
   monadLift x := do
-    let ctx : TreeM.Context :=
-      { currentIteration := (← get).iteration }
+    let ctx : TreeM.Context := { currentIteration := (← get).iteration }
     liftM <| ReaderT.run x ctx
 
-protected def run (config : SearchConfig) (root : MVarId) (x : SearchM α) :
-    ProofModeM (α × State × SearchTree) := do
+-- TODO: add ruleset as parameter
+protected def run (config : SearchConfig) (goal : MVarId)
+    (x : SearchM Q α) : ProofModeM (α × State Q × SearchTree) := do
   let ctx : Context := { config := config }
-  let tree ← mkInitialTree root
-  let rootGoals := (← tree.root.get).goals
-  let queue ← Queue.init' rootGoals
-  let init : State := { queue }
-  let ((a, state), tree) ← (ReaderT.run x ctx).run init |>.run tree
+  let tree ← mkInitialTree goal
+  let init := {
+    iteration := 0
+    queue := ← Queue.init' (← tree.root.get).goals
+    maxRuleApplicationDepthReached := false
+  }
+  let ((a, state), tree) ←
+    (ReaderT.run x ctx).run init |>.run tree
   return (a, state, tree)
 
-def getConfig : SearchM SearchConfig :=
-  return (← read).config
+end SearchM
 
-def getIteration : SearchM Nat :=
+def getIteration : SearchM Q Nat :=
   return (← get).iteration
 
-def incrementIteration : SearchM Unit :=
+def incrementIteration : SearchM Q Unit :=
   modify λ s => { s with iteration := s.iteration + 1 }
 
-private def mkQueuedGoalRef (mvar : MVarId) : SearchM GoalRef := do
-  let parent ← getRootObun
-  let id ← getAndIncrementNextGoalId
-  let iteration ← getIteration
-  let unassignedMvars ← liftM <| mvar.withContext do
-    mvar.getMVarDependencies
-  let gref ← IO.mkRef $ Goal.mk {
-    id
-    parent
-    children := GoalChildren.none
-    origin := GoalOrigin.subgoal
-    depth := 0
-    state := GoalState.unknown
-    isIrrelevant := false
-    isForcedUnprovable := false
-    preNormGoal := mvar
-    normalizationState := NormalizationState.notNormal
-    unassignedMvars
-    successProbability := Percent.hundred
-    addedInIteration := iteration
-    lastExpandedInIteration := 0
-    failedRapps := #[]
-    unsafeRulesSelected := false
-    unsafeQueue := #[]
-  }
-  parent.modify fun o => o.setGoals ((o.goals).push gref)
-  return gref
-
-def popGoal? : SearchM (Option MVarId) := do
+def popGoal? : SearchM Q (Option GoalRef) := do
   let s ← get
-  let (gref?, queue) ← Queue.popGoal s.queue
+  let (goals?, queue) ← Queue.popGoal s.queue
   set { s with queue }
-  match gref? with
-  | none => return none
-  | some gref => do
-    let g ← gref.get
-    return some g.preNormGoal
+  return goals?
 
-def enqueueGoals (goals : Array MVarId) : SearchM Unit := do
-  let grefs ← goals.mapM mkQueuedGoalRef
+def enqueueGoals (gs : Array GoalRef) : SearchM Q Unit := do
   let s ← get
-  let queue ← Queue.addGoals s.queue grefs
+  let queue ← Queue.addGoals s.queue gs
   set { s with queue }
 
-def addStuck (goal : MVarId) : SearchM Unit :=
-  modify λ s => { s with stuck := s.stuck.push goal }
+def setMaxRuleApplicationDepthReached : SearchM Q Unit :=
+  modify λ s => { s with maxRuleApplicationDepthReached := true }
 
-def remainingGoals : SearchM (Array MVarId) := do
-  let s ← get
-  let queued ← s.queue.toArray.mapM fun ag => do
-    let g ← ag.goal.get
-    return g.preNormGoal
-  return s.stuck ++ queued
-
-end SearchM
+def wasMaxRuleApplicationDepthReached : SearchM Q Bool :=
+  return (← get).maxRuleApplicationDepthReached
 
 end Iris.ProofMode.Aesop.Search
