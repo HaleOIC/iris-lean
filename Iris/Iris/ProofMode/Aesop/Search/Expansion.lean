@@ -4,19 +4,256 @@ public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Types
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
+public meta import Iris.ProofMode.Tactics.Assumption
 
 public meta section
 
 namespace Iris.ProofMode.Aesop
 
-open Lean Tactic Meta
+open Lean Tactic Meta Qq Std
+open Iris.ProofMode
+open Iris.BI
 
 variable {Q : Type} [Queue Q]
 
-private def runRule (_parentRef : GoalRef) (_matchResult : RuleMatch) :
+private partial def splitSepTargets (target : Expr) : Array Expr :=
+  let target := target.consumeMData
+  if target.getAppFn.constName? == some ``BIBase.sep then
+    match target.getAppArgs.toList.reverse with
+    | rhs :: lhs :: _ => splitSepTargets lhs ++ splitSepTargets rhs
+    | _ => #[target]
+  else
+    #[target]
+
+private structure SplitChild where
+  goal : MVarId
+  irisGoal : IrisGoal
+  mvars : Std.HashSet MVarId
+
+private structure IExactResult where
+  used : UsedIrisHyp
+  postState : SavedState
+
+private def mkSplitChildren (goal : MVarId) : MetaM (Option (Array SplitChild)) := do
+  goal.withContext do
+    let goalType ← instantiateMVars (← goal.getType)
+    let some irisGoal := parseIrisGoal? goalType
+      | return none
+    let target ← instantiateMVars irisGoal.goal
+    let targets := splitSepTargets target
+    if targets.size <= 1 then
+      return none
+    let tag ← goal.getTag
+    some <$> targets.mapM λ target => do
+      let irisGoal := { irisGoal with goal := target }
+      let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
+      let goal := goalExpr.mvarId!
+      return {
+        goal
+        irisGoal
+        mvars := ← goal.getMVarDependencies
+      }
+
+private def runIdentityRule (parentRef : GoalRef) (matchResult : RuleMatch) :
     SearchM Q RuleResult := do
-  -- [TODO] connect this to the actual rule application implementation.
-  return .failed
+  let parent ← parentRef.get
+
+  let (goal, state) ← match parent.normalizationState with
+    | .normal postGoal postState .. =>
+      pure (postGoal, postState)
+    | .provenByNorm .. =>
+      throwError "iaesop: internal error: identity rule ran on a goal already proven by normalization"
+    | .notNormal =>
+      throwError "iaesop: internal error: identity rule ran on a non-normalized goal"
+
+  let (some children, postState) ← liftM do
+      restoreState state
+      let children? ← mkSplitChildren goal
+      let postState ← saveState
+      return (children?, postState)
+    | return .failed
+
+  dbg_trace s!"identity split target into {children.size} goals"
+  for child in children do
+    let targetFmt ← liftM <| ppExpr child.irisGoal.goal
+    dbg_trace s!"  identity child target: {targetFmt.pretty}"
+
+  let rappRef ← IO.mkRef $ Rapp.mk {
+    id := ← getAndIncrementNextRappId
+    parent := parentRef
+    children := #[]
+    state := .unknown
+    isIrrelevant := false
+    appliedRule := matchResult.rule.payload
+    successProbability := parent.successProbability * matchResult.rule.payload.successProbability
+    scriptSteps? := none
+    irisSubgoals := children.map (·.irisGoal)
+    metaState := postState
+    introducedMVars := {}
+    assignedMVars := {}
+  }
+  let obunRef ← IO.mkRef $ Obun.mk {
+    id := ← getAndIncrementNextObunId
+    parent? := some rappRef
+    goals := #[]
+    state := .unknown
+    isIrrelevant := false
+    kind := .managed
+    scriptSteps? := none
+    metaState? := some postState
+  }
+  let currentIteration ← getIteration
+  let goalRefs ← children.mapM λ child => do
+    IO.mkRef $ Goal.mk {
+      id := ← getAndIncrementNextGoalId
+      parent := obunRef
+      children := #[]
+      origin := .subgoal
+      depth := parent.depth + 1
+      state := .unknown
+      isIrrelevant := false
+      isForcedUnprovable := false
+      preNormGoal := child.goal
+      preNormState := postState
+      normalizationState := .notNormal
+      unassignedMvars := child.mvars
+      successProbability := parent.successProbability * matchResult.rule.payload.successProbability
+      addedInIteration := currentIteration
+      lastExpandedInIteration := currentIteration
+      rulesQueue := {}
+      usedIrisHyp? := none
+    }
+
+  obunRef.modify λ o => o.setGoals goalRefs
+  rappRef.modify λ r => r.setChildren #[obunRef]
+  parentRef.modify λ g => g.setChildren (g.children.push rappRef)
+  enqueueGoals goalRefs
+  return .succeeded #[rappRef]
+
+private partial def findManagedObun? (gref : GoalRef) : SearchM Q (Option ObunRef) := do
+  let g ← gref.get
+  let obunRef := g.parent
+  let obun ← obunRef.get
+  if obun.kind.isManaged && obun.state.isUnknown then
+    return some obunRef
+  else
+    match obun.parent? with
+    | none => return none
+    | some rappRef =>
+      findManagedObun? (← rappRef.get).parent
+
+private def removeUsedHypFromGoal
+    (state : SavedState) (gref : GoalRef) (used : UsedIrisHyp) :
+    SearchM Q SavedState := do
+  let g ← gref.get
+  if g.state.isProven || !used.spatial then
+    return state
+  let (newGoal?, postState) ← liftM do
+    restoreState state
+    let goal := g.normalizationState.normalizedGoal?.getD g.preNormGoal
+    goal.withContext do
+      let goalType ← instantiateMVars (← goal.getType)
+      let some irisGoal := parseIrisGoal? goalType
+        | return (none, ← saveState)
+      if !irisGoal.hyps.spatialIVarIds.contains used.ivar then
+        return (none, ← saveState)
+      let ⟨e', hyps', _, _, _, _, _⟩ := irisGoal.hyps.remove false used.ivar
+      let irisGoal := { irisGoal with e := e', hyps := hyps' }
+      let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) (← goal.getTag)
+      let goal := goalExpr.mvarId!
+      let mvars ← goal.getMVarDependencies
+      let postState ← saveState
+      return (some (goal, mvars), postState)
+  match newGoal? with
+  | none => return postState
+  | some (goal, mvars) =>
+    gref.modify λ g =>
+      g.setPreNormGoal goal
+        |>.setPreNormState postState
+        |>.setNormalizationState .notNormal
+        |>.setUnassignedMvars mvars
+        |>.setRulesQueue {}
+    return postState
+
+private def propagateConsumedHyp
+    (parentRef : GoalRef) (used : UsedIrisHyp) (state : SavedState) :
+    SearchM Q Unit := do
+  unless used.spatial do
+    return
+  let some obunRef ← findManagedObun? parentRef
+    | return
+  let obun ← obunRef.get
+  let parent ← parentRef.get
+  dbg_trace s!"iexact consumed spatial hypothesis {used.name}; updating managed siblings"
+  let mut state := state
+  for gref in obun.goals do
+    let g ← gref.get
+    if g.id != parent.id then
+      state ← removeUsedHypFromGoal state gref used
+  obunRef.modify λ o => o.setMetaState? (some state)
+
+private def runIExactRule (parentRef : GoalRef) (_matchResult : RuleMatch) :
+  SearchM Q RuleResult := do
+  let parent ← parentRef.get
+  let some goal := parent.normalizationState.normalizedGoal?
+    | return .failed
+  let normState :=
+    match parent.normalizationState with
+    | .normal _ postState .. => postState
+    | _ => parent.preNormState
+  let managedObun? ← findManagedObun? parentRef
+  let isManaged := managedObun?.isSome
+  let mut state := normState
+  if let some obunRef := managedObun? then
+    let obun ← obunRef.get
+    state := obun.metaState?.getD normState
+  let result? : Option IExactResult ← liftM do
+      restoreState state
+      goal.withContext do
+        let goalType ← instantiateMVars (← goal.getType)
+        let some { hyps, goal := target, .. } := parseIrisGoal? goalType
+          | return none
+        let some ⟨(inst, used), e', _, out, ty, b, _, pf⟩ ←
+            hyps.removeG true fun name ivar b ty => do
+              let .some (inst, _) ← ProofMode.trySynthInstanceQ
+                  q(FromAssumption $b .in $ty $target)
+                | return none
+              let used : UsedIrisHyp := {
+                name
+                ivar
+                spatial := !isTrue b
+              }
+              return some (inst, used)
+          | return none
+        let _ : Q(FromAssumption $b .in $ty $target) := inst
+        have : $out =Q iprop(□?$b $ty) := ⟨⟩
+        match ← trySynthInstanceQ q(TCOr (Affine $e') (Absorbing $target)) with
+        | .some _ =>
+          goal.assign q(Iris.ProofMode.assumption (Q := $target) $pf)
+        | _ =>
+          unless isManaged do
+            return none
+          dbg_trace s!"iexact accepted in managed context; ordinary proof assignment is deferred"
+        let postState ← saveState
+        let result : IExactResult := { used, postState }
+        return some result
+  let some result := result?
+    | return .failed
+  parentRef.modify λ g =>
+    g.setState .provenByRuleApplication
+      |>.setUsedIrisHyp? (some result.used)
+  propagateConsumedHyp parentRef result.used result.postState
+  return .proved #[]
+
+private def runRule (parentRef : GoalRef) (matchResult : RuleMatch) :
+    SearchM Q RuleResult := do
+  -- [Note] only two unindex rules registered
+  if matchResult.rule.id == identityRuleId then
+    runIdentityRule parentRef matchResult
+  else if matchResult.rule.id == iexactRuleId then
+    runIExactRule parentRef matchResult
+  else
+    return .failed
 
 private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult := do
   let ruleCandidates ← selectRules parentRef
@@ -35,8 +272,7 @@ private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult :=
       | .failed => pickLoop queue
 
 def expandGoal (gref : GoalRef) : SearchM Q RuleResult := do
-  -- [Note] skip the normalization stage for prototype
-  -- if !(← (← gref.get).isNormalized) then normalizeGoal gref
+  if !(← (← gref.get).isNormalized) then normalizeGoal gref
   if (← gref.get).normalizationState.isProvenByNorm then
     return .proved #[]
 

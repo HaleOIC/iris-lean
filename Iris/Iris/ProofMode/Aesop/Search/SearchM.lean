@@ -13,6 +13,8 @@ open Iris.ProofMode.Aesop.Util
 structure SearchConfig where
   traceScript : Bool := false
   maxSteps : Nat := 200
+  maxNormIterations : Nat := 100
+  enableSimp : Bool := false
 
 namespace SearchM
 

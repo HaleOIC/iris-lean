@@ -14,7 +14,11 @@ private meta def evalIAesopCore (stx : Syntax) : TacticM Unit := do
   let config ← Frontend.TacticConfig.parse stx
   -- TODO: add [getRuleSet] here
   ProofModeM.runTactic λ mvar irisGoal => do
-    let goals ← search mvar irisGoal { traceScript := config.traceScript }
+    let goals ← search mvar irisGoal {
+      traceScript := config.traceScript
+      maxNormIterations := config.maxNormIterations
+      enableSimp := config.enableSimp
+    }
     goals.forM Iris.ProofMode.addMVarGoal
 
 @[tactic Frontend.Parser.iaesopTactic, tactic Frontend.Parser.iaesopTactic?]

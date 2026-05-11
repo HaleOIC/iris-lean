@@ -63,7 +63,7 @@ inductive IndexMatchLocation
   | none
   | fullGoal
   | target
-  | irisHyp (userName : Name) (uniq : Name) (persistent : Bool)
+  | irisHyp (userName : Name) (ivarId : IVarId) (persistent : Bool)
   | leanHyp (userName : Name) (fvarId : FVarId)
   deriving Inhabited, BEq, Hashable
 
@@ -74,8 +74,8 @@ instance : ToMessageData IndexMatchLocation where
     | none => "none"
     | fullGoal => "full goal"
     | target => "target"
-    | irisHyp userName uniq p =>
-      m!"Iris hypothesis {userName} {uniq} {if p then "(Persistent)" else ""}"
+    | irisHyp userName ivarId p =>
+      m!"Iris hypothesis {userName} {ivarId.name} {if p then "(Persistent)" else ""}"
     | leanHyp userName fvarId =>
       m!"Lean hypothesis {userName} {fvarId.name}"
 

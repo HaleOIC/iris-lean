@@ -167,6 +167,10 @@ def preNormGoal (g : Goal) : MVarId :=
   g.elim.preNormGoal
 
 @[inline]
+def preNormState (g : Goal) : SavedState :=
+  g.elim.preNormState
+
+@[inline]
 def normalizationState (g : Goal) : NormalizationState :=
   g.elim.normalizationState
 
@@ -189,6 +193,10 @@ def lastExpandedInIteration (g : Goal) : Iteration :=
 @[inline]
 def rulesQueue (g : Goal) : RuleQueue :=
   g.elim.rulesQueue
+
+@[inline]
+def usedIrisHyp? (g : Goal) : Option UsedIrisHyp :=
+  g.elim.usedIrisHyp?
 
 @[inline]
 def rappChildren? (g : Goal) : Option (Array RappRef) :=
@@ -235,6 +243,10 @@ def setPreNormGoal (preNormGoal : MVarId) (g : Goal) : Goal :=
   g.modify fun g => { g with preNormGoal }
 
 @[inline]
+def setPreNormState (preNormState : SavedState) (g : Goal) : Goal :=
+  g.modify fun g => { g with preNormState }
+
+@[inline]
 def setNormalizationState
     (normalizationState : NormalizationState) (g : Goal) : Goal :=
   g.modify fun g => { g with normalizationState }
@@ -261,6 +273,10 @@ def setRulesQueue (rulesQueue : RuleQueue) (g : Goal) : Goal :=
   g.modify fun g => { g with rulesQueue }
 
 @[inline]
+def setUsedIrisHyp? (usedIrisHyp? : Option UsedIrisHyp) (g : Goal) : Goal :=
+  g.modify fun g => { g with usedIrisHyp? }
+
+@[inline]
 def mvar (g : Goal) : MVarId :=
   g.preNormGoal
 
@@ -280,7 +296,7 @@ end Goal
 namespace Goal
 
 protected def isActive (g : Goal) : BaseIO Bool :=
-  return !g.rulesQueue.isEmpty
+  return !g.normalizationState.isNormal || !g.rulesQueue.isEmpty
 
 protected def isNormalized (g : Goal) : BaseIO Bool :=
   return g.normalizationState.isNormal
@@ -337,6 +353,10 @@ def successProbability (r : Rapp) : Percent :=
 @[inline]
 def scriptSteps? (r : Rapp) : Option (Array Script.LazyStep) :=
   r.elim.scriptSteps?
+
+@[inline]
+def irisSubgoals (r : Rapp) : Array IrisGoal :=
+  r.elim.irisSubgoals
 
 -- @[inline]
 -- def originalSubgoals (r : Rapp) : Array MVarId :=

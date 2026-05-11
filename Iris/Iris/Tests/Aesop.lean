@@ -8,19 +8,25 @@ public import Iris.ProofMode
 namespace Iris.Tests
 open Iris.BI
 
-example [BI PROP] (P Q : PROP) : P ∗ Q ⊢ Q ∗ P := by
-  iintro ⟨HP, HQ⟩
-  isplitl [HQ]
-  · iexact HQ
-  · iexact HP
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iintro HP
+  iaesop
+
+example [BI PROP] (P Q : PROP) : P -∗ Q -∗ Q ∗ P := by
+  iintro HP HQ
+  iaesop
+
+example [BI PROP] (P Q R S : PROP) : P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R ∗ S := by
+  iintro HP HQ HR HS
+  iaesop
 
 /-- Tests `iapply` with two wands and subgoals -/
 example [BI PROP] (P Q : Nat → PROP) :
   (P 1 -∗ P 2 -∗ Q 1) ⊢ □ P 1 -∗ P 2 -∗ Q 1 := by
   iintro H #HP1 HP2
   iapply H $$ [] [HP2]
-  · iexact HP1
-  · iexact HP2
+  iaesop
+  iaesop
 
 /-- Tests `ispecialize` with named subgoal -/
 example [BI PROP] (Q : PROP) : P ⊢ (⌜True⌝ -∗ P -∗ ⌜True⌝ -∗ Q) -∗ Q := by
@@ -36,10 +42,7 @@ example [BI PROP] (Q : PROP) : P ⊢ (⌜True⌝ -∗ P -∗ ⌜True⌝ -∗ Q) 
 example [BI PROP] (Q : Nat → PROP) :
     ⊢ □ P1 -∗ P2 -∗ (□ P1 -∗ (∀ x, P2 -∗ Q x)) -∗ Q y := by
   iintro #HP1 HP2 HPQ
-  ispecialize HPQ $$ [] [HP2]
-  · iexact HP1
-  · iexact HP2
-  iexact HPQ
+  ispecialize HPQ $$ [] [HP2] <;> iaesop
 
 /-- Tests `iapply` with forall specialization -/
 example [BI PROP] (P Q : α → PROP) (a b : α) (H : ⊢ ∀ x, ∀ y, P x -∗ Q y) : P a ⊢ Q b := by
@@ -58,5 +61,6 @@ example [BI PROP] (P Q R : α → PROP) (a b c : α) (H : ⊢ ∀ x, ∀ y, ∀ 
 /-- Tests `iapply` with intuitionistic forall from Lean -/
 example [BI PROP] (P Q : α → PROP) (a b : α) (H : ⊢ □ ∀ x, ∀ y, P x -∗ Q y) : P a ⊢ Q b := by
   iintro HP
+  iaesop
   iapply H $$ [HP]
-  iexact HP
+  iaesop

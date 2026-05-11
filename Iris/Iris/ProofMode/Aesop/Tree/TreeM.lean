@@ -44,12 +44,14 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     isIrrelevant := false
     isForcedUnprovable := false
     preNormGoal := root
+    preNormState := rootMetaState
     normalizationState := .notNormal
     unassignedMvars := ← root.getMVarDependencies
     successProbability := .hundred
     addedInIteration := 1
     lastExpandedInIteration := 1
     rulesQueue := {}
+    usedIrisHyp? := none
   }
 
   -- Patch Obun's goals

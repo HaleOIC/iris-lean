@@ -12,6 +12,12 @@ open Lean Lean.Meta Std
 open Iris.ProofMode.Aesop
 open Iris.ProofMode.Aesop.Util
 
+structure UsedIrisHyp where
+  name : Name
+  ivar : IVarId
+  spatial : Bool
+  deriving Inhabited
+
 structure GoalData (RappRef ObunRef : Type) : Type where
   id : GoalId
   parent : ObunRef
@@ -25,6 +31,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   -- Turn true because of reaching the search depth limit
   isForcedUnprovable : Bool
   preNormGoal : MVarId
+  preNormState : SavedState
   normalizationState : NormalizationState
   unassignedMvars : Std.HashSet MVarId
   successProbability : Percent
@@ -32,6 +39,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   lastExpandedInIteration : Iteration
 
   rulesQueue : RuleQueue
+  usedIrisHyp? : Option UsedIrisHyp
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where

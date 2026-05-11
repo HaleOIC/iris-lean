@@ -26,9 +26,9 @@ private inductive QuerySurface
 private partial def collectIrisHyps {u prop bi} :
     ∀ {e}, @Hyps u prop bi e → Array (IndexMatchLocation × Expr)
   | _, .emp _ => #[]
-  | _, .hyp _ name uniq p type _ =>
+  | _, .hyp _ name ivarId p type _ =>
     #[(
-      .irisHyp name uniq (isTrue p),
+      .irisHyp name ivarId (isTrue p),
       type
     )]
   | _, .sep _ _ _ _ lhs rhs =>

@@ -12,9 +12,11 @@ open Lean
 open Iris.ProofMode.Aesop.Util
 
 inductive RuleBuilder where
+  | identity
   | tactic
   | iapply
   | iintro
+  | iexact
   | iassumption
   | icases
   | ileft
@@ -26,9 +28,11 @@ namespace RuleBuilder
 
 instance : ToString RuleBuilder where
   toString
+    | identity => "identity"
     | tactic => "tactic"
     | iapply => "iapply"
     | iintro => "iintro"
+    | iexact => "iexact"
     | iassumption => "iassumption"
     | icases => "icases"
     | ileft => "ileft"
@@ -74,6 +78,9 @@ structure RegularRule where
   deriving Inhabited, BEq, Ord
 
 namespace RegularRule
+
+instance : Hashable RegularRule where
+  hash rule := hash rule.name
 
 instance : ToFormat RegularRule where
   format rule := format rule.name
