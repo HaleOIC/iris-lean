@@ -2,7 +2,7 @@ module
 
 public section
 
-namespace Iris.ProofMode.Aesop.Util
+namespace Iris.ProofMode.Aesop
 
 open Lean Std
 
@@ -34,11 +34,6 @@ instance : Ord Percent where
     else if p.toFloat < q.toFloat then Ordering.lt
     else Ordering.gt
 
--- NOTE: This is not the same as
---
---     p < q := p.toFloat < q.toFloat
---
--- That definition would not agree with the Ord instance.
 instance : LT Percent :=
   ltOfOrd
 
@@ -56,14 +51,6 @@ def hundred : Percent :=
 
 def fifty : Percent :=
   ⟨0.5⟩
-
--- def toHumanString (p : Percent) : String :=
---   let str := toString (p.toFloat * 100)
---   match str.split λ c => c == '.' with
---   | [beforePoint] => beforePoint ++ "%"
---   | [beforePoint, afterPoint] =>
---     beforePoint ++ "." ++ afterPoint.take 4 ++ "%"
---   | _ => unreachable!
 
 protected def ofNat (n : Nat) : Option Percent :=
   Percent.ofFloat $ n.toFloat / 100

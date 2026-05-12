@@ -1,25 +1,19 @@
 module
 
+public import Iris.ProofMode.Expr
 public import Iris.ProofMode.Aesop.Rule.Types.Match
 public import Iris.ProofMode.Aesop.Tree.Types
-public import Iris.ProofMode.Expr
-
+public import Iris.ProofMode.Aesop.Util.Basic
 public meta section
 
 namespace Iris.ProofMode.Aesop
 
 open Lean Lean.Meta Std
 open Iris.ProofMode.Aesop
-open Iris.ProofMode.Aesop.Util
-
-structure UsedIrisHyp where
-  name : Name
-  ivar : IVarId
-  spatial : Bool
-  deriving Inhabited
 
 structure GoalData (RappRef ObunRef : Type) : Type where
   id : GoalId
+  mask : ProgressMask
   parent : ObunRef
   children : Array RappRef
   origin : GoalOrigin
@@ -33,13 +27,13 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   preNormGoal : MVarId
   preNormState : SavedState
   normalizationState : NormalizationState
+
   unassignedMvars : Std.HashSet MVarId
   successProbability : Percent
   addedInIteration : Iteration
   lastExpandedInIteration : Iteration
 
   rulesQueue : RuleQueue
-  usedIrisHyp? : Option UsedIrisHyp
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where
@@ -54,9 +48,6 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   scriptSteps? : Option (Array Script.LazyStep)
   metaState? : Option SavedState
 
-  -- TODO: add some view from proof mode
-  -- Context : Hyps
-  -- IrisGoal : Goal
   deriving Nonempty
 
 structure RappData (GoalRef ObunRef : Type) : Type where
@@ -75,6 +66,9 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   -- originalSubgoals : Array MVarId
   -- since we may not fillin the context split cases for each branch
   irisSubgoals : Array IrisGoal
+
+  -- [TODO]:
+  irisContext : Array (Array IrisHyp)
 
   metaState : SavedState
     -- This is the state *after* the rule was successfully applied, so the goal

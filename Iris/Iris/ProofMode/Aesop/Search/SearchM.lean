@@ -8,7 +8,6 @@ public meta section
 namespace Iris.ProofMode.Aesop
 
 open Lean Std
-open Iris.ProofMode.Aesop.Util
 
 structure SearchConfig where
   traceScript : Bool := false

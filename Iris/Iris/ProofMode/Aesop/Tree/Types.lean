@@ -1,15 +1,24 @@
 module
 
 public meta import Lean.Meta.Basic
+public import Iris.ProofMode.Expr
 public import Iris.ProofMode.Aesop.Rule.Types.Name
 public import Iris.ProofMode.Aesop.Script.Basic
 
 public meta section
 
-open Lean Lean.Meta
+open Lean Meta
 open Iris.ProofMode.Aesop
 
 namespace Iris.ProofMode.Aesop
+
+-- Only record the spatial iris-hypothesis
+structure IrisHyp where
+  name : Name
+  ivar : IVarId
+  deriving Inhabited, BEq
+
+abbrev UsedIrisHyp := IrisHyp
 
 abbrev Iteration := Nat
 
@@ -125,7 +134,7 @@ end NodeState
 
 inductive GoalState
   | unknown
-  | provenByRuleApplication
+  | provenByRuleApplication (used : Array UsedIrisHyp)
   | provenByNormalization
   | unprovable
   deriving Inhabited, BEq
@@ -135,12 +144,12 @@ namespace GoalState
 instance : ToString GoalState where
   toString
     | unknown => "unknown"
-    | provenByRuleApplication => "provenByRuleApplication"
+    | provenByRuleApplication .. => "provenByRuleApplication"
     | provenByNormalization =>  "provenByNormalization"
     | unprovable => "unprovable"
 
 def isProvenByRuleApplication : GoalState → Bool
-  | provenByRuleApplication => true
+  | provenByRuleApplication .. => true
   | _ => false
 
 def isProvenByNormalization : GoalState → Bool
@@ -148,7 +157,7 @@ def isProvenByNormalization : GoalState → Bool
   | _ => false
 
 def isProven : GoalState → Bool
-  | provenByRuleApplication => true
+  | provenByRuleApplication .. => true
   | provenByNormalization => true
   | _ => false
 
@@ -162,9 +171,13 @@ def isUnknown : GoalState → Bool
 
 def toNodeState : GoalState → NodeState
   | unknown => NodeState.unknown
-  | provenByRuleApplication => NodeState.proven
+  | provenByRuleApplication .. => NodeState.proven
   | provenByNormalization => NodeState.proven
   | unprovable => NodeState.unprovable
+
+def usedIrisHyps? : GoalState → Option (Array IrisHyp)
+  | provenByRuleApplication used => some used
+  | _ => none
 
 def isIrrelevant (s : GoalState) : Bool :=
   s.toNodeState.isIrrelevant
@@ -200,20 +213,16 @@ end NormalizationState
 -- TODO: Unclear about the presence of [droppedMVar]
 inductive GoalOrigin
   | subgoal
-  | copied («from» : GoalId) (rep : GoalId)
+  | copied («from» : GoalId)
   | droppedMVar
   deriving Inhabited, BEq
 
 namespace GoalOrigin
 
-def originalGoalId? : GoalOrigin → Option GoalId
-  | .copied _ rep => some rep
-  | _ => none
-
 instance : ToString GoalOrigin where
   toString
     | .subgoal => "subgoal"
-    | .copied src rep => s!"copy of {src}, originally {rep}"
+    | .copied src => s!"copy of {src}"
     | .droppedMVar => "dropped mvar"
 
 end GoalOrigin

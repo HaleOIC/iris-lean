@@ -1,12 +1,12 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Tree.Impl
+public meta import Iris.ProofMode.Aesop.Util.Basic
 
 public meta section
 
 open Lean Lean.Meta Std
 open Iris.ProofMode.Aesop
-open Iris.ProofMode.Aesop.Util
 
 namespace Iris.ProofMode.Aesop
 
@@ -135,6 +135,10 @@ def id (g : Goal) : GoalId :=
   g.elim.id
 
 @[inline]
+def mask (g : Goal) : ProgressMask :=
+  g.elim.mask
+
+@[inline]
 def parent (g : Goal) : ObunRef :=
   g.elim.parent
 
@@ -195,10 +199,6 @@ def rulesQueue (g : Goal) : RuleQueue :=
   g.elim.rulesQueue
 
 @[inline]
-def usedIrisHyp? (g : Goal) : Option UsedIrisHyp :=
-  g.elim.usedIrisHyp?
-
-@[inline]
 def rappChildren? (g : Goal) : Option (Array RappRef) :=
   some g.children
 
@@ -209,6 +209,10 @@ def hasNoChildren (g : Goal) : Bool :=
 @[inline]
 def setId (id : GoalId) (g : Goal) : Goal :=
   g.modify fun g => { g with id }
+
+@[inline]
+def setMask (mask : ProgressMask) (g : Goal) : Goal :=
+  g.modify λ g => { g with mask }
 
 @[inline]
 def setParent (parent : ObunRef) (g : Goal) : Goal :=
@@ -273,10 +277,6 @@ def setRulesQueue (rulesQueue : RuleQueue) (g : Goal) : Goal :=
   g.modify fun g => { g with rulesQueue }
 
 @[inline]
-def setUsedIrisHyp? (usedIrisHyp? : Option UsedIrisHyp) (g : Goal) : Goal :=
-  g.modify fun g => { g with usedIrisHyp? }
-
-@[inline]
 def mvar (g : Goal) : MVarId :=
   g.preNormGoal
 
@@ -296,7 +296,8 @@ end Goal
 namespace Goal
 
 protected def isActive (g : Goal) : BaseIO Bool :=
-  return !g.normalizationState.isNormal || !g.rulesQueue.isEmpty
+  return !g.isIrrelevant && g.state.isUnknown &&
+    (!g.normalizationState.isNormal || !g.rulesQueue.isEmpty)
 
 protected def isNormalized (g : Goal) : BaseIO Bool :=
   return g.normalizationState.isNormal
@@ -358,6 +359,10 @@ def scriptSteps? (r : Rapp) : Option (Array Script.LazyStep) :=
 def irisSubgoals (r : Rapp) : Array IrisGoal :=
   r.elim.irisSubgoals
 
+@[inline]
+def irisContext (r : Rapp) : Array (Array IrisHyp) :=
+  r.elim.irisContext
+
 -- @[inline]
 -- def originalSubgoals (r : Rapp) : Array MVarId :=
 --   r.elim.originalSubgoals
@@ -410,6 +415,10 @@ def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
 -- @[inline]
 -- def setOriginalSubgoals (originalSubgoals : Array MVarId) (r : Rapp) : Rapp :=
 --   r.modify fun r => { r with originalSubgoals }
+
+@[inline]
+def setIrisContext (irisContext : Array (Array IrisHyp)) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with irisContext }
 
 @[inline]
 def setMetaState (metaState : SavedState) (r : Rapp) : Rapp :=

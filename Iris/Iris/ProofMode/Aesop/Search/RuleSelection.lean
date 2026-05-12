@@ -7,6 +7,8 @@ public meta section
 
 namespace Iris.ProofMode.Aesop
 
+open Lean.Meta
+
 variable {Q : Type} [Queue Q]
 
 def identityRuleId : RuleId where
@@ -50,7 +52,14 @@ def selectRulesFromIndex (index : Index RegularRule) (parentRef : GoalRef) :
     SearchM Q RuleQueue := do
   let parent ← parentRef.get
   let goal := parent.normalizationState.normalizedGoal?.getD parent.preNormGoal
-  return RuleQueue.ofArray (← Index.queryMVar index goal)
+  let state :=
+    match parent.normalizationState with
+    | .notNormal => parent.preNormState
+    | .normal _ postState _ => postState
+    | .provenByNorm postState _ => postState
+  return RuleQueue.ofArray (← liftM do
+    state.restore
+    Index.queryMVar index goal)
 
 def selectRules (parentRef : GoalRef) : SearchM Q RuleQueue := do
   let parent ← parentRef.get

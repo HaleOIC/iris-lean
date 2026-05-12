@@ -31,7 +31,7 @@ private structure SplitChild where
   mvars : Std.HashSet MVarId
 
 private structure IExactResult where
-  used : UsedIrisHyp
+  used : Array UsedIrisHyp
   postState : SavedState
 
 private def mkSplitChildren (goal : MVarId) : MetaM (Option (Array SplitChild)) := do
@@ -88,6 +88,7 @@ private def runIdentityRule (parentRef : GoalRef) (matchResult : RuleMatch) :
     successProbability := parent.successProbability * matchResult.rule.payload.successProbability
     scriptSteps? := none
     irisSubgoals := children.map (·.irisGoal)
+    irisContext := children.map (λ _ => #[])
     metaState := postState
     introducedMVars := {}
     assignedMVars := {}
@@ -103,9 +104,10 @@ private def runIdentityRule (parentRef : GoalRef) (matchResult : RuleMatch) :
     metaState? := some postState
   }
   let currentIteration ← getIteration
-  let goalRefs ← children.mapM λ child => do
+  let goalRefs ← children.mapIdxM λ i child => do
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
+      mask := (ProgressMask.empty children.size).mark i
       parent := obunRef
       children := #[]
       origin := .subgoal
@@ -121,7 +123,6 @@ private def runIdentityRule (parentRef : GoalRef) (matchResult : RuleMatch) :
       addedInIteration := currentIteration
       lastExpandedInIteration := currentIteration
       rulesQueue := {}
-      usedIrisHyp? := none
     }
 
   obunRef.modify λ o => o.setGoals goalRefs
@@ -130,7 +131,7 @@ private def runIdentityRule (parentRef : GoalRef) (matchResult : RuleMatch) :
   enqueueGoals goalRefs
   return .succeeded #[rappRef]
 
-private partial def findManagedObun? (gref : GoalRef) : SearchM Q (Option ObunRef) := do
+partial def findManagedObun? (gref : GoalRef) : SearchM Q (Option ObunRef) := do
   let g ← gref.get
   let obunRef := g.parent
   let obun ← obunRef.get
@@ -141,56 +142,6 @@ private partial def findManagedObun? (gref : GoalRef) : SearchM Q (Option ObunRe
     | none => return none
     | some rappRef =>
       findManagedObun? (← rappRef.get).parent
-
-private def removeUsedHypFromGoal
-    (state : SavedState) (gref : GoalRef) (used : UsedIrisHyp) :
-    SearchM Q SavedState := do
-  let g ← gref.get
-  if g.state.isProven || !used.spatial then
-    return state
-  let (newGoal?, postState) ← liftM do
-    restoreState state
-    let goal := g.normalizationState.normalizedGoal?.getD g.preNormGoal
-    goal.withContext do
-      let goalType ← instantiateMVars (← goal.getType)
-      let some irisGoal := parseIrisGoal? goalType
-        | return (none, ← saveState)
-      if !irisGoal.hyps.spatialIVarIds.contains used.ivar then
-        return (none, ← saveState)
-      let ⟨e', hyps', _, _, _, _, _⟩ := irisGoal.hyps.remove false used.ivar
-      let irisGoal := { irisGoal with e := e', hyps := hyps' }
-      let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) (← goal.getTag)
-      let goal := goalExpr.mvarId!
-      let mvars ← goal.getMVarDependencies
-      let postState ← saveState
-      return (some (goal, mvars), postState)
-  match newGoal? with
-  | none => return postState
-  | some (goal, mvars) =>
-    gref.modify λ g =>
-      g.setPreNormGoal goal
-        |>.setPreNormState postState
-        |>.setNormalizationState .notNormal
-        |>.setUnassignedMvars mvars
-        |>.setRulesQueue {}
-    return postState
-
-private def propagateConsumedHyp
-    (parentRef : GoalRef) (used : UsedIrisHyp) (state : SavedState) :
-    SearchM Q Unit := do
-  unless used.spatial do
-    return
-  let some obunRef ← findManagedObun? parentRef
-    | return
-  let obun ← obunRef.get
-  let parent ← parentRef.get
-  dbg_trace s!"iexact consumed spatial hypothesis {used.name}; updating managed siblings"
-  let mut state := state
-  for gref in obun.goals do
-    let g ← gref.get
-    if g.id != parent.id then
-      state ← removeUsedHypFromGoal state gref used
-  obunRef.modify λ o => o.setMetaState? (some state)
 
 private def runIExactRule (parentRef : GoalRef) (_matchResult : RuleMatch) :
   SearchM Q RuleResult := do
@@ -218,11 +169,11 @@ private def runIExactRule (parentRef : GoalRef) (_matchResult : RuleMatch) :
               let .some (inst, _) ← ProofMode.trySynthInstanceQ
                   q(FromAssumption $b .in $ty $target)
                 | return none
-              let used : UsedIrisHyp := {
-                name
-                ivar
-                spatial := !isTrue b
-              }
+              let used : Array UsedIrisHyp :=
+                if isTrue b then
+                  #[]
+                else
+                  #[{ name, ivar }]
               return some (inst, used)
           | return none
         let _ : Q(FromAssumption $b .in $ty $target) := inst
@@ -240,9 +191,9 @@ private def runIExactRule (parentRef : GoalRef) (_matchResult : RuleMatch) :
   let some result := result?
     | return .failed
   parentRef.modify λ g =>
-    g.setState .provenByRuleApplication
-      |>.setUsedIrisHyp? (some result.used)
-  propagateConsumedHyp parentRef result.used result.postState
+    g.setState (.provenByRuleApplication result.used)
+  if let some obunRef := managedObun? then
+    obunRef.modify λ o => o.setMetaState? (some result.postState)
   return .proved #[]
 
 private def runRule (parentRef : GoalRef) (matchResult : RuleMatch) :

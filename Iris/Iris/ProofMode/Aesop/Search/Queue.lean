@@ -1,7 +1,7 @@
 module
 
+public import Iris.ProofMode.Aesop.Util.Basic
 public meta import Iris.ProofMode.Aesop.Tree.Basic
-public import Iris.ProofMode.Aesop.Util.Percent
 public meta import Batteries.Data.BinomialHeap.Basic
 
 public meta section
@@ -9,7 +9,6 @@ public meta section
 namespace Iris.ProofMode.Aesop
 
 open Lean
-open Iris.ProofMode.Aesop.Util
 open Batteries (BinomialHeap)
 
 class Queue (Q : Type) where
@@ -46,8 +45,8 @@ protected meta def fromGoalRef (gref : GoalRef) : BaseIO ActiveGoal := do
   let g ← gref.get
   return {
     goal := gref
-    -- TODO: consider about the probability (consider involving unassigned variables)
-    priority := g.successProbability
+    -- Prefer branches that have already covered more split positions.
+    priority := g.successProbability * g.mask.progress
     lastExpandedInIteration := g.lastExpandedInIteration
     addedInIteration := g.addedInIteration
   }

@@ -2,14 +2,13 @@ module
 
 public import Lean
 public import Iris.ProofMode.Aesop.Rule.Types.Name
-public import Iris.ProofMode.Aesop.Util.Percent
+public import Iris.ProofMode.Aesop.Util.Basic
 
 public section
 
 namespace Iris.ProofMode.Aesop
 
 open Lean
-open Iris.ProofMode.Aesop.Util
 
 inductive RuleBuilder where
   | identity
