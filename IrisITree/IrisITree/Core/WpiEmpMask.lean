@@ -53,10 +53,9 @@ theorem wpiF_mono {R} (wp1 wp2 : ITree E R → (R → PROP) → PROP) :
   case ret => iexact Hwp
   case tau t' => imod Hwp; imodintro; iapply Hwand $$ Hwp
   case vis i k =>
-    imod Hwp; imodintro; iapply H.ihandle_mono
+    imod Hwp; imodintro; iapply H.ihandle_mono $$ [] [] Hwp
     · iintro %a Hk; iapply Hwand $$ Hk
     · iintro !> %a Hk; imod Hk; imodintro; iapply Hwand $$ Hk
-    · iexact Hwp
 
 theorem wpiF'_mono {R} (wp1 wp2 : ITree E R × (R → PROP) → PROP) :
     ⊢ □ (∀ t Φ, wp1 (t, Φ) -∗ wp2 (t, Φ)) -∗

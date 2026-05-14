@@ -48,10 +48,9 @@ theorem wpi_constF_mono (H : IHandler PROP E) (Φ : R → PROP)
   case ret => iexact Hwp
   case tau t' => imod Hwp; imodintro; iapply Hwand $$ Hwp
   case vis i k =>
-    imod Hwp; imodintro; iapply H.ihandle_mono
+    imod Hwp; imodintro; iapply H.ihandle_mono $$ [] [] Hwp
     · iintro %a Hk; iapply Hwand $$ Hk
     · iintro !> %a Hk; imod Hk; imodintro; iapply Hwand $$ Hk
-    · iexact Hwp
 
 instance wp_itree_const_mono (H : IHandler PROP E) (Φ : R → PROP) :
     BIMonoPred (wpi_constF H Φ) where
