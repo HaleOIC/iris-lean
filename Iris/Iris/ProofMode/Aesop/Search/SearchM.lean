@@ -13,7 +13,7 @@ structure SearchConfig where
   traceScript : Bool := false
   maxSteps : Nat := 200
   maxNormIterations : Nat := 100
-  enableSimp : Bool := false
+  enableSimp : Bool := true
 
 namespace SearchM
 

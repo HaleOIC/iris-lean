@@ -13,6 +13,9 @@ open Lean
 inductive RuleBuilder where
   | identity
   | applyHyps
+  | ipureIntro
+  | imodintro
+  | imod
   | tactic
   | iapply
   | iintro
@@ -30,6 +33,9 @@ instance : ToString RuleBuilder where
   toString
     | identity => "identity"
     | applyHyps => "applyHyps"
+    | ipureIntro => "ipure_intro"
+    | imodintro => "imodintro"
+    | imod => "imod"
     | tactic => "tactic"
     | iapply => "iapply"
     | iintro => "iintro"

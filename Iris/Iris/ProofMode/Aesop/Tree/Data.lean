@@ -50,8 +50,10 @@ structure ObunData (GoalRef RappRef : Type) : Type where
 
   /- Iris context-management data -/
 
-  /-- Indicates whether this obligation bundle uses context-management mode. -/
+  /- Indicates whether this obligation bundle uses context-management mode. -/
   kind : ObunKind
+
+  /- Indicate which goal -/
 
   deriving Nonempty
 

@@ -17,7 +17,7 @@ structure TacticConfig where
   -- Enable iaesop prints a tactic proof after proving a goal
   traceScript : Bool := false
   -- Enable the builtin `simp` normalisation rule
-  enableSimp : Bool := false
+  enableSimp : Bool := true
   deriving Inhabited, BEq, Repr
 
 namespace TacticConfig
@@ -29,6 +29,10 @@ meta def parse (stx : Syntax) : TermElabM TacticConfig := do
         return { traceScript := false }
     | `(tactic| iaesop?) =>
         return { traceScript := true }
+    | `(tactic| iaesop +simp) =>
+        return { traceScript := false, enableSimp := true }
+    | `(tactic| iaesop? +simp) =>
+        return { traceScript := true, enableSimp := true }
     | _ =>
         throwUnsupportedSyntax
 

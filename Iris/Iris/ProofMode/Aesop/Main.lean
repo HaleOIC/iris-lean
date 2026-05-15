@@ -21,7 +21,8 @@ private meta def evalIAesopCore (stx : Syntax) : TacticM Unit := do
     }
     goals.forM Iris.ProofMode.addMVarGoal
 
-@[tactic Frontend.Parser.iaesopTactic, tactic Frontend.Parser.iaesopTactic?]
+@[tactic Frontend.Parser.iaesopTactic, tactic Frontend.Parser.iaesopTactic?,
+  tactic Frontend.Parser.iaesopTacticSimp, tactic Frontend.Parser.iaesopTacticSimp?]
 meta def evalIAesop : Tactic := λ stx =>
   evalIAesopCore stx
 

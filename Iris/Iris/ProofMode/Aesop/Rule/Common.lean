@@ -44,6 +44,17 @@ def normalizedGoalAndState (ruleName : String) (parent : Goal) :
   | .notNormal =>
     throwError "iaesop: internal error: {ruleName} ran on a non-normalized goal"
 
+def mkChildGoalSpec (goal : MVarId) : MetaM ChildGoalSpec := do
+  goal.withContext do
+    let goalType ← instantiateMVars (← goal.getType)
+    let some irisGoal := Iris.ProofMode.parseIrisGoal? goalType
+      | throwError "iaesop: internal error: generated child goal is not an Iris goal"
+    return {
+      goal
+      irisGoal
+      mvars := ← goal.getMVarDependencies
+    }
+
 partial def findManagedObun? (gref : GoalRef) :
     SearchM Q (Option ObunRef) := do
   let g ← gref.get

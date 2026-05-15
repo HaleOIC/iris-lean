@@ -55,10 +55,61 @@ def applyHypsRule : Rule RegularRule where
   indexingMode := .unindexed
   payload := RegularRule.mkSafe applyHypsRuleName
 
+def ipureIntroRuleId : RuleId where
+  name := `ipure_intro
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def ipureIntroRuleName : RuleName where
+  name := `ipure_intro
+  phase := .safe
+  builder := .ipureIntro
+
+def ipureIntroRule : Rule RegularRule where
+  id := ipureIntroRuleId
+  indexingMode := .unindexed
+  payload := RegularRule.mkSafe ipureIntroRuleName
+
+def imodIntroRuleId : RuleId where
+  name := `imodintro
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def imodIntroRuleName : RuleName where
+  name := `imodintro
+  phase := .safe
+  builder := .imodintro
+
+def imodIntroRule : Rule RegularRule where
+  id := imodIntroRuleId
+  indexingMode := .unindexed
+  payload := RegularRule.mkSafe imodIntroRuleName
+
+def imodRuleId : RuleId where
+  name := `imod
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def imodRuleName : RuleName where
+  name := `imod
+  phase := .safe
+  builder := .imod
+
+def imodRule : Rule RegularRule where
+  id := imodRuleId
+  indexingMode := .unindexed
+  payload := RegularRule.mkSafe imodRuleName
+
 def builtinRuleIndex : Index RegularRule :=
   ({} : Index RegularRule)
     |>.add identityRule identityRule.indexingMode
     |>.add iexactRule iexactRule.indexingMode
     |>.add applyHypsRule applyHypsRule.indexingMode
+    |>.add ipureIntroRule ipureIntroRule.indexingMode
+    |>.add imodIntroRule imodIntroRule.indexingMode
+    |>.add imodRule imodRule.indexingMode
 
 end Iris.ProofMode.Aesop

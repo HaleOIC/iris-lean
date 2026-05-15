@@ -1,9 +1,11 @@
 module
 
+public meta import Lean.Meta.Tactic.Simp.SimpAll
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Tactics.Assumption
 public meta import Iris.ProofMode.Tactics.Apply
 public meta import Iris.ProofMode.Tactics.HaveCore
+public meta import Iris.ProofMode.Tactics.Pure
 public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
@@ -59,6 +61,58 @@ private def mkDirectAssumptionProof
         "iaesop: finalization failed, unused context is not affine and target is not absorbing"
   return q(Iris.ProofMode.assumption (Q := $target) $pf)
 
+private def mkPropProof? (φ : Q(Prop)) : MetaM (Option Q($φ)) := do
+  let proof : Q($φ) ← mkFreshExprMVar φ
+  let goal := proof.mvarId!
+  goal.withContext do
+    let target ← instantiateMVars (← goal.getType)
+    let preState ← saveState
+    for ldecl in ← getLCtx do
+      if ldecl.isImplementationDetail then
+        continue
+      restoreState preState
+      let hypType ← instantiateMVars ldecl.type
+      if ← isDefEq hypType target then
+        goal.assign (mkFVar ldecl.fvarId)
+        return some proof
+    restoreState preState
+    let ctx ← Simp.mkContext
+      (config := ({} : Simp.Config))
+      (simpTheorems := #[← getSimpTheorems])
+      (congrTheorems := ← getSimpCongrTheorems)
+    let ctx := ctx.setFailIfUnchanged false
+    let (result?, _) ←
+      Meta.simpGoal goal ctx (simprocs := #[]) (discharge? := none)
+        (simplifyTarget := true) (fvarIdsToSimp := #[])
+    match result? with
+    | none => return some proof
+    | some _ =>
+      restoreState preState
+      return none
+
+private def mkPureProof?
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
+    (_hyps : Hyps bi e) (target : Q($prop)) :
+    MetaM (Option Q($e ⊢ $target)) := do
+  let b : Q(Bool) ← mkFreshExprMVarQ q(Bool)
+  let φ : Q(Prop) ← mkFreshExprMVarQ q(Prop)
+  let .some (h, _) ← ProofMode.trySynthInstanceQ q(FromPure $b $target .out $φ)
+    | return none
+  let h : Q(FromPure $b $target .out $φ) := h
+  let some proof ← mkPropProof? φ
+    | return none
+  match ← whnf b with
+  | .const ``true _ =>
+    have : $b =Q true := ⟨⟩
+    let .some _ ← trySynthInstanceQ q(Affine $e)
+      | return none
+    return some q(pure_intro_affine (P := $e) (Q := $target) $h $proof)
+  | .const ``false _ =>
+    have : $b =Q false := ⟨⟩
+    return some q(pure_intro_spatial (P := $e) (Q := $target) $h $proof)
+  | _ =>
+    return none
+
 private partial def mkAssumptionProof
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
     (hyps : Hyps bi e) (target : Q($prop)) :
@@ -93,7 +147,9 @@ private partial def mkSplitProof
     if contexts.size != 1 then
       throwError
         "iaesop: finalization expected one context part for atomic target, got {contexts.size}"
-    mkAssumptionProof hyps target
+    match ← mkPureProof? hyps target with
+    | some proof => return proof
+    | none => mkAssumptionProof hyps target
   | some (lhsExpr, rhsExpr) =>
     let lhsCount := (splitSepTargets lhsExpr).size
     let lhsContexts := contexts.extract 0 lhsCount

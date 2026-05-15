@@ -52,7 +52,7 @@ theorem wand_intro_spatial [BI PROP] {P Q A1 A2 : PROP}
 public meta section
 open Lean Elab Tactic Meta Qq BI Std
 
-private partial def iIntroCore {prop : Q(Type u)} {bi : Q(BI $prop)}
+partial def iIntroCore {prop : Q(Type u)} {bi : Q(BI $prop)}
     {P} (hyps : Hyps bi P) (Q : Q($prop)) (pats : List (Syntax × IntroPat)) :
     ProofModeM (Q($P ⊢ $Q)) := do
   match pats with

@@ -241,6 +241,15 @@ instance : ToString GoalOrigin where
 
 end GoalOrigin
 
+/--
+  [.plain] indicates that the current obligation bundle does not manage context.
+  In this mode, `localSettled` can be claimed only after all subgoals have been
+  marked as proven.
+
+  [.managed] indicates that the current obligation bundle manages context.
+  In this mode, `localSettled` can be claimed as soon as the progress bar of
+  at least one subgoal is complete.
+-/
 inductive ObunKind
   | plain
   | managed

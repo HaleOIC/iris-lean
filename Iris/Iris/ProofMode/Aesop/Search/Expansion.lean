@@ -2,7 +2,10 @@ module
 
 public meta import Iris.ProofMode.Aesop.Rule.ApplyHyps
 public meta import Iris.ProofMode.Aesop.Rule.Builtin
+public meta import Iris.ProofMode.Aesop.Rule.IMod
+public meta import Iris.ProofMode.Aesop.Rule.IModIntro
 public meta import Iris.ProofMode.Aesop.Rule.IExact
+public meta import Iris.ProofMode.Aesop.Rule.IPureIntro
 public meta import Iris.ProofMode.Aesop.Rule.Identity
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
@@ -21,6 +24,12 @@ private def runRuleSpecs (parentRef : GoalRef) (matchResult : RuleMatch) :
     Rule.IExact.run parentRef matchResult
   else if matchResult.rule.id == applyHypsRuleId then
     Rule.ApplyHyps.run parentRef matchResult
+  else if matchResult.rule.id == ipureIntroRuleId then
+    Rule.IPureIntro.run parentRef matchResult
+  else if matchResult.rule.id == imodIntroRuleId then
+    Rule.IModIntro.run parentRef matchResult
+  else if matchResult.rule.id == imodRuleId then
+    Rule.IMod.run parentRef matchResult
   else
     return #[]
 
