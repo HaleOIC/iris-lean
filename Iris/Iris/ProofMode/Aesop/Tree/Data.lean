@@ -73,6 +73,8 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   fullContextIrisSubgoals : Array IrisGoal
   /- Spatial Iris hypothesis consumed by this rule application, if any -/
   consumedSpatialHyp? : Option IrisHyp
+  /- Lean hypothesis consumed by this rule application, if any -/
+  consumedLeanHyp? : Option FVarId
   /- Finalized spatial-context split assignments, ordered by split case -/
   finalizedSpatialSplits : Array (Array IrisHyp)
 

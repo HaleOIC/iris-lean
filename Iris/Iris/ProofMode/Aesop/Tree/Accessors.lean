@@ -372,6 +372,10 @@ def consumedSpatialHyp? (r : Rapp) : Option IrisHyp :=
   r.elim.consumedSpatialHyp?
 
 @[inline]
+def consumedLeanHyp? (r : Rapp) : Option FVarId :=
+  r.elim.consumedLeanHyp?
+
+@[inline]
 def finalizedSpatialSplits (r : Rapp) : Array (Array IrisHyp) :=
   r.elim.finalizedSpatialSplits
 
@@ -436,6 +440,10 @@ def setconsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : R
 @[inline]
 def setConsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
   r.modify fun r => { r with consumedSpatialHyp? }
+
+@[inline]
+def setConsumedLeanHyp? (consumedLeanHyp? : Option FVarId) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with consumedLeanHyp? }
 
 @[inline]
 def setfinalizedSpatialSplits (finalizedSpatialSplits : Array (Array IrisHyp)) (r : Rapp) : Rapp :=

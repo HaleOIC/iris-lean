@@ -16,15 +16,15 @@ example [BI PROP] (P Q : PROP) : P -∗ Q -∗ Q ∗ P := by
   iintro HP HQ
   iaesop
 
-example [BI PROP] (P Q R S : PROP) : P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R ∗ S := by
-  iintro HP HQ HR HS
+example [BI PROP] [BIAffine PROP] (P Q R S T: PROP) : T -∗ P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R ∗ S := by
+  iintro HT HP HQ HR HS
   iaesop
 
 example [BI PROP] (P Q R : PROP) : (P -∗ Q -∗ R) -∗ P -∗ Q -∗ R := by
   iintro H HP HQ
   iaesop
 
-example [BI PROP] [BIAffine PROP] (P Q R S : PROP) : P -∗ Q -∗ (P -∗ Q -∗ R) -∗ (P -∗ R) -∗ (Q -∗ S) -∗ (Q -∗ P -∗ S) -∗ (R ∗ S) := by
+example [BI PROP] [BIAffine PROP] (P Q R S : PROP) : P -∗ Q -∗ (P -∗ R) -∗ (P -∗ Q -∗ R)  -∗ (Q -∗ S) -∗ (Q -∗ P -∗ S) -∗ (R ∗ S) := by
   iintro HP HQ Hwand1 Hwand2 Hwand3 Hwand4
   iaesop
   -- isplitl [HP Hwand2]
@@ -68,8 +68,7 @@ example [BI PROP] (P Q : α → PROP) (a b : α) :
 
 /-- One more example for iaesop, context refill -/
 example [BI PROP] (P Q R : α → PROP) (a b c : α) (H : ⊢ ∀ x, ∀ y, ∀ z, P x -∗ Q y -∗ R z) : P a ∗ Q b ⊢ R c := by
-  iintro HPQ
-  icases HPQ with ⟨HP, HQ⟩
+  iintro ⟨HP, HQ⟩
   iaesop
   -- iapply H $$ [HP] [HQ]
   -- · iexact HP

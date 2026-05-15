@@ -3,6 +3,7 @@ module
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Tactics.Assumption
 public meta import Iris.ProofMode.Tactics.Apply
+public meta import Iris.ProofMode.Tactics.HaveCore
 public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
@@ -180,6 +181,32 @@ private def mkApplyHypProof
     mkApplyHypCoreProof hyps' p hypType target premises contexts
   return q(($removePf).1.trans $coreProof)
 
+private def mkLeanApplyHypProof
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
+    (hyps : Hyps bi e) (target : Q($prop)) (fvarId : FVarId)
+    (premises : Array IrisGoal) (contexts : Array (Array IrisHyp)) :
+    MetaM Q($e ⊢ $target) := do
+  let val := mkFVar fvarId
+  let ty ← instantiateMVars (← inferType val)
+  let ⟨newMVars, _, _⟩ ← forallMetaTelescope ty
+  let val := mkAppN val newMVars
+  let ty ← instantiateMVars (← inferType val)
+  if ! (← Meta.isProp ty) then
+    throwError "iaesop: finalization failed, Lean apply hypothesis is not a proposition"
+  have ty : Q(Prop) := ty
+  have val : Q($ty) := val
+  let hyp ← mkFreshExprMVarQ prop
+  let .some (inst, _) ← ProofMode.trySynthInstanceQ
+      q(AsEmpValid .into $ty .in $prop .in $bi $hyp)
+    | throwError
+        "iaesop: finalization failed, Lean apply hypothesis is not an Iris entailment"
+  let inst : Q(AsEmpValid .into $ty .in $prop .in $bi $hyp) := inst
+  let haveProof : Q($e ⊢ $e ∗ □ $hyp) :=
+    q(have_asEmpValid (P := $hyp) (Q := $e) (h1 := $inst) $val)
+  let coreProof ←
+    mkApplyHypCoreProof hyps q(true) hyp target premises contexts
+  return q(Entails.trans $haveProof $coreProof)
+
 private def findProvenRapp? (rrefs : Array RappRef) :
     SearchM Q (Option RappRef) := do
   for rref in rrefs do
@@ -200,16 +227,24 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
       let some irisGoal := parseIrisGoal? goalType
         | throwError "iaesop: finalization failed, parent goal is not an Iris goal"
       let proof ←
-        match rapp.consumedSpatialHyp? with
-        | none =>
-          let leafCount := (splitSepTargets irisGoal.goal).size
-          if leafCount != rapp.finalizedSpatialSplits.size then
-            throwError
-              "iaesop: finalization got {rapp.finalizedSpatialSplits.size} context parts for {leafCount} split goals"
-          mkSplitProof irisGoal.hyps irisGoal.goal rapp.finalizedSpatialSplits
-        | some applyHyp =>
-          mkApplyHypProof irisGoal.hyps irisGoal.goal applyHyp
+        match rapp.consumedLeanHyp? with
+        | some fvarId =>
+          mkLeanApplyHypProof irisGoal.hyps irisGoal.goal fvarId
             rapp.fullContextIrisSubgoals rapp.finalizedSpatialSplits
+        | none =>
+          if rapp.appliedRule.name.builder == RuleBuilder.iexact then
+            mkAssumptionProof irisGoal.hyps irisGoal.goal
+          else
+            match rapp.consumedSpatialHyp? with
+            | none =>
+              let leafCount := (splitSepTargets irisGoal.goal).size
+              if leafCount != rapp.finalizedSpatialSplits.size then
+                throwError
+                  "iaesop: finalization got {rapp.finalizedSpatialSplits.size} context parts for {leafCount} split goals"
+              mkSplitProof irisGoal.hyps irisGoal.goal rapp.finalizedSpatialSplits
+            | some applyHyp =>
+              mkApplyHypProof irisGoal.hyps irisGoal.goal applyHyp
+                rapp.fullContextIrisSubgoals rapp.finalizedSpatialSplits
       goal.assign proof
 
 private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
