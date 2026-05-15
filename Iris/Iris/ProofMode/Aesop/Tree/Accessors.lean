@@ -199,6 +199,10 @@ def rulesQueue (g : Goal) : RuleQueue :=
   g.elim.rulesQueue
 
 @[inline]
+def appendiedGoalId (g : Goal) : Array GoalId :=
+  g.elim.appendiedGoalId
+
+@[inline]
 def rappChildren? (g : Goal) : Option (Array RappRef) :=
   some g.children
 
@@ -277,6 +281,10 @@ def setRulesQueue (rulesQueue : RuleQueue) (g : Goal) : Goal :=
   g.modify fun g => { g with rulesQueue }
 
 @[inline]
+def setAppendiedGoalId (appendiedGoalId : Array GoalId) (g : Goal) : Goal :=
+  g.modify fun g => { g with appendiedGoalId }
+
+@[inline]
 def mvar (g : Goal) : MVarId :=
   g.preNormGoal
 
@@ -332,7 +340,7 @@ def parent (r : Rapp) : GoalRef :=
   r.elim.parent
 
 @[inline]
-def children (r : Rapp) : Array ObunRef :=
+def children (r : Rapp) : ObunRef :=
   r.elim.children
 
 @[inline]
@@ -356,16 +364,16 @@ def scriptSteps? (r : Rapp) : Option (Array Script.LazyStep) :=
   r.elim.scriptSteps?
 
 @[inline]
-def irisSubgoals (r : Rapp) : Array IrisGoal :=
-  r.elim.irisSubgoals
+def fullContextIrisSubgoals (r : Rapp) : Array IrisGoal :=
+  r.elim.fullContextIrisSubgoals
 
 @[inline]
-def irisContext (r : Rapp) : Array (Array IrisHyp) :=
-  r.elim.irisContext
+def consumedSpatialHyp? (r : Rapp) : Option IrisHyp :=
+  r.elim.consumedSpatialHyp?
 
--- @[inline]
--- def originalSubgoals (r : Rapp) : Array MVarId :=
---   r.elim.originalSubgoals
+@[inline]
+def finalizedSpatialSplits (r : Rapp) : Array (Array IrisHyp) :=
+  r.elim.finalizedSpatialSplits
 
 @[inline]
 def metaState (r : Rapp) : SavedState :=
@@ -388,7 +396,7 @@ def setParent (parent : GoalRef) (r : Rapp) : Rapp :=
   r.modify fun r => { r with parent }
 
 @[inline]
-def setChildren (children : Array ObunRef) (r : Rapp) : Rapp :=
+def setChildren (children : ObunRef) (r : Rapp) : Rapp :=
   r.modify fun r => { r with children }
 
 @[inline]
@@ -412,13 +420,31 @@ def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
     (r : Rapp) : Rapp :=
   r.modify fun r => { r with scriptSteps? }
 
--- @[inline]
--- def setOriginalSubgoals (originalSubgoals : Array MVarId) (r : Rapp) : Rapp :=
---   r.modify fun r => { r with originalSubgoals }
+@[inline]
+def setfullContextIrisSubgoals (fullContextIrisSubgoals : Array IrisGoal) (r : Rapp) : Rapp :=
+  r.modify λ r => { r with fullContextIrisSubgoals}
 
 @[inline]
-def setIrisContext (irisContext : Array (Array IrisHyp)) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with irisContext }
+def setFullContextIrisSubgoals
+    (fullContextIrisSubgoals : Array IrisGoal) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with fullContextIrisSubgoals }
+
+@[inline]
+def setconsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with consumedSpatialHyp? }
+
+@[inline]
+def setConsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with consumedSpatialHyp? }
+
+@[inline]
+def setfinalizedSpatialSplits (finalizedSpatialSplits : Array (Array IrisHyp)) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with finalizedSpatialSplits }
+
+@[inline]
+def setFinalizedSpatialSplits
+    (finalizedSpatialSplits : Array (Array IrisHyp)) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with finalizedSpatialSplits }
 
 @[inline]
 def setMetaState (metaState : SavedState) (r : Rapp) : Rapp :=

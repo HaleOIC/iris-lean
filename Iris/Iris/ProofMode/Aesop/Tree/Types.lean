@@ -101,6 +101,7 @@ end ObunId
 -/
 inductive NodeState
   | unknown
+  | locallySettled
   | proven
   | unprovable
   deriving Inhabited, BEq
@@ -110,6 +111,7 @@ namespace NodeState
 instance : ToString NodeState where
   toString
     | unknown => "unknown"
+    | locallySettled => "locallySettled"
     | proven => "proven"
     | unprovable => "unprovable"
 
@@ -125,8 +127,13 @@ def isUnprovable : NodeState → Bool
   | unprovable => true
   | _ => false
 
+def isLocallySettled : NodeState → Bool
+  | locallySettled => true
+  | _ => false
+
 def isIrrelevant : NodeState → Bool
   | proven => true
+  | locallySettled => false
   | unprovable => true
   | unknown => false
 
@@ -136,6 +143,7 @@ inductive GoalState
   | unknown
   | provenByRuleApplication (used : Array UsedIrisHyp)
   | provenByNormalization
+  | locallySettled
   | unprovable
   deriving Inhabited, BEq
 
@@ -146,6 +154,7 @@ instance : ToString GoalState where
     | unknown => "unknown"
     | provenByRuleApplication .. => "provenByRuleApplication"
     | provenByNormalization =>  "provenByNormalization"
+    | locallySettled => "locallySettled"
     | unprovable => "unprovable"
 
 def isProvenByRuleApplication : GoalState → Bool
@@ -169,10 +178,15 @@ def isUnknown : GoalState → Bool
   | unknown => true
   | _ => false
 
+def isLocallySettled : GoalState → Bool
+  | locallySettled => true
+  | _ => false
+
 def toNodeState : GoalState → NodeState
   | unknown => NodeState.unknown
   | provenByRuleApplication .. => NodeState.proven
   | provenByNormalization => NodeState.proven
+  | locallySettled => NodeState.locallySettled
   | unprovable => NodeState.unprovable
 
 def usedIrisHyps? : GoalState → Option (Array IrisHyp)

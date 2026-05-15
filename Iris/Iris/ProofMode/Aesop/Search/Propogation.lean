@@ -1,9 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Search.SearchM
-public meta import Iris.ProofMode.Aesop.Search.Expansion
-public meta import Iris.ProofMode.Tactics.Assumption
-public meta import Iris.ProofMode.Tactics.Split
+public meta import Iris.ProofMode.Aesop.Search.Types
 
 public meta section
 
@@ -14,12 +12,11 @@ open Iris.ProofMode
 
 variable {Q : Type} [Queue Q]
 
+-- Find the goal reference in this obligation bundle with the given goal ID.
 private def findGoalById (oref : ObunRef) (id : GoalId) :
     SearchM Q (Option GoalRef) := do
-  for gref in (← oref.get).goals do
-    if (← gref.get).id == id then
-      return some gref
-  return none
+  (← oref.get).goals.findM? λ gref => do
+    return (← gref.get).id == id
 
 private meta partial def collectUsedHyps (gref : GoalRef) : SearchM Q (Array IrisHyp) := do
   let g ← gref.get
@@ -66,31 +63,17 @@ private partial def collectGoalLineageIds (gref : GoalRef) :
   | .subgoal | .droppedMVar =>
     return #[g.id]
 
-private structure CopiedGoalInfo where
-  index : Nat
-  goal : MVarId
-  mvars : Std.HashSet MVarId
-  deriving Inhabited
-
--- Replace the Iris context entry at an index while preserving the array size.
-private def setIrisContextAt
-    (size : Nat) (ctx : Array (Array IrisHyp))
-    (i : Nat) (hyps : Array IrisHyp) : Array (Array IrisHyp) :=
-  (List.range size).foldl (init := #[]) λ acc j =>
-    let old := ctx[j]?.getD #[]
-    acc.push <| if j == i then hyps else old
-
 -- Store the used split context into the parent rule application.
 private def writeUsedHypsToRapp
     (rappRef : RappRef) (usedByIndex : Array (Nat × Array IrisHyp)) :
     SearchM Q Unit := do
   let rapp ← rappRef.get
-  let size := rapp.irisSubgoals.size
-  let irisContext :=
-    usedByIndex.foldl (init := rapp.irisContext) λ ctx (i, irisHyps) =>
-      setIrisContextAt size ctx i irisHyps
-  dbg_trace s!"iaesop.copy: finalized context split with used hyps by index: {usedByIndex.map (λ x => (x.1, x.2.size))}"
-  rappRef.modify λ r => r.setIrisContext irisContext
+  let size := rapp.fullContextIrisSubgoals.size
+  let spatialSplits :=
+    usedByIndex.foldl (init := #[]) λ ctx (i, irisHyps) =>
+      (List.range size).foldl (init := #[]) λ acc j =>
+        acc.push <| if i == j then irisHyps else ctx[j]?.getD #[]
+  rappRef.modify λ r => r.setfinalizedSpatialSplits spatialSplits
 
 -- Create copied metavariables for every uncovered split target.
 private def mkCopiedGoalInfos
@@ -99,10 +82,10 @@ private def mkCopiedGoalInfos
     (used : Array IrisHyp) :
     SearchM Q (Array CopiedGoalInfo × Meta.SavedState) := do
   -- Collect the remaing goal's index
-  let remaining ← (List.range rapp.irisSubgoals.size).foldlM
+  let remaining ← (List.range rapp.fullContextIrisSubgoals.size).foldlM
       (init := (#[] : Array (Nat × IrisGoal))) λ acc i => do
     if mask.contains i then return acc
-    match rapp.irisSubgoals[i]? with
+    match rapp.fullContextIrisSubgoals[i]? with
     | some irisGoal => return acc.push (i, irisGoal)
     | none => throwError "iaesop: internal error: missing split target index"
   if remaining.isEmpty then
@@ -154,6 +137,7 @@ private def appendCopiedGoalInfos
       addedInIteration := currentIteration
       lastExpandedInIteration := .zero
       rulesQueue := {}
+      appendiedGoalId := #[]
     }
   obunRef.modify λ o =>
     o.setGoals (o.goals ++ newGoalRefs)
@@ -178,10 +162,7 @@ private def appendCopiedGoalsFromProvenGoal (gref : GoalRef) : SearchM Q Unit :=
   appendCopiedGoalInfos g obunRef postState infos
 
 private def allGoalsProven (goals : Array GoalRef) : SearchM Q Bool := do
-  for gref in goals do
-    if !(← gref.get).state.isProven then
-      return false
-  return true
+  goals.allM λ gref => return (← gref.get).state.isProven
 
 mutual
 
@@ -198,8 +179,7 @@ meta partial def markRappIrrelevant (rref : RappRef) : SearchM Q Unit := do
   if r.isIrrelevant then
     return
   rref.modify λ r => r.setIsIrrelevant true
-  for oref in r.children do
-    markObunIrrelevant oref
+  markObunIrrelevant r.children
 
 meta partial def markObunIrrelevant (oref : ObunRef) : SearchM Q Unit := do
   let o ← oref.get
@@ -212,34 +192,25 @@ meta partial def markObunIrrelevant (oref : ObunRef) : SearchM Q Unit := do
 end
 
 private def markOtherObunsIrrelevant
-    (rappRef : RappRef) (keepObunRef : ObunRef) : SearchM Q Unit := do
-  let keepId := (← keepObunRef.get).id
-  let rapp ← rappRef.get
-  dbg_trace s!"iaesop.prune: keep obun {keepId} under rapp {rapp.id}"
-  for oref in rapp.children do
-    if (← oref.get).id != keepId then
-      markObunIrrelevant oref
+    (_rappRef : RappRef) (_keepObunRef : ObunRef) : SearchM Q Unit :=
+  return ()
 
 private def markOtherRappsIrrelevant
     (goalRef : GoalRef) (keepRappRef : RappRef) : SearchM Q Unit := do
   let keepId := (← keepRappRef.get).id
-  let goal ← goalRef.get
-  dbg_trace s!"iaesop.prune: keep rapp {keepId} under goal {goal.id}"
-  for rref in goal.children do
+  for rref in (← goalRef.get).children do
     if (← rref.get).id != keepId then
       markRappIrrelevant rref
 
 private def markOtherGoalsIrrelevant
     (obunRef : ObunRef) (keepIds : Array GoalId) : SearchM Q Unit := do
-  let obun ← obunRef.get
-  dbg_trace s!"iaesop.prune: keep goal lineage {keepIds.map (·.toNat)} under obun {obun.id}"
-  for gref in obun.goals do
+  for gref in (← obunRef.get).goals do
     if !keepIds.contains (← gref.get).id then
       markGoalIrrelevant gref
 
 mutual
 
-meta partial def propogateProvenFromGoal (gref : GoalRef) : SearchM Q Unit := do
+meta partial def propogateFromGoal (gref : GoalRef) : SearchM Q Unit := do
   let g ← gref.get
   if !g.state.isProven then
     throwError "iaesop: internal error : unproved goal should not be propagated"
@@ -253,7 +224,7 @@ meta partial def propogateProvenFromGoal (gref : GoalRef) : SearchM Q Unit := do
   if obun.kind.isPlain then
     if ← allGoalsProven obun.goals then
       obunRef.modify λ o => o.setState .proven
-      propogateProvenFromObun obunRef
+      propogateFromObun obunRef
     return
 
   -- If still goal left, generate new goals for expansion.
@@ -269,9 +240,9 @@ meta partial def propogateProvenFromGoal (gref : GoalRef) : SearchM Q Unit := do
   let some rappRef := obun.parent?
     | return
   writeUsedHypsToRapp rappRef usedByIndex
-  propogateProvenFromObun obunRef
+  propogateFromObun obunRef
 
-meta partial def propogateProvenFromObun (obunRef : ObunRef) : SearchM Q Unit := do
+meta partial def propogateFromObun (obunRef : ObunRef) : SearchM Q Unit := do
   let obun ← obunRef.get
   if !obun.state.isProven then
     throwError "iaesop: internal error : unproved obun should not be propogated"
@@ -283,19 +254,24 @@ meta partial def propogateProvenFromObun (obunRef : ObunRef) : SearchM Q Unit :=
     throwError "iaesop: internal error: rapp already be proven, can not be marked again"
   markOtherObunsIrrelevant rappRef obunRef
   rappRef.modify λ r => r.setState .proven
-  propogateProvenFromRapp rappRef
+  propogateFromRapp rappRef
 
-meta partial def propogateProvenFromRapp (rappRef : RappRef) : SearchM Q Unit := do
+meta partial def propogateFromRapp (rappRef : RappRef) : SearchM Q Unit := do
   let rapp ← rappRef.get
   if !rapp.state.isProven then
     throwError "iaesop: internal error: unproved rapp should not be propagated"
 
-  let used := rapp.irisContext.foldl (init := #[]) λ acc hyps => acc ++ hyps
+  let used :=
+    rapp.finalizedSpatialSplits.foldl
+      (init := rapp.consumedSpatialHyp?.toArray) λ acc hyps => acc ++ hyps
   let parentRef := rapp.parent
   markOtherRappsIrrelevant parentRef rappRef
   parentRef.modify λ g => g.setState (.provenByRuleApplication used)
-  propogateProvenFromGoal parentRef
+  propogateFromGoal parentRef
 
 end
+
+meta partial def propogateProvenFromGoal (gref : GoalRef) : SearchM Q Unit :=
+  propogateFromGoal gref
 
 end Search

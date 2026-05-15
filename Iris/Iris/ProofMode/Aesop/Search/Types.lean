@@ -22,4 +22,10 @@ protected def isSuccessful
 
 end RuleResult
 
+structure CopiedGoalInfo where
+  index : Nat
+  goal : MVarId
+  mvars : Std.HashSet MVarId
+  deriving Inhabited
+
 end Aesop

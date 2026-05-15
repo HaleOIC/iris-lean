@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Search.SearchM
+public meta import Iris.ProofMode.Aesop.Search.Expansion
 public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Finalization
 

@@ -2,6 +2,7 @@ module
 
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Tactics.Assumption
+public meta import Iris.ProofMode.Tactics.Apply
 public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
@@ -39,7 +40,7 @@ private def collectIVars (contexts : Array (Array IrisHyp)) : Array IVarId :=
   contexts.foldl (init := #[]) λ ivars hyps =>
     hyps.foldl (init := ivars) λ ivars hyp => ivars.push hyp.ivar
 
-private def mkAssumptionProof
+private def mkDirectAssumptionProof
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
     (hyps : Hyps bi e) (target : Q($prop)) :
     MetaM Q($e ⊢ $target) := do
@@ -56,6 +57,29 @@ private def mkAssumptionProof
     | throwError
         "iaesop: finalization failed, unused context is not affine and target is not absorbing"
   return q(Iris.ProofMode.assumption (Q := $target) $pf)
+
+private partial def mkAssumptionProof
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
+    (hyps : Hyps bi e) (target : Q($prop)) :
+    MetaM Q($e ⊢ $target) := do
+  try
+    mkDirectAssumptionProof hyps target
+  catch _ =>
+    let some ⟨(inst, premise), e', hyps', out, hypType, p, _, removePf⟩ ←
+        hyps.removeG true fun _ _ p hypType => do
+          let premise ← mkFreshExprMVarQ prop
+          let .some (inst, _) ← ProofMode.trySynthInstanceQ
+              q(IntoWand $p false $hypType .out $premise .in $target)
+            | return none
+          return some (inst, premise)
+      | throwError "iaesop: finalization failed, no matching assumption for {target}"
+    have : $out =Q iprop(□?$p $hypType) := ⟨⟩
+    let premiseProof ← mkAssumptionProof hyps' premise
+    let inst' : Q(IntoWand $p false $hypType .out $premise .in $target) := inst
+    return q(($removePf).1.trans (Iris.ProofMode.apply
+      (P := $e') (Q := $hypType) (Q1 := $premise) (R := $target)
+      (h2 := $inst')
+      $premiseProof))
 
 private partial def mkSplitProof
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
@@ -86,6 +110,76 @@ private partial def mkSplitProof
     let rhsProof ← mkSplitProof rhsHyps rhsTarget rhsContexts
     return q(sep_split (Q := $target) $pf $lhsProof $rhsProof)
 
+private partial def mkApplyHypCoreProof
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
+    (hyps : Hyps bi e) (p : Q(Bool)) (hypType : Q($prop))
+    (target : Q($prop)) (premises : Array IrisGoal)
+    (contexts : Array (Array IrisHyp)) :
+    MetaM Q($e ∗ □?$p $hypType ⊢ $target) := do
+  if premises.size != contexts.size then
+    throwError
+      "iaesop: finalization got {contexts.size} context parts for {premises.size} apply premises"
+  let some firstPremise := premises[0]?
+    | throwError "iaesop: finalization cannot apply a hypothesis without premises"
+  let some firstContext := contexts[0]?
+    | throwError "iaesop: finalization cannot apply a hypothesis without premise context"
+  let premiseTargetExpr ← instantiateMVars firstPremise.goal
+  let some premiseTarget ← checkTypeQ premiseTargetExpr prop
+    | throwError "iaesop: finalization failed, apply premise has wrong type"
+  if premises.size == 1 then
+    let tcPremise ← mkFreshExprMVarQ prop
+    let .some (inst, _) ← ProofMode.trySynthInstanceQ
+        q(IntoWand $p false $hypType .out $tcPremise .in $target)
+      | throwError "iaesop: finalization failed, selected hypothesis cannot prove target"
+    unless ← isDefEq tcPremise premiseTarget do
+      throwError "iaesop: finalization wand premise does not match generated subgoal"
+    let premiseProof : Q($e ⊢ $tcPremise) ←
+      mkSplitProof hyps tcPremise #[firstContext]
+    let _ : Q(IntoWand $p false $hypType .out $tcPremise .in $target) := inst
+    return q(Iris.ProofMode.apply
+      (P := $e) (Q := $hypType) (Q1 := $tcPremise) (R := $target)
+      (h2 := $inst)
+      $premiseProof)
+
+  let firstIVars := firstContext.map (·.ivar)
+  let ⟨eRemaining, ePremise, remainingHyps, premiseHyps, splitPf⟩ :=
+    hyps.split bi fun _ ivar => firstIVars.contains ivar
+  let tcPremise ← mkFreshExprMVarQ prop
+  let restTarget ← mkFreshExprMVarQ prop
+  let .some (inst, _) ← ProofMode.trySynthInstanceQ
+      q(IntoWand $p false $hypType .out $tcPremise .out $restTarget)
+    | throwError "iaesop: finalization failed, selected hypothesis has incompatible premise"
+  unless ← isDefEq tcPremise premiseTarget do
+    throwError "iaesop: finalization wand premise does not match generated subgoal"
+  let premiseProof : Q($ePremise ⊢ $tcPremise) ←
+    mkSplitProof premiseHyps tcPremise #[firstContext]
+  let _ : Q(IntoWand $p false $hypType .out $tcPremise .out $restTarget) := inst
+  let step : Q($e ∗ □?$p $hypType ⊢ $eRemaining ∗ $restTarget) :=
+    q(specialize_wand_subgoal
+      (Q := $hypType) (P1 := $tcPremise)
+      (inst := $inst)
+      $restTarget (.rfl) $splitPf $premiseProof)
+  let restPremises := premises.extract 1 premises.size
+  let restContexts := contexts.extract 1 contexts.size
+  let restProof ←
+    mkApplyHypCoreProof remainingHyps q(false) restTarget target restPremises restContexts
+  return q(Entails.trans $step $restProof)
+
+private def mkApplyHypProof
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
+    (hyps : Hyps bi e) (target : Q($prop)) (applyHyp : IrisHyp)
+    (premises : Array IrisGoal) (contexts : Array (Array IrisHyp)) :
+    MetaM Q($e ⊢ $target) := do
+  let some ⟨_, _, hyps', out, hypType, p, _, removePf⟩ ←
+      hyps.removeG true fun _ ivar _ _ => do
+        if ivar == applyHyp.ivar then return some ()
+        else return none
+    | throwError "iaesop: finalization failed, selected apply hypothesis disappeared"
+  have : $out =Q iprop(□?$p $hypType) := ⟨⟩
+  let coreProof ←
+    mkApplyHypCoreProof hyps' p hypType target premises contexts
+  return q(($removePf).1.trans $coreProof)
+
 private def findProvenRapp? (rrefs : Array RappRef) :
     SearchM Q (Option RappRef) := do
   for rref in rrefs do
@@ -94,7 +188,7 @@ private def findProvenRapp? (rrefs : Array RappRef) :
       return some rref
   return none
 
-private def assignSplitProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
+private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
   let parent ← rapp.parent.get
   let goal : MVarId := Goal.currentMVar parent
   let assigned ← liftM (show MetaM Bool from goal.isAssignedOrDelayedAssigned)
@@ -105,11 +199,17 @@ private def assignSplitProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
       let goalType ← instantiateMVars (← goal.getType)
       let some irisGoal := parseIrisGoal? goalType
         | throwError "iaesop: finalization failed, parent goal is not an Iris goal"
-      let leafCount := (splitSepTargets irisGoal.goal).size
-      if leafCount != rapp.irisContext.size then
-        throwError
-          "iaesop: finalization got {rapp.irisContext.size} context parts for {leafCount} split goals"
-      let proof ← mkSplitProof irisGoal.hyps irisGoal.goal rapp.irisContext
+      let proof ←
+        match rapp.consumedSpatialHyp? with
+        | none =>
+          let leafCount := (splitSepTargets irisGoal.goal).size
+          if leafCount != rapp.finalizedSpatialSplits.size then
+            throwError
+              "iaesop: finalization got {rapp.finalizedSpatialSplits.size} context parts for {leafCount} split goals"
+          mkSplitProof irisGoal.hyps irisGoal.goal rapp.finalizedSpatialSplits
+        | some applyHyp =>
+          mkApplyHypProof irisGoal.hyps irisGoal.goal applyHyp
+            rapp.fullContextIrisSubgoals rapp.finalizedSpatialSplits
       goal.assign proof
 
 private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
@@ -123,7 +223,7 @@ private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
   match ← findProvenRapp? goalNode.children with
   | some rref =>
     let rapp ← rref.get
-    assignSplitProofFromRapp rapp
+    assignProofFromRapp rapp
   | none =>
     liftM do
       MVarId.withContext goal do

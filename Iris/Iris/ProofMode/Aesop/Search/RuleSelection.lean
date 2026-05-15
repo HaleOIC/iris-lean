@@ -11,6 +11,7 @@ open Lean.Meta
 
 variable {Q : Type} [Queue Q]
 
+-- [TODO]: Move this to rule folder associated with how to run the rules
 def identityRuleId : RuleId where
   name := `identity
   kind := .forward
@@ -43,10 +44,27 @@ def iexactRule : Rule RegularRule where
   indexingMode := .unindexed
   payload := RegularRule.mkSafe iexactRuleName
 
+def applyHypsRuleId : RuleId where
+  name := `applyHyps
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def applyHypsRuleName : RuleName where
+  name := `applyHyps
+  phase := .safe
+  builder := .applyHyps
+
+def applyHypsRule : Rule RegularRule where
+  id := applyHypsRuleId
+  indexingMode := .unindexed
+  payload := RegularRule.mkSafe applyHypsRuleName
+
 def builtinRuleIndex : Index RegularRule :=
   ({} : Index RegularRule)
     |>.add identityRule identityRule.indexingMode
     |>.add iexactRule iexactRule.indexingMode
+    |>.add applyHypsRule applyHypsRule.indexingMode
 
 def selectRulesFromIndex (index : Index RegularRule) (parentRef : GoalRef) :
     SearchM Q RuleQueue := do

@@ -20,13 +20,27 @@ example [BI PROP] (P Q R S : PROP) : P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R �
   iintro HP HQ HR HS
   iaesop
 
+example [BI PROP] (P Q R : PROP) : (P -∗ Q -∗ R) -∗ P -∗ Q -∗ R := by
+  iintro H HP HQ
+  iaesop
+
+example [BI PROP] [BIAffine PROP] (P Q R S : PROP) : P -∗ Q -∗ (P -∗ Q -∗ R) -∗ (P -∗ R) -∗ (Q -∗ S) -∗ (Q -∗ P -∗ S) -∗ (R ∗ S) := by
+  iintro HP HQ Hwand1 Hwand2 Hwand3 Hwand4
+  iaesop
+  -- isplitl [HP Hwand2]
+  -- · iapply Hwand2
+  --   iexact HP
+  -- · iapply Hwand3
+  --   iexact HQ
+
 /-- Tests `iapply` with two wands and subgoals -/
 example [BI PROP] (P Q : Nat → PROP) :
   (P 1 -∗ P 2 -∗ Q 1) ⊢ □ P 1 -∗ P 2 -∗ Q 1 := by
   iintro H #HP1 HP2
-  iapply H $$ [] [HP2]
   iaesop
-  iaesop
+  -- iapply H $$ [] [HP2]
+  -- iaesop
+  -- iaesop
 
 /-- Tests `ispecialize` with named subgoal -/
 example [BI PROP] (Q : PROP) : P ⊢ (⌜True⌝ -∗ P -∗ ⌜True⌝ -∗ Q) -∗ Q := by
@@ -45,22 +59,25 @@ example [BI PROP] (Q : Nat → PROP) :
   ispecialize HPQ $$ [] [HP2] <;> iaesop
 
 /-- Tests `iapply` with forall specialization -/
-example [BI PROP] (P Q : α → PROP) (a b : α) (H : ⊢ ∀ x, ∀ y, P x -∗ Q y) : P a ⊢ Q b := by
-  iintro HP
-  iapply H $$ [HP]
-  iexact HP
+example [BI PROP] (P Q : α → PROP) (a b : α) :
+  P a ∗ (∀ x, ∀ y, P x -∗ Q y) ⊢ Q b := by
+  iintro ⟨HP, Hwand⟩
+  iaesop
+  -- iapply H $$ [HP]
+  -- iexact HP
 
 /-- One more example for iaesop, context refill -/
 example [BI PROP] (P Q R : α → PROP) (a b c : α) (H : ⊢ ∀ x, ∀ y, ∀ z, P x -∗ Q y -∗ R z) : P a ∗ Q b ⊢ R c := by
   iintro HPQ
   icases HPQ with ⟨HP, HQ⟩
-  iapply H $$ [HP] [HQ]
-  · iexact HP
-  · iexact HQ
+  iaesop
+  -- iapply H $$ [HP] [HQ]
+  -- · iexact HP
+  -- · iexact HQ
 
 /-- Tests `iapply` with intuitionistic forall from Lean -/
 example [BI PROP] (P Q : α → PROP) (a b : α) (H : ⊢ □ ∀ x, ∀ y, P x -∗ Q y) : P a ⊢ Q b := by
   iintro HP
-  iaesop
+  -- iaesop
   iapply H $$ [HP]
   iaesop

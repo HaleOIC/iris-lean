@@ -12,6 +12,7 @@ open Lean
 
 inductive RuleBuilder where
   | identity
+  | applyHyps
   | tactic
   | iapply
   | iintro
@@ -28,6 +29,7 @@ namespace RuleBuilder
 instance : ToString RuleBuilder where
   toString
     | identity => "identity"
+    | applyHyps => "applyHyps"
     | tactic => "tactic"
     | iapply => "iapply"
     | iintro => "iintro"

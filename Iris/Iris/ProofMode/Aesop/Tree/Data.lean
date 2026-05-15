@@ -34,6 +34,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   lastExpandedInIteration : Iteration
 
   rulesQueue : RuleQueue
+  appendiedGoalId : Array GoalId
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where
@@ -44,16 +45,20 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
-  kind : ObunKind
-  scriptSteps? : Option (Array Script.LazyStep)
   metaState? : Option SavedState
+  scriptSteps? : Option (Array Script.LazyStep)
+
+  /- Iris context-management data -/
+
+  /-- Indicates whether this obligation bundle uses context-management mode. -/
+  kind : ObunKind
 
   deriving Nonempty
 
 structure RappData (GoalRef ObunRef : Type) : Type where
   id : RappId
   parent : GoalRef
-  children : Array ObunRef
+  children : ObunRef
 
   state : NodeState
   isIrrelevant : Bool
@@ -62,24 +67,24 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   successProbability : Percent
   scriptSteps? : Option (Array Script.LazyStep)
 
-  -- [Note] we drop this field since rapp does not always have result in MVarId
-  -- originalSubgoals : Array MVarId
-  -- since we may not fillin the context split cases for each branch
-  irisSubgoals : Array IrisGoal
+  /- ### Iris context-management data -/
 
-  -- [TODO]:
-  irisContext : Array (Array IrisHyp)
+  /- Full-context Iris subgoal templates produced by this rule application -/
+  fullContextIrisSubgoals : Array IrisGoal
+  /- Spatial Iris hypothesis consumed by this rule application, if any -/
+  consumedSpatialHyp? : Option IrisHyp
+  /- Finalized spatial-context split assignments, ordered by split case -/
+  finalizedSpatialSplits : Array (Array IrisHyp)
 
+  /- ### Lean context-related data -/
+
+  /- Meta state immediately after the rule application succeeds. -/
   metaState : SavedState
-    -- This is the state *after* the rule was successfully applied, so the goal
-    -- mvar is assigned in this state.
+  /- Expression metavariables introduced by this rule application. -/
   introducedMVars : Std.HashSet MVarId
-    -- Unassigned expression mvars introduced by this rapp. These are exactly
-    -- the unassigned expr mvars that are declared in `metaState`, but not in
-    -- the meta state of the parent rapp of `parent`.
+  /- Existing expression metavariables assigned by this rule application. -/
   assignedMVars : Std.HashSet MVarId
-    -- Expression mvars that were previously unassigned but were assigned by
-    -- this rapp. These are exactly the expr mvars that (a) are declared and
-    -- unassigned in the meta state of the parent rapp of `parent` and (b) are
-    -- assigned in `metaState`.
+
   deriving Nonempty
+
+end Aesop

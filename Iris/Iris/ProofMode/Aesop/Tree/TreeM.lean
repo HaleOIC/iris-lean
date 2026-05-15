@@ -32,7 +32,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     state := .unknown
     kind := .plain
     scriptSteps? := none
-    metaState? := rootMetaState
+    metaState? := some rootMetaState
   }
   let rootGoalRef ← IO.mkRef $ Goal.mk {
     id := .zero
@@ -52,6 +52,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     addedInIteration := 1
     lastExpandedInIteration := 1
     rulesQueue := {}
+    appendiedGoalId := #[]
   }
 
   -- Patch Obun's goals
