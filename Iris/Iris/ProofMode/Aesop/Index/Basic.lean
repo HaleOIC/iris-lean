@@ -1,7 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Index.Types
-public meta import Iris.ProofMode.Aesop.Rule.Basic
+public meta import Iris.ProofMode.Aesop.Rule.Types.Rule
 
 public meta section
 

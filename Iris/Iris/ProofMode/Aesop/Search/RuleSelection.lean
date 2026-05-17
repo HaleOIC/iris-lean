@@ -13,7 +13,7 @@ open Lean.Meta
 
 variable {Q : Type} [Queue Q]
 
-def selectRulesFromIndex (index : Index RegularRule) (parentRef : GoalRef) :
+def selectRulesFromIndex (index : Index RuleInfo) (parentRef : GoalRef) :
     SearchM Q RuleQueue := do
   let parent ← parentRef.get
   let goal := parent.normalizationState.normalizedGoal?.getD parent.preNormGoal

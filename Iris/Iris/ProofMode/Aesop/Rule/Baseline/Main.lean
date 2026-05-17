@@ -12,7 +12,7 @@ namespace Iris.ProofMode.Aesop
 Extend this file with baseline-specific rules and add them to
 `baselineRuleIndex` below.
 -/
-def baselineRuleIndex : Index RegularRule :=
-  ({} : Index RegularRule)
+def baselineRuleIndex : Index RuleInfo :=
+  ({} : Index RuleInfo)
 
 end Iris.ProofMode.Aesop

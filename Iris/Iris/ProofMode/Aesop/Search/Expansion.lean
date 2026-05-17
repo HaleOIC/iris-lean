@@ -1,11 +1,5 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IMod
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IModIntro
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IExact
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IPureIntro
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.Identity
 public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
@@ -16,27 +10,12 @@ namespace Iris.ProofMode.Aesop
 
 variable {Q : Type} [Queue Q]
 
-private def runRuleSpecs (parentRef : GoalRef) (matchResult : RuleMatch) :
-    SearchM Q (Array RappSpec) := do
-  if matchResult.rule.id == identityRuleId then
-    Rule.Builtin.Identity.run parentRef matchResult
-  else if matchResult.rule.id == iexactRuleId then
-    Rule.Builtin.IExact.run parentRef matchResult
-  else if matchResult.rule.id == applyHypsRuleId then
-    Rule.Builtin.ApplyHyps.run parentRef matchResult
-  else if matchResult.rule.id == ipureIntroRuleId then
-    Rule.Builtin.IPureIntro.run parentRef matchResult
-  else if matchResult.rule.id == imodIntroRuleId then
-    Rule.Builtin.IModIntro.run parentRef matchResult
-  else if matchResult.rule.id == imodRuleId then
-    Rule.Builtin.IMod.run parentRef matchResult
-  else
-    return #[]
-
 private def runRule (parentRef : GoalRef) (matchResult : RuleMatch) :
     SearchM Q RuleResult := do
-  let specs ← runRuleSpecs parentRef matchResult
-  addRappSpecs parentRef matchResult specs
+  let some input ← mkRuleInput (toString matchResult.rule.id) parentRef matchResult
+    | return .failed
+  let output ← RuleRunnerDescr.ofInfo input.matchResult.rule.info |>.run input
+  addRuleOutput input output
 
 private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult := do
   let ruleCandidates ← selectRules parentRef

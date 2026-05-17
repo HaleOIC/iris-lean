@@ -65,7 +65,7 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
-  appliedRule : RegularRule
+  appliedRule : RuleInfo
   successProbability : Percent
   scriptSteps? : Option (Array Script.LazyStep)
 

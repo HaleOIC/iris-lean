@@ -1,11 +1,29 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Index.Query
-public meta import Iris.ProofMode.Aesop.Rule.Common
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IMod
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IModIntro
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IExact
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IPureIntro
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.Identity
 
 public meta section
 
 namespace Iris.ProofMode.Aesop
+
+namespace RuleRunnerDescr
+
+def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
+  | .identity => Rule.Builtin.Identity.run
+  | .iexact => Rule.Builtin.IExact.run
+  | .applyHyps => Rule.Builtin.ApplyHyps.run
+  | .ipureIntro => Rule.Builtin.IPureIntro.run
+  | .imodIntro => Rule.Builtin.IModIntro.run
+  | .imod => Rule.Builtin.IMod.run
+  | .custom => fun _ => return {}
+
+end RuleRunnerDescr
 
 def identityRuleId : RuleId where
   name := `identity
@@ -13,15 +31,10 @@ def identityRuleId : RuleId where
   phase := .safe
   scope := .global
 
-def identityRuleName : RuleName where
-  name := `identity
-  phase := .safe
-  builder := .identity
-
-def identityRule : Rule RegularRule where
+def identityRule : Rule RuleInfo where
   id := identityRuleId
   indexingMode := .unindexed
-  payload := RegularRule.mkSafe identityRuleName
+  info := RuleInfo.ofBuilder .identity
 
 def iexactRuleId : RuleId where
   name := `iexact
@@ -29,15 +42,10 @@ def iexactRuleId : RuleId where
   phase := .safe
   scope := .global
 
-def iexactRuleName : RuleName where
-  name := `iexact
-  phase := .safe
-  builder := .iexact
-
-def iexactRule : Rule RegularRule where
+def iexactRule : Rule RuleInfo where
   id := iexactRuleId
   indexingMode := .unindexed
-  payload := RegularRule.mkSafe iexactRuleName
+  info := RuleInfo.ofBuilder .iexact
 
 def applyHypsRuleId : RuleId where
   name := `applyHyps
@@ -45,15 +53,10 @@ def applyHypsRuleId : RuleId where
   phase := .safe
   scope := .global
 
-def applyHypsRuleName : RuleName where
-  name := `applyHyps
-  phase := .safe
-  builder := .applyHyps
-
-def applyHypsRule : Rule RegularRule where
+def applyHypsRule : Rule RuleInfo where
   id := applyHypsRuleId
   indexingMode := .unindexed
-  payload := RegularRule.mkSafe applyHypsRuleName
+  info := RuleInfo.ofBuilder .applyHyps
 
 def ipureIntroRuleId : RuleId where
   name := `ipure_intro
@@ -61,15 +64,10 @@ def ipureIntroRuleId : RuleId where
   phase := .safe
   scope := .global
 
-def ipureIntroRuleName : RuleName where
-  name := `ipure_intro
-  phase := .safe
-  builder := .ipureIntro
-
-def ipureIntroRule : Rule RegularRule where
+def ipureIntroRule : Rule RuleInfo where
   id := ipureIntroRuleId
   indexingMode := .unindexed
-  payload := RegularRule.mkSafe ipureIntroRuleName
+  info := RuleInfo.ofBuilder .ipureIntro
 
 def imodIntroRuleId : RuleId where
   name := `imodintro
@@ -77,15 +75,10 @@ def imodIntroRuleId : RuleId where
   phase := .safe
   scope := .global
 
-def imodIntroRuleName : RuleName where
-  name := `imodintro
-  phase := .safe
-  builder := .imodintro
-
-def imodIntroRule : Rule RegularRule where
+def imodIntroRule : Rule RuleInfo where
   id := imodIntroRuleId
   indexingMode := .unindexed
-  payload := RegularRule.mkSafe imodIntroRuleName
+  info := RuleInfo.ofBuilder .imodintro
 
 def imodRuleId : RuleId where
   name := `imod
@@ -93,18 +86,13 @@ def imodRuleId : RuleId where
   phase := .safe
   scope := .global
 
-def imodRuleName : RuleName where
-  name := `imod
-  phase := .safe
-  builder := .imod
-
-def imodRule : Rule RegularRule where
+def imodRule : Rule RuleInfo where
   id := imodRuleId
   indexingMode := .unindexed
-  payload := RegularRule.mkSafe imodRuleName
+  info := RuleInfo.ofBuilder .imod
 
-def builtinRuleIndex : Index RegularRule :=
-  ({} : Index RegularRule)
+def builtinRuleIndex : Index RuleInfo :=
+  ({} : Index RuleInfo)
     |>.add identityRule identityRule.indexingMode
     |>.add iexactRule iexactRule.indexingMode
     |>.add applyHypsRule applyHypsRule.indexingMode

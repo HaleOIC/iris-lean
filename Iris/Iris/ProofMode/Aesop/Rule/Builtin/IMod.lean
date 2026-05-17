@@ -63,10 +63,9 @@ private def runOnHyp (goal : MVarId) (hyp : ModHyp) :
     liftM <| preState.restore
     return none
 
-def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
-    SearchM Q (Array RappSpec) := do
-  let parent ← parentRef.get
-  let (goal, state) ← normalizedGoalAndState "imod" parent
+def run (input : RuleInput) : SearchM Q RuleOutput := do
+  let goal := input.goal
+  let state := input.state
   let expansions ← liftM (show ProofModeM (Array (ChildGoalSpec × SavedState)) from do
     liftM <| state.restore
     goal.withContext do
@@ -79,7 +78,7 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
         if let some expansion ← runOnHyp goal hyp then
           expansions := expansions.push expansion
       return expansions)
-  expansions.mapM λ (child, postState) => do
+  let specs ← expansions.mapM λ (child, postState) => do
     return {
       rappState := .unknown
       obunState := .unknown
@@ -90,5 +89,6 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
       finalizedSpatialSplits := #[]
       metaState := postState
     }
+  return RuleOutput.ofRappSpecs specs
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IMod

@@ -42,10 +42,9 @@ private def tryCloseByLocalAssumption (goal : MVarId) : MetaM Bool := do
       restoreState preState
       return false
 
-def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
-    SearchM Q (Array RappSpec) := do
-  let parent ← parentRef.get
-  let (goal, state) ← normalizedGoalAndState "ipure_intro" parent
+def run (input : RuleInput) : SearchM Q RuleOutput := do
+  let goal := input.goal
+  let state := input.state
   let result? ← liftM (show ProofModeM (Option SavedState) from do
     liftM <| state.restore
     let prePMState ← getThe ProofModeM.State
@@ -80,8 +79,8 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
       liftM <| state.restore
       return none)
   let some postState := result?
-    | return #[]
-  return #[{
+    | return {}
+  return RuleOutput.single {
     rappState := .proven
     obunState := .proven
     obunKind := .plain
@@ -91,6 +90,6 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
     finalizedSpatialSplits := #[]
     metaState := postState
     parentState? := some (.provenByRuleApplication #[])
-  }]
+  }
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IPureIntro

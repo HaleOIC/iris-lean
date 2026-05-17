@@ -2,14 +2,14 @@ module
 
 public import Batteries.Data.Array.Basic
 public meta import Iris.ProofMode.Aesop.Index.Types
-public import Iris.ProofMode.Aesop.Rule.Basic
-public import Iris.ProofMode.Aesop.Rule.Data
+public meta import Iris.ProofMode.Aesop.Rule.Types.Rule
+public import Iris.ProofMode.Aesop.Rule.Types.Info
 
 public section
 
 namespace Iris.ProofMode.Aesop
 
-abbrev RuleMatch := IndexMatchResult (Rule RegularRule)
+abbrev RuleMatch := IndexMatchResult (Rule RuleInfo)
 
 abbrev RuleQueue := Subarray RuleMatch
 

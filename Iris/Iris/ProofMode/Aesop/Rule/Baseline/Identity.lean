@@ -6,8 +6,8 @@ public meta section
 
 namespace Iris.ProofMode.Aesop.Rule.Builtin.Identity
 
-open Lean Meta Std
 open Iris.BI
+open Lean Meta Std
 open Iris.ProofMode
 open Iris.ProofMode.Aesop
 

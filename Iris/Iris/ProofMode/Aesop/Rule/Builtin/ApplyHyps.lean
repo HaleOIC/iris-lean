@@ -188,18 +188,17 @@ private def mkApplyHypChildren (goal : MVarId) :
         }
       return (candidate, children)
 
-def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
-    SearchM Q (Array RappSpec) := do
-  let parent ← parentRef.get
-  let (goal, state) ← normalizedGoalAndState "applyHyps" parent
+def run (input : RuleInput) : SearchM Q RuleOutput := do
+  let goal := input.goal
+  let state := input.state
   let (some expansions, postState) ← liftM do
       restoreState state
       let children? ← mkApplyHypChildren goal
       let postState ← saveState
       return (children?, postState)
-    | return #[]
+    | return {}
 
-  expansions.mapM λ (candidate, children) => do
+  let specs ← expansions.mapM λ (candidate, children) => do
     dbg_trace s!"applyHyps selected {candidate.source.name} and generated {children.size} goals"
     for child in children do
       let targetFmt ← liftM <| ppExpr child.irisGoal.goal
@@ -215,5 +214,6 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
       finalizedSpatialSplits := children.map (λ _ => #[])
       metaState := postState
     }
+  return RuleOutput.ofRappSpecs specs
 
 end Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps

@@ -18,21 +18,10 @@ private structure IExactResult where
   used : Array UsedIrisHyp
   postState : SavedState
 
-def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
-    SearchM Q (Array RappSpec) := do
-  let parent ← parentRef.get
-  let some goal := parent.normalizationState.normalizedGoal?
-    | return #[]
-  let normState :=
-    match parent.normalizationState with
-    | .normal _ postState .. => postState
-    | _ => parent.preNormState
-  let managedObun? ← findManagedObun? parentRef
-  let isManaged := managedObun?.isSome
-  let mut state := normState
-  if let some obunRef := managedObun? then
-    let obun ← obunRef.get
-    state := obun.metaState?.getD normState
+def run (input : RuleInput) : SearchM Q RuleOutput := do
+  let goal := input.goal
+  let isManaged := input.isManaged
+  let state := input.stateForManaged
   let result? : Option IExactResult ← liftM do
       restoreState state
       goal.withContext do
@@ -64,19 +53,21 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
         let result : IExactResult := { used, postState }
         return some result
   let some result := result?
-    | return #[]
-  if let some obunRef := managedObun? then
-    obunRef.modify λ o => o.setMetaState? (some result.postState)
-  return #[{
-    rappState := .proven
-    obunState := .proven
-    obunKind := .plain
-    childGoals := #[]
-    fullContextIrisSubgoals := #[]
-    consumedSpatialHyp? := none
-    finalizedSpatialSplits := #[]
-    metaState := result.postState
-    parentState? := some (.provenByRuleApplication result.used)
-  }]
+    | return {}
+  return RuleOutput.singleEffect {
+    rappSpec := {
+      rappState := .proven
+      obunState := .proven
+      obunKind := .plain
+      childGoals := #[]
+      fullContextIrisSubgoals := #[]
+      consumedSpatialHyp? := none
+      finalizedSpatialSplits := #[]
+      metaState := result.postState
+      parentState? := some (.provenByRuleApplication result.used)
+    }
+    managedObunPostState? :=
+      if input.isManaged then some result.postState else none
+  }
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IExact

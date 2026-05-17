@@ -39,16 +39,15 @@ private def runCore (goal : MVarId) :
     liftM <| preState.restore
     return none
 
-def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
-    SearchM Q (Array RappSpec) := do
-  let parent ← parentRef.get
-  let (goal, state) ← normalizedGoalAndState "imodintro" parent
+def run (input : RuleInput) : SearchM Q RuleOutput := do
+  let goal := input.goal
+  let state := input.state
   let result? ← liftM (show ProofModeM (Option (ChildGoalSpec × SavedState)) from do
     liftM <| state.restore
     runCore goal)
   let some (child, postState) := result?
-    | return #[]
-  return #[{
+    | return {}
+  return RuleOutput.single {
     rappState := .unknown
     obunState := .unknown
     obunKind := .plain
@@ -57,6 +56,6 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
     consumedSpatialHyp? := none
     finalizedSpatialSplits := #[]
     metaState := postState
-  }]
+  }
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IModIntro

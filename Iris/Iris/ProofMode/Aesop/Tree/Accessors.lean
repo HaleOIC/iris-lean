@@ -352,7 +352,7 @@ def isIrrelevant (r : Rapp) : Bool :=
   r.elim.isIrrelevant
 
 @[inline]
-def appliedRule (r : Rapp) : RegularRule :=
+def appliedRule (r : Rapp) : RuleInfo :=
   r.elim.appliedRule
 
 @[inline]
@@ -412,7 +412,7 @@ def setIsIrrelevant (isIrrelevant : Bool) (r : Rapp) : Rapp :=
   r.modify fun r => { r with isIrrelevant }
 
 @[inline]
-def setAppliedRule (appliedRule : RegularRule) (r : Rapp) : Rapp :=
+def setAppliedRule (appliedRule : RuleInfo) (r : Rapp) : Rapp :=
   r.modify fun r => { r with appliedRule }
 
 @[inline]

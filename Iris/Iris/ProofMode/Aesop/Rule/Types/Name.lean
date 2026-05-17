@@ -97,9 +97,3 @@ instance : ToString DisplayRuleId where
     | normUnfold => "<norm unfold>"
 
 end DisplayRuleId
-
-
-
--- structure Rule (α : Type) where
---   id : RuleId
---   indexingMode

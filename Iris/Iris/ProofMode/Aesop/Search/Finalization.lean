@@ -288,7 +288,7 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
           mkLeanApplyHypProof irisGoal.hyps irisGoal.goal fvarId
             rapp.fullContextIrisSubgoals rapp.finalizedSpatialSplits
         | none =>
-          if rapp.appliedRule.name.builder == RuleBuilder.iexact then
+          if rapp.appliedRule.builder == RuleBuilder.iexact then
             mkAssumptionProof irisGoal.hyps irisGoal.goal
           else
             match rapp.consumedSpatialHyp? with

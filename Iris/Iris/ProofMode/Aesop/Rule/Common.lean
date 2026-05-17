@@ -2,7 +2,7 @@ module
 
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Types
-public meta import Iris.ProofMode.Aesop.Rule.Types.Match
+public meta import Iris.ProofMode.Aesop.Rule.Types.Runner
 
 public meta section
 
@@ -11,28 +11,6 @@ namespace Iris.ProofMode.Aesop
 open Lean Meta Std
 
 variable {Q : Type} [Queue Q]
-
-structure ChildGoalSpec where
-  goal : MVarId
-  irisGoal : Iris.ProofMode.IrisGoal
-  mvars : Std.HashSet MVarId
-
-structure RappSpec where
-  rappState : NodeState
-  obunState : NodeState
-  obunKind : ObunKind
-  childGoals : Array ChildGoalSpec
-  fullContextIrisSubgoals : Array Iris.ProofMode.IrisGoal
-  consumedSpatialHyp? : Option IrisHyp
-  consumedLeanHyp? : Option FVarId := none
-  finalizedSpatialSplits : Array (Array IrisHyp)
-  metaState : SavedState
-  introducedMVars : Std.HashSet MVarId := {}
-  assignedMVars : Std.HashSet MVarId := {}
-  parentState? : Option GoalState := none
-
-abbrev RuleRunner (Q : Type) [Queue Q] :=
-  GoalRef → RuleMatch → SearchM Q (Array RappSpec)
 
 def normalizedGoalAndState (ruleName : String) (parent : Goal) :
     SearchM Q (MVarId × SavedState) := do
@@ -68,12 +46,33 @@ partial def findManagedObun? (gref : GoalRef) :
     | some rappRef =>
       findManagedObun? (← rappRef.get).parent
 
+def mkRuleInput (ruleName : String) (parentRef : GoalRef)
+    (matchResult : RuleMatch) : SearchM Q (Option RuleInput) := do
+  let parent ← parentRef.get
+  let some goal := parent.normalizationState.normalizedGoal?
+    | return none
+  let (_, state) ← normalizedGoalAndState ruleName parent
+  let managedObun? ← findManagedObun? parentRef
+  let managedState? : Option SavedState ←
+    match managedObun? with
+    | none => pure (none : Option SavedState)
+    | some obunRef => pure (← obunRef.get).metaState?
+  return some {
+    parentRef
+    parent
+    matchResult
+    goal
+    state
+    managedObun?
+    managedState?
+  }
+
 private def addRappSpec
     (parentRef : GoalRef) (parent : Goal) (matchResult : RuleMatch)
     (spec : RappSpec) :
     SearchM Q (RappRef × Array GoalRef) := do
   let successProbability :=
-    parent.successProbability * matchResult.rule.payload.successProbability
+    parent.successProbability * matchResult.rule.info.successProbability
   let obunRef ← IO.mkRef $ Obun.mk {
     id := ← getAndIncrementNextObunId
     parent? := none
@@ -90,7 +89,7 @@ private def addRappSpec
     children := obunRef
     state := spec.rappState
     isIrrelevant := false
-    appliedRule := matchResult.rule.payload
+    appliedRule := matchResult.rule.info
     successProbability
     scriptSteps? := none
     fullContextIrisSubgoals := spec.fullContextIrisSubgoals
@@ -152,5 +151,20 @@ def addRappSpecs (parentRef : GoalRef) (matchResult : RuleMatch)
     return .proved rappRefs
   else
     return .succeeded rappRefs
+
+private def applyRuleEffectSideEffects (input : RuleInput)
+    (effect : RuleEffect) : SearchM Q Unit := do
+  match input.managedObun?, effect.managedObunPostState? with
+  | some obunRef, some postState =>
+    obunRef.modify λ o => o.setMetaState? (some postState)
+  | _, _ =>
+    return ()
+
+def addRuleOutput (input : RuleInput) (output : RuleOutput) :
+    SearchM Q RuleResult := do
+  for effect in output.ruleEffects do
+    applyRuleEffectSideEffects input effect
+  addRappSpecs input.parentRef input.matchResult
+    (output.ruleEffects.map (·.rappSpec))
 
 end Iris.ProofMode.Aesop
