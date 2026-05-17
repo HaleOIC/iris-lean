@@ -5,7 +5,7 @@ public meta import Iris.ProofMode.Tactics.Assumption
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Rule.IExact
+namespace Iris.ProofMode.Aesop.Rule.Builtin.IExact
 
 open Lean Meta Qq Std
 open Iris.BI
@@ -79,4 +79,4 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
     parentState? := some (.provenByRuleApplication result.used)
   }]
 
-end Iris.ProofMode.Aesop.Rule.IExact
+end Iris.ProofMode.Aesop.Rule.Builtin.IExact

@@ -30,6 +30,10 @@ example [BI PROP] (P : PROP) : P ⊢ P := by
 example [BI PROP] (P : PROP) : P ⊢ P := by
   iaesop breadthFirst normAll
 
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop baseline
+  iaesop
+
 -- Basic context split test
 example [BI PROP] (P Q : PROP) : P ∗ Q ⊢ Q ∗ P := by
   iaesop

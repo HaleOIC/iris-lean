@@ -1,12 +1,12 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Rule.ApplyHyps
-public meta import Iris.ProofMode.Aesop.Rule.Builtin
-public meta import Iris.ProofMode.Aesop.Rule.IMod
-public meta import Iris.ProofMode.Aesop.Rule.IModIntro
-public meta import Iris.ProofMode.Aesop.Rule.IExact
-public meta import Iris.ProofMode.Aesop.Rule.IPureIntro
-public meta import Iris.ProofMode.Aesop.Rule.Identity
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IMod
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IModIntro
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IExact
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.IPureIntro
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.Identity
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
 
@@ -19,17 +19,17 @@ variable {Q : Type} [Queue Q]
 private def runRuleSpecs (parentRef : GoalRef) (matchResult : RuleMatch) :
     SearchM Q (Array RappSpec) := do
   if matchResult.rule.id == identityRuleId then
-    Rule.Identity.run parentRef matchResult
+    Rule.Builtin.Identity.run parentRef matchResult
   else if matchResult.rule.id == iexactRuleId then
-    Rule.IExact.run parentRef matchResult
+    Rule.Builtin.IExact.run parentRef matchResult
   else if matchResult.rule.id == applyHypsRuleId then
-    Rule.ApplyHyps.run parentRef matchResult
+    Rule.Builtin.ApplyHyps.run parentRef matchResult
   else if matchResult.rule.id == ipureIntroRuleId then
-    Rule.IPureIntro.run parentRef matchResult
+    Rule.Builtin.IPureIntro.run parentRef matchResult
   else if matchResult.rule.id == imodIntroRuleId then
-    Rule.IModIntro.run parentRef matchResult
+    Rule.Builtin.IModIntro.run parentRef matchResult
   else if matchResult.rule.id == imodRuleId then
-    Rule.IMod.run parentRef matchResult
+    Rule.Builtin.IMod.run parentRef matchResult
   else
     return #[]
 

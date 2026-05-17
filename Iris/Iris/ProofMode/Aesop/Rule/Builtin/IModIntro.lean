@@ -5,7 +5,7 @@ public meta import Iris.ProofMode.Tactics.ModIntro
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Rule.IModIntro
+namespace Iris.ProofMode.Aesop.Rule.Builtin.IModIntro
 
 open Lean Meta Qq Std
 open Iris.BI
@@ -59,4 +59,4 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
     metaState := postState
   }]
 
-end Iris.ProofMode.Aesop.Rule.IModIntro
+end Iris.ProofMode.Aesop.Rule.Builtin.IModIntro

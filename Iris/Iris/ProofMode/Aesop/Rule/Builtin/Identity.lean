@@ -4,7 +4,7 @@ public meta import Iris.ProofMode.Aesop.Rule.Common
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Rule.Identity
+namespace Iris.ProofMode.Aesop.Rule.Builtin.Identity
 
 open Lean Meta Std
 open Iris.BI
@@ -70,4 +70,4 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
     metaState := postState
   }]
 
-end Iris.ProofMode.Aesop.Rule.Identity
+end Iris.ProofMode.Aesop.Rule.Builtin.Identity

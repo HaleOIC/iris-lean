@@ -1,7 +1,8 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Index.Query
-public meta import Iris.ProofMode.Aesop.Rule.Builtin
+public meta import Iris.ProofMode.Aesop.Rule.Baseline.Main
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 
 public meta section
@@ -29,7 +30,8 @@ def selectRules (parentRef : GoalRef) : SearchM Q RuleQueue := do
   let parent ← parentRef.get
   if !parent.rulesQueue.isEmpty then
     return parent.rulesQueue
-  else
-    selectRulesFromIndex builtinRuleIndex parentRef
+  let config := (← readThe SearchM.Context).config
+  let ruleIndex := if config.baseline? then baselineRuleIndex else builtinRuleIndex
+  selectRulesFromIndex ruleIndex parentRef
 
 end Iris.ProofMode.Aesop

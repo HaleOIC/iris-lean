@@ -16,7 +16,14 @@ syntax "unfold" : iaesopNormMode
 syntax "simp" : iaesopNormMode
 syntax "normAll" : iaesopNormMode
 
-syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)? : tactic
-syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)? : tactic
+/- Specify the rule set used by iaesop. -/
+declare_syntax_cat iaesopRuleSet
+syntax "builtin" : iaesopRuleSet
+syntax "baseline" : iaesopRuleSet
+
+syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
+  (ppSpace iaesopRuleSet)? : tactic
+syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
+  (ppSpace iaesopRuleSet)? : tactic
 
 end Iris.ProofMode.Aesop

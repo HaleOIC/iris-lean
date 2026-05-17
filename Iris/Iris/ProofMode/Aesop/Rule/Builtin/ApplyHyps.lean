@@ -5,7 +5,7 @@ public meta import Iris.ProofMode.Tactics.HaveCore
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Rule.ApplyHyps
+namespace Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
 
 open Lean Meta Qq Std
 open Iris.BI
@@ -216,4 +216,4 @@ def run (parentRef : GoalRef) (_matchResult : RuleMatch) :
       metaState := postState
     }
 
-end Iris.ProofMode.Aesop.Rule.ApplyHyps
+end Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
