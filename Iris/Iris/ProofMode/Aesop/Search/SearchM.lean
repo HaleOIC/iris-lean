@@ -3,6 +3,8 @@ module
 public meta import Iris.ProofMode.Aesop.Search.Queue
 public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Tree.TreeM
+public meta import Iris.ProofMode.Aesop.Index.Basic
+public meta import Iris.ProofMode.Aesop.Rule.Types.Info
 
 public meta section
 
@@ -14,8 +16,8 @@ namespace SearchM
 
 structure Context where
   config : SearchConfig
+  ruleIndex : Index RuleInfo
   -- later:
-  -- ruleSet : RuleSet
   -- statsRef : IO.Ref Stats
 
 structure State (Q : Type) where
@@ -52,10 +54,9 @@ instance : MonadLift TreeM (SearchM Q) where
     let ctx : TreeM.Context := { currentIteration := (← get).iteration }
     liftM <| ReaderT.run x ctx
 
--- TODO: add ruleset as parameter
-protected def run (config : SearchConfig) (goal : MVarId)
-    (x : SearchM Q α) : ProofModeM (α × State Q × SearchTree) := do
-  let ctx : Context := { config := config }
+protected def run (config : SearchConfig) (ruleIndex : Index RuleInfo)
+    (goal : MVarId) (x : SearchM Q α) : ProofModeM (α × State Q × SearchTree) := do
+  let ctx : Context := { config, ruleIndex }
   let tree ← mkInitialTree goal
   let init := {
     iteration := 0

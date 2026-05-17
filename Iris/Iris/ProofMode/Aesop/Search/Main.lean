@@ -5,6 +5,8 @@ public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
 public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Finalization
+public meta import Iris.ProofMode.Aesop.Rule.Baseline.Main
+public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
 
 public meta section
 
@@ -108,7 +110,8 @@ meta def search (goal : MVarId) (_irisGoal : IrisGoal) (config : SearchConfig :=
   -- TODO: parse ruleset before run search loop
   -- Currently, we only work on the hypothesis in the Hyps
   Queue.withStrategy config.strategy λ Q => do
-    let (remaining, _, _) ← SearchM.run (Q := Q) config goal do
+    let ruleIndex := if config.baseline? then baselineRuleIndex else builtinRuleIndex
+    let (remaining, _, _) ← SearchM.run (Q := Q) config ruleIndex goal do
       searchLoop
     return remaining
 
