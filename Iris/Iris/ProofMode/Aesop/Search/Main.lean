@@ -1,5 +1,6 @@
 module
 
+public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
 public meta import Iris.ProofMode.Aesop.Search.Propogation
@@ -106,9 +107,9 @@ meta def search (goal : MVarId) (_irisGoal : IrisGoal) (config : SearchConfig :=
   goal.checkNotAssigned `iaesop
   -- TODO: parse ruleset before run search loop
   -- Currently, we only work on the hypothesis in the Hyps
-  -- TODO: extend this to support multiple strategy (can parse Q from configuration)
-  let (remaining, _, _) ← SearchM.run (Q := BestFirstQueue) config goal do
-    searchLoop
-  return remaining
+  Queue.withStrategy config.strategy λ Q => do
+    let (remaining, _, _) ← SearchM.run (Q := Q) config goal do
+      searchLoop
+    return remaining
 
 end Search

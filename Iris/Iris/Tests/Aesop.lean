@@ -8,16 +8,35 @@ public import Iris.ProofMode
 namespace Iris.Tests
 open Iris.BI
 
+-- Identity test
 example [BI PROP] (P : PROP) : P ⊢ P := by
   iaesop
 
-example [BI PROP] (P Q : PROP) : P -∗ Q -∗ Q ∗ P := by
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop bestFirst
+
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop depthFirst
+
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop breadthFirst
+
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop simp
+
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop depthFirst unfold
+
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop breadthFirst normAll
+
+-- Basic context split test
+example [BI PROP] (P Q : PROP) : P ∗ Q ⊢ Q ∗ P := by
   iaesop
 
-example [BI PROP] [BIAffine PROP] (P Q R S T: PROP) : T -∗ P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R ∗ S := by
-  iaesop
-
-example [BI PROP] (P Q R : PROP) : (P -∗ Q -∗ R) -∗ P -∗ Q -∗ R := by
+-- Multiple context split test
+example [BI PROP] [BIAffine PROP] (P Q R S T: PROP) :
+    T -∗ P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R ∗ S := by
   iaesop
 
 example [BI PROP] [BIAffine PROP] (P Q R S : PROP) :
@@ -99,6 +118,7 @@ example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> |==> P ⊢ |==> P := by
 example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] (P : PROP) [BIAffine PROP] E :
   P ⊢ ▷ |==> |={E}=> P := by
   iaesop
+
 -- example [BI PROP] [BIAffine PROP] (P Q R S : PROP) :
 --     S -∗ (P ∨ Q) -∗ (P -∗ R) -∗ (Q -∗ S -∗ R) -∗ (Q -∗ R) -∗ (R ∗ S) := by
 --   iintro HS HPQ Hwand1 Hwand2 Hwand3

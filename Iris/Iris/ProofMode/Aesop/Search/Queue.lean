@@ -1,6 +1,7 @@
 module
 
 public import Iris.ProofMode.Aesop.Util.Basic
+public import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Tree.Basic
 public meta import Batteries.Data.BinomialHeap.Basic
 
@@ -93,7 +94,15 @@ meta instance : Queue FIFOQueue where
     else (none, q)
   toArray q := pure <| q.goals.extract q.pos q.goals.size
 
--- TODO: add a function here to return a corresponding instance
--- according to the strategy given by option
+namespace Queue
+
+meta def withStrategy {m : Type → Type} (strategy : Strategy)
+    (k : (Q : Type) → [Queue Q] → m α) : m α :=
+  match strategy with
+  | .bestFirst => k BestFirstQueue
+  | .depthFirst => k LIFOQueue
+  | .breadthFirst => k FIFOQueue
+
+end Queue
 
 end Aesop

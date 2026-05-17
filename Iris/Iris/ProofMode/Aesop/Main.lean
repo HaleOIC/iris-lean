@@ -1,6 +1,6 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Frontend.Tactic
+public meta import Iris.ProofMode.Aesop.Frontend.Main
 public meta import Iris.ProofMode.Aesop.Search
 
 public section
@@ -11,18 +11,13 @@ open Iris.ProofMode.Aesop.Search
 
 private meta def evalIAesopCore (stx : Syntax) : TacticM Unit := do
   withRef stx do
-  let config ← Frontend.TacticConfig.parse stx
+  let config ← parse stx
   -- TODO: add [getRuleSet] here
   ProofModeM.runTactic λ mvar irisGoal => do
-    let goals ← search mvar irisGoal {
-      traceScript := config.traceScript
-      maxNormIterations := config.maxNormIterations
-      enableSimp := config.enableSimp
-    }
+    let goals ← search mvar irisGoal config
     goals.forM Iris.ProofMode.addMVarGoal
 
-@[tactic Frontend.Parser.iaesopTactic, tactic Frontend.Parser.iaesopTactic?,
-  tactic Frontend.Parser.iaesopTacticSimp, tactic Frontend.Parser.iaesopTacticSimp?]
+@[tactic iaesopTactic, tactic iaesopTactic?]
 meta def evalIAesop : Tactic := λ stx =>
   evalIAesopCore stx
 

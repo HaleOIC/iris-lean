@@ -309,7 +309,7 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
     let (result, postState) ← liftM (show ProofModeM _ from do
       liftM <| g.preNormState.restore
       let result ←
-        normalizeGoalMVar preGoal config.maxNormIterations config.enableSimp
+        normalizeGoalMVar preGoal config.maxNormIterations config.enableSimp?
           g.unassignedMvars
       let postState ← liftM (show MetaM SavedState from saveState)
       return (result, postState))

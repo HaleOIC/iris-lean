@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Search.Queue
+public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Tree.TreeM
 
 public meta section
@@ -8,12 +9,6 @@ public meta section
 namespace Iris.ProofMode.Aesop
 
 open Lean Std
-
-structure SearchConfig where
-  traceScript : Bool := false
-  maxSteps : Nat := 200
-  maxNormIterations : Nat := 100
-  enableSimp : Bool := true
 
 namespace SearchM
 
