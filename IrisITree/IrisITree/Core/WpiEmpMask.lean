@@ -45,8 +45,8 @@ instance wpiF'_ne {R} : OFE.NonExpansive (wpiF' H (R := R)) := by
     · intro a; apply BIFUpdate.ne.ne <| Hwp _
 
 theorem wpiF_mono {R} (wp1 wp2 : ITree E R → (R → PROP) → PROP) :
-    ⊢ □ (∀ t Φ, wp1 t Φ -∗ wp2 t Φ) -∗
-      ∀ t Φ, wpiF H wp1 t Φ -∗ wpiF H wp2 t Φ := by
+    □ (∀ t Φ, wp1 t Φ -∗ wp2 t Φ) -∗
+    ∀ t Φ, wpiF H wp1 t Φ -∗ wpiF H wp2 t Φ := by
   iintro #Hwand %t %Φ Hwp
   unfold wpiF
   cases t.unfold <;> simp
@@ -58,13 +58,13 @@ theorem wpiF_mono {R} (wp1 wp2 : ITree E R → (R → PROP) → PROP) :
     · iintro !> %a Hk; imod Hk; imodintro; iapply Hwand $$ Hk
 
 theorem wpiF'_mono {R} (wp1 wp2 : ITree E R × (R → PROP) → PROP) :
-    ⊢ □ (∀ t Φ, wp1 (t, Φ) -∗ wp2 (t, Φ)) -∗
-      ∀ t Φ, wpiF' H wp1 (t, Φ) -∗ wpiF' H wp2 (t, Φ) := by
+    □ (∀ t Φ, wp1 (t, Φ) -∗ wp2 (t, Φ)) -∗
+    ∀ t Φ, wpiF' H wp1 (t, Φ) -∗ wpiF' H wp2 (t, Φ) := by
   simp [wpiF']
   iintro #Hwand %t %Φ Hwp
-  iapply wpiF_mono (wp1 := λ t Φ => wp1 (t, Φ)) (wp2 := λ t Φ => wp2 (t, Φ))
-  · iintro !> %t' %Φ' Hw; iapply Hwand $$ %t' %Φ' Hw
-  · iexact Hwp
+  iapply wpiF_mono $$ [] Hwp
+  iintro !> %t' %Φ' Hw
+  iapply Hwand $$ Hw
 /-- End of Helper -/
 
 instance {R} : BIMonoPred (λ wp_itree : (ITree E R) × (R → PROP) → PROP => wpiF' H wp_itree) where
