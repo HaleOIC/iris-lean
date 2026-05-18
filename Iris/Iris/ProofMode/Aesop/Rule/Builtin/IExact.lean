@@ -1,5 +1,8 @@
 module
 
+/-
+Temporarily disabled: common-only Aesop backend.
+
 public meta import Iris.ProofMode.Aesop.Rule.Common
 public meta import Iris.ProofMode.Tactics.Assumption
 
@@ -54,20 +57,15 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
         return some result
   let some result := result?
     | return {}
-  return RuleOutput.singleEffect {
-    rappSpec := {
-      rappState := .proven
-      obunState := .proven
-      obunKind := .plain
-      childGoals := #[]
-      fullContextIrisSubgoals := #[]
-      consumedSpatialHyp? := none
-      finalizedSpatialSplits := #[]
-      metaState := result.postState
-      parentState? := some (.provenByRuleApplication result.used)
-    }
-    managedObunPostState? :=
-      if input.isManaged then some result.postState else none
+  return RuleOutput.single {
+    rappState := .proven
+    obunState := .proven
+    obunKind := .plain
+    consumedSpatialHyp? := none
+    metaState := result.postState
+    parentState? := some (.provenByRuleApplication result.used)
   }
+    (some <| .closeGoal result.used[0]?)
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IExact
+-/

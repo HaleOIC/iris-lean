@@ -1,5 +1,8 @@
 module
 
+/-
+Temporarily disabled: common-only Aesop backend.
+
 public meta import Lean.Meta.Tactic.Simp.SimpAll
 public meta import Iris.ProofMode.Aesop.Rule.Common
 public meta import Iris.ProofMode.Tactics.Pure
@@ -84,12 +87,10 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     rappState := .proven
     obunState := .proven
     obunKind := .plain
-    childGoals := #[]
-    fullContextIrisSubgoals := #[]
     consumedSpatialHyp? := none
-    finalizedSpatialSplits := #[]
     metaState := postState
     parentState? := some (.provenByRuleApplication #[])
-  }
+  } (some <| .closeGoal none)
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IPureIntro
+-/

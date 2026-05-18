@@ -1,5 +1,9 @@
 module
 
+/-
+Temporarily disabled: use `Rule.Common.Identity` while common is the only
+active rule backend.
+
 public meta import Iris.ProofMode.Aesop.Rule.Common
 
 public meta section
@@ -62,11 +66,9 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     rappState := .unknown
     obunState := .unknown
     obunKind := .managed
-    childGoals := children
-    fullContextIrisSubgoals := children.map (·.irisGoal)
     consumedSpatialHyp? := none
-    finalizedSpatialSplits := children.map (λ _ => #[])
     metaState := postState
-  }
+  } (some <| .contextManagement children (children.map (·.irisGoal)))
 
 end Iris.ProofMode.Aesop.Rule.Builtin.Identity
+-/

@@ -1,6 +1,5 @@
 module
 
-public import Lean
 public import Iris.ProofMode.Aesop.Rule.Types.Name
 public import Iris.ProofMode.Aesop.Util.Basic
 

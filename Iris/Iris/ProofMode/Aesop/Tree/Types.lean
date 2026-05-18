@@ -18,8 +18,6 @@ structure IrisHyp where
   ivar : IVarId
   deriving Inhabited, BEq
 
-abbrev UsedIrisHyp := IrisHyp
-
 abbrev Iteration := Nat
 
 structure GoalId where
@@ -141,7 +139,7 @@ end NodeState
 
 inductive GoalState
   | unknown
-  | provenByRuleApplication (used : Array UsedIrisHyp)
+  | provenByRuleApplication (used : Array IrisHyp)
   | provenByNormalization
   | locallySettled
   | unprovable

@@ -37,64 +37,64 @@ def ofInfo (info : RuleInfo) : RuleRunnerDescr :=
 
 end RuleRunnerDescr
 
-structure ChildGoalSpec where
-  goal : MVarId
-  irisGoal : Iris.ProofMode.IrisGoal
-  mvars : Std.HashSet MVarId
-
-structure RappSpec where
-  rappState : NodeState
-  obunState : NodeState
-  obunKind : ObunKind
-  childGoals : Array ChildGoalSpec
-  fullContextIrisSubgoals : Array Iris.ProofMode.IrisGoal
-  consumedSpatialHyp? : Option IrisHyp
-  consumedLeanHyp? : Option FVarId := none
-  finalizedSpatialSplits : Array (Array IrisHyp)
-  metaState : SavedState
-  introducedMVars : Std.HashSet MVarId := {}
-  assignedMVars : Std.HashSet MVarId := {}
-  parentState? : Option GoalState := none
-
 structure RuleInput where
-  parentRef : GoalRef
-  parent : Goal
-  matchResult : RuleMatch
   goal : MVarId
+  /- all involved meta variables in goal -/
+  mvars : Array MVarId
   state : SavedState
-  managedObun? : Option ObunRef
-  managedState? : Option SavedState
+  matchResult : RuleMatch
 
-namespace RuleInput
+/- SubGoal produced by a rule application -/
+structure SubGoal where
+  goal : MVarId
+  addedFVars : Std.HashSet FVarId
+  removedFVars : Std.HashSet FVarId
+  deriving Inhabited
 
-def isManaged (input : RuleInput) : Bool :=
-  input.managedObun?.isSome
+/- Auxiliary effects produced by a rule application. -/
+inductive RuleEffect where
+  | contextManagement (fullContextIrisSubgoals : Array IrisGoal)
+  | closeGoal (consumedSpatialHyp? : Option IrisHyp)
 
-def stateForManaged (input : RuleInput) : SavedState :=
-  input.managedState?.getD input.state
+namespace RuleEffect
 
-end RuleInput
+def fullContextIrisSubgoals : RuleEffect → Array IrisGoal
+  | contextManagement irisSubgoals => irisSubgoals
+  | _ => #[]
 
-structure RuleEffect where
-  rappSpec : RappSpec
-  managedObunPostState? : Option SavedState := none
+def consumedSpatialHyp? : RuleEffect → Option IrisHyp
+  | closeGoal hyp => hyp
+  | _ => none
+
+end RuleEffect
+
+/- Rule application nodes' specification -/
+structure RappSpec where
+  goals : Array SubGoal
+  postState : SavedState
+  successPossibility : Percent
+  effect : RuleEffect
+  -- [TODO] Add script here
 
 structure RuleOutput where
-  ruleEffects : Array RuleEffect
+  rappSepcs : Array RappSpec
+  deriving Inhabited
 
 namespace RuleOutput
 
 instance : EmptyCollection RuleOutput where
-  emptyCollection := { ruleEffects := #[] }
+  emptyCollection := { rappSepcs := #[] }
 
-def single (rappSpec : RappSpec) : RuleOutput :=
-  { ruleEffects := #[{ rappSpec }] }
-
-def singleEffect (effect : RuleEffect) : RuleOutput :=
-  { ruleEffects := #[effect] }
+def ofRappSpec (rappSpec : RappSpec) : RuleOutput :=
+  { rappSepcs := #[rappSpec] }
 
 def ofRappSpecs (rappSpecs : Array RappSpec) : RuleOutput :=
-  { ruleEffects := rappSpecs.map fun rappSpec => { rappSpec } }
+  { rappSepcs := rappSpecs }
+
+def ofEffect (postState : SavedState) (effect : RuleEffect)
+    (goals : Array SubGoal := #[])
+    (successPossibility : Percent := Percent.hundred) : RuleOutput :=
+  ofRappSpec { goals, postState, successPossibility, effect }
 
 end RuleOutput
 

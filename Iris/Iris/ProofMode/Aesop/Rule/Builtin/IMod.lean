@@ -1,5 +1,8 @@
 module
 
+/-
+Temporarily disabled: common-only Aesop backend.
+
 public meta import Iris.ProofMode.Aesop.Rule.Common
 public meta import Iris.ProofMode.Tactics.Cases
 
@@ -79,16 +82,15 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
           expansions := expansions.push expansion
       return expansions)
   let specs ← expansions.mapM λ (child, postState) => do
-    return {
+    let spec : RappSpec := {
       rappState := .unknown
       obunState := .unknown
       obunKind := .plain
-      childGoals := #[child]
-      fullContextIrisSubgoals := #[child.irisGoal]
       consumedSpatialHyp? := none
-      finalizedSpatialSplits := #[]
       metaState := postState
     }
-  return RuleOutput.ofRappSpecs specs
+    return (spec, some <| .contextManagement #[child] #[child.irisGoal])
+  return RuleOutput.ofRappSpecsWithEffects specs
 
 end Iris.ProofMode.Aesop.Rule.Builtin.IMod
+-/

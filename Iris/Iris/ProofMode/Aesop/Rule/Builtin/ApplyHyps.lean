@@ -1,5 +1,8 @@
 module
 
+/-
+Temporarily disabled: common-only Aesop backend.
+
 public meta import Iris.ProofMode.Aesop.Rule.Common
 public meta import Iris.ProofMode.Tactics.HaveCore
 
@@ -198,22 +201,21 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       return (children?, postState)
     | return {}
 
-  let specs ← expansions.mapM λ (candidate, children) => do
+  let items ← expansions.mapM λ (candidate, children) => do
     dbg_trace s!"applyHyps selected {candidate.source.name} and generated {children.size} goals"
     for child in children do
       let targetFmt ← liftM <| ppExpr child.irisGoal.goal
       dbg_trace s!"  applyHyps child target: {targetFmt.pretty}"
-    return {
+    let spec : RappSpec := {
       rappState := .unknown
       obunState := .unknown
       obunKind := .managed
-      childGoals := children
-      fullContextIrisSubgoals := children.map (·.irisGoal)
       consumedSpatialHyp? := candidate.source.consumedSpatialHyp?
       consumedLeanHyp? := candidate.source.consumedLeanHyp?
-      finalizedSpatialSplits := children.map (λ _ => #[])
       metaState := postState
     }
-  return RuleOutput.ofRappSpecs specs
+    return (spec, some <| .contextManagement children (children.map (·.irisGoal)))
+  return RuleOutput.ofRappSpecsWithEffects items
 
 end Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
+-/

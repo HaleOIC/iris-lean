@@ -1,6 +1,7 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
+public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
+public meta import Iris.ProofMode.Aesop.Rule.Common.Main
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
 
@@ -15,7 +16,7 @@ private def runRule (parentRef : GoalRef) (matchResult : RuleMatch) :
   let some input ← mkRuleInput (toString matchResult.rule.id) parentRef matchResult
     | return .failed
   let output ← RuleRunnerDescr.ofInfo input.matchResult.rule.info |>.run input
-  addRuleOutput input output
+  commitRuleOutput parentRef output
 
 private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult := do
   let ruleCandidates ← selectRules parentRef
