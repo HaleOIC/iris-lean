@@ -18,6 +18,20 @@ structure IrisHyp where
   ivar : IVarId
   deriving Inhabited, BEq
 
+/- Record the concrete hypothesis used by a rule application. -/
+inductive AppliedHyp where
+  | spatial (hyp : IrisHyp)
+  | intuitionistic (hyp : IrisHyp)
+  | lean (userName : Name) (fvarId : FVarId)
+
+namespace AppliedHyp
+
+def consumedSpatialHyp? : AppliedHyp → Option IrisHyp
+  | .spatial hyp => some hyp
+  | _ => none
+
+end AppliedHyp
+
 abbrev Iteration := Nat
 
 structure GoalId where
@@ -251,6 +265,7 @@ end GoalOrigin
 inductive ObunKind
   | plain
   | managed
+  | inherited (source : ObunId)
   deriving Inhabited, BEq
 
 namespace ObunKind
@@ -261,6 +276,10 @@ def isPlain : ObunKind → Bool
 
 def isManaged : ObunKind → Bool
   | managed => true
+  | _ => false
+
+def isInherited : ObunKind → Bool
+  | inherited .. => true
   | _ => false
 
 end ObunKind

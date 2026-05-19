@@ -12,14 +12,15 @@ open Iris.ProofMode.Aesop
 
 variable {Q : Type} [Queue Q]
 
-private def RuleEffect.obunKind : RuleEffect → ObunKind
-  | .contextManagement .. => .managed
-  | .closeGoal .. => .plain
+private def RappSpec.obunKind (spec : RappSpec) : ObunKind :=
+  match spec.effect with
+  | some (.contextManagement ..) => .managed
+  | some (.closeGoal ..) | none => .plain
 
 private def RappSpec.nodeState (spec : RappSpec) : NodeState :=
   if spec.goals.isEmpty then .proven else .unknown
 
-def addRappSpec (parentRef : GoalRef) (spec : RappSpec) :
+def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec) :
     SearchM Q (RappRef × Array GoalRef) := do
   let parent ← parentRef.get
   let nodeState := RappSpec.nodeState spec
@@ -30,9 +31,12 @@ def addRappSpec (parentRef : GoalRef) (spec : RappSpec) :
     goals := #[]
     state := nodeState
     isIrrelevant := false
-    metaState? := some spec.postState
     scriptSteps? := none
-    kind := RuleEffect.obunKind spec.effect
+    kind := RappSpec.obunKind spec
+    fullContextIrisSubgoals :=
+      match spec.effect with
+      | some effect => effect.fullContextIrisSubgoals
+      | none => #[]
   }
   let rappRef ← IO.mkRef $ Rapp.mk {
     id := ← getAndIncrementNextRappId
@@ -40,12 +44,13 @@ def addRappSpec (parentRef : GoalRef) (spec : RappSpec) :
     children := obunRef
     state := nodeState
     isIrrelevant := false
-    appliedRule := RuleInfo.ofBuilder .custom
+    appliedRule := usedRule
     successProbability
     scriptSteps? := none
-    fullContextIrisSubgoals := spec.effect.fullContextIrisSubgoals
-    consumedSpatialHyp? := spec.effect.consumedSpatialHyp?
-    consumedLeanHyp? := none
+    usedHyp? :=
+      match spec.effect with
+      | some effect => effect.usedHyp?
+      | none => none
     finalizedSpatialSplits := #[]
     metaState := spec.postState
     introducedMVars := {}

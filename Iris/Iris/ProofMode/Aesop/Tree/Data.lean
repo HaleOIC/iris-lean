@@ -45,15 +45,13 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
-  metaState? : Option SavedState
   scriptSteps? : Option (Array Script.LazyStep)
 
-  /- Iris context-management data -/
-
+  /- ### Iris context-management data -/
   /- Indicates whether this obligation bundle uses context-management mode. -/
   kind : ObunKind
-
-  /- Indicate which goal -/
+  /- Full-context Iris subgoal templates managed by this obligation bundle. -/
+  fullContextIrisSubgoals : Array IrisGoal
 
   deriving Nonempty
 
@@ -65,23 +63,18 @@ structure RappData (GoalRef ObunRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
-  appliedRule : RuleInfo
+  appliedRule : Rule RuleInfo
   successProbability : Percent
+
+  /- ### Script generation data -/
   scriptSteps? : Option (Array Script.LazyStep)
-
-  /- ### Iris context-management data -/
-
-  /- Full-context Iris subgoal templates produced by this rule application -/
-  fullContextIrisSubgoals : Array IrisGoal
-  /- Spatial Iris hypothesis consumed by this rule application, if any -/
-  consumedSpatialHyp? : Option IrisHyp
-  /- Lean hypothesis consumed by this rule application, if any -/
-  consumedLeanHyp? : Option FVarId
   /- Finalized spatial-context split assignments, ordered by split case -/
   finalizedSpatialSplits : Array (Array IrisHyp)
 
-  /- ### Lean context-related data -/
+  /- Concrete hypothesis used by this rule application, if any. -/
+  usedHyp? : Option AppliedHyp
 
+  /- ### Lean context-related data -/
   /- Meta state immediately after the rule application succeeds. -/
   metaState : SavedState
   /- Expression metavariables introduced by this rule application. -/

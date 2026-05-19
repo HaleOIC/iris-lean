@@ -24,8 +24,8 @@ instance : Nonempty Obun :=
     state := .unknown
     isIrrelevant := false
     kind := .plain
+    fullContextIrisSubgoals := #[]
     scriptSteps? := none
-    metaState? := none
   }⟩
 
 @[inline]
@@ -63,12 +63,12 @@ def kind (o : Obun) : ObunKind :=
   o.elim.kind
 
 @[inline]
-def scriptSteps? (o : Obun) : Option (Array Script.LazyStep) :=
-  o.elim.scriptSteps?
+def fullContextIrisSubgoals (o : Obun) : Array IrisGoal :=
+  o.elim.fullContextIrisSubgoals
 
 @[inline]
-def metaState? (o : Obun) : Option SavedState :=
-  o.elim.metaState?
+def scriptSteps? (o : Obun) : Option (Array Script.LazyStep) :=
+  o.elim.scriptSteps?
 
 @[inline]
 def setId (id : ObunId) (o : Obun) : Obun :=
@@ -95,13 +95,14 @@ def setKind (kind : ObunKind) (o : Obun) : Obun :=
   o.modify fun o => { o with kind }
 
 @[inline]
+def setFullContextIrisSubgoals
+    (fullContextIrisSubgoals : Array IrisGoal) (o : Obun) : Obun :=
+  o.modify fun o => { o with fullContextIrisSubgoals }
+
+@[inline]
 def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
     (o : Obun) : Obun :=
   o.modify fun o => { o with scriptSteps? }
-
-@[inline]
-def setMetaState? (metaState? : Option SavedState) (o : Obun) : Obun :=
-  o.modify fun o => { o with metaState? }
 
 instance : BEq Obun where
   beq o₁ o₂ := o₁.id == o₂.id
@@ -352,7 +353,7 @@ def isIrrelevant (r : Rapp) : Bool :=
   r.elim.isIrrelevant
 
 @[inline]
-def appliedRule (r : Rapp) : RuleInfo :=
+def appliedRule (r : Rapp) : Rule RuleInfo :=
   r.elim.appliedRule
 
 @[inline]
@@ -364,16 +365,12 @@ def scriptSteps? (r : Rapp) : Option (Array Script.LazyStep) :=
   r.elim.scriptSteps?
 
 @[inline]
-def fullContextIrisSubgoals (r : Rapp) : Array IrisGoal :=
-  r.elim.fullContextIrisSubgoals
+def usedHyp? (r : Rapp) : Option AppliedHyp :=
+  r.elim.usedHyp?
 
 @[inline]
 def consumedSpatialHyp? (r : Rapp) : Option IrisHyp :=
-  r.elim.consumedSpatialHyp?
-
-@[inline]
-def consumedLeanHyp? (r : Rapp) : Option FVarId :=
-  r.elim.consumedLeanHyp?
+  r.usedHyp?.bind AppliedHyp.consumedSpatialHyp?
 
 @[inline]
 def finalizedSpatialSplits (r : Rapp) : Array (Array IrisHyp) :=
@@ -412,7 +409,7 @@ def setIsIrrelevant (isIrrelevant : Bool) (r : Rapp) : Rapp :=
   r.modify fun r => { r with isIrrelevant }
 
 @[inline]
-def setAppliedRule (appliedRule : RuleInfo) (r : Rapp) : Rapp :=
+def setAppliedRule (appliedRule : Rule RuleInfo) (r : Rapp) : Rapp :=
   r.modify fun r => { r with appliedRule }
 
 @[inline]
@@ -425,25 +422,19 @@ def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
   r.modify fun r => { r with scriptSteps? }
 
 @[inline]
-def setfullContextIrisSubgoals (fullContextIrisSubgoals : Array IrisGoal) (r : Rapp) : Rapp :=
-  r.modify λ r => { r with fullContextIrisSubgoals}
-
-@[inline]
-def setFullContextIrisSubgoals
-    (fullContextIrisSubgoals : Array IrisGoal) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with fullContextIrisSubgoals }
+def setUsedHyp? (usedHyp? : Option AppliedHyp) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with usedHyp? }
 
 @[inline]
 def setconsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with consumedSpatialHyp? }
+  r.modify fun r => {
+    r with
+    usedHyp? := consumedSpatialHyp?.map AppliedHyp.spatial
+  }
 
 @[inline]
 def setConsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with consumedSpatialHyp? }
-
-@[inline]
-def setConsumedLeanHyp? (consumedLeanHyp? : Option FVarId) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with consumedLeanHyp? }
+  r.setconsumedSpatialHyp? consumedSpatialHyp?
 
 @[inline]
 def setfinalizedSpatialSplits (finalizedSpatialSplits : Array (Array IrisHyp)) (r : Rapp) : Rapp :=

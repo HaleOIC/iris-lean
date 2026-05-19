@@ -37,6 +37,6 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     dbg_trace s!"iexact closed goal using spatial hypothesis {hyp.name}"
   | none =>
     dbg_trace "iexact closed goal using intuitionistic/persistent hypothesis"
-  return RuleOutput.ofEffect result.2 (.closeGoal result.1)
+  return RuleOutput.ofEffect result.2 (.closeGoal (result.1.map AppliedHyp.spatial))
 
 end Iris.ProofMode.Aesop.Rule.IExact

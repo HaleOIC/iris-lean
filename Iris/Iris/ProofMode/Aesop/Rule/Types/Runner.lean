@@ -54,17 +54,22 @@ structure SubGoal where
 /- Auxiliary effects produced by a rule application. -/
 inductive RuleEffect where
   | contextManagement (fullContextIrisSubgoals : Array IrisGoal)
-  | closeGoal (consumedSpatialHyp? : Option IrisHyp)
+    (usedHyp? : Option AppliedHyp)
+  | closeGoal (usedHyp? : Option AppliedHyp)
 
 namespace RuleEffect
 
 def fullContextIrisSubgoals : RuleEffect → Array IrisGoal
-  | contextManagement irisSubgoals => irisSubgoals
+  | contextManagement irisSubgoals ..  => irisSubgoals
   | _ => #[]
 
-def consumedSpatialHyp? : RuleEffect → Option IrisHyp
+def usedHyp? : RuleEffect → Option AppliedHyp
+  | contextManagement _ hyp => hyp
   | closeGoal hyp => hyp
-  | _ => none
+
+def consumedSpatialHyp? : RuleEffect → Option IrisHyp
+  | contextManagement _ usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
+  | closeGoal usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
 
 end RuleEffect
 
@@ -73,7 +78,7 @@ structure RappSpec where
   goals : Array SubGoal
   postState : SavedState
   successPossibility : Percent
-  effect : RuleEffect
+  effect : Option RuleEffect
   -- [TODO] Add script here
 
 structure RuleOutput where
@@ -94,7 +99,7 @@ def ofRappSpecs (rappSpecs : Array RappSpec) : RuleOutput :=
 def ofEffect (postState : SavedState) (effect : RuleEffect)
     (goals : Array SubGoal := #[])
     (successPossibility : Percent := Percent.hundred) : RuleOutput :=
-  ofRappSpec { goals, postState, successPossibility, effect }
+  ofRappSpec { goals, postState, successPossibility, effect := some effect }
 
 end RuleOutput
 

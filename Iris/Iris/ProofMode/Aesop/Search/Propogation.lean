@@ -68,7 +68,8 @@ private def writeUsedHypsToRapp
     (rappRef : RappRef) (usedByIndex : Array (Nat × Array IrisHyp)) :
     SearchM Q Unit := do
   let rapp ← rappRef.get
-  let size := rapp.fullContextIrisSubgoals.size
+  let obun ← rapp.children.get
+  let size := obun.fullContextIrisSubgoals.size
   let spatialSplits :=
     usedByIndex.foldl (init := #[]) λ ctx (i, irisHyps) =>
       (List.range size).foldl (init := #[]) λ acc j =>
@@ -81,11 +82,13 @@ private def mkCopiedGoalInfos
     (state : Meta.SavedState) (sourceGoal : MVarId)
     (used : Array IrisHyp) :
     SearchM Q (Array CopiedGoalInfo × Meta.SavedState) := do
+  let obun ← rapp.children.get
+  let irisSubgoals := obun.fullContextIrisSubgoals
   -- Collect the remaing goal's index
-  let remaining ← (List.range rapp.fullContextIrisSubgoals.size).foldlM
+  let remaining ← (List.range irisSubgoals.size).foldlM
       (init := (#[] : Array (Nat × IrisGoal))) λ acc i => do
     if mask.contains i then return acc
-    match rapp.fullContextIrisSubgoals[i]? with
+    match irisSubgoals[i]? with
     | some irisGoal => return acc.push (i, irisGoal)
     | none => throwError "iaesop: internal error: missing split target index"
   if remaining.isEmpty then
@@ -139,10 +142,14 @@ private def appendCopiedGoalInfos
       rulesQueue := {}
       appendiedGoalId := #[]
     }
-  obunRef.modify λ o =>
-    o.setGoals (o.goals ++ newGoalRefs)
-      |>.setMetaState? (some postState)
+  obunRef.modify λ o => o.setGoals (o.goals ++ newGoalRefs)
   enqueueGoals newGoalRefs
+
+private def Goal.currentSavedState (g : Goal) : Meta.SavedState :=
+  match g.normalizationState with
+  | .notNormal => g.preNormState
+  | .normal _ postState _ => postState
+  | .provenByNorm postState _ => postState
 
 private def appendCopiedGoalsFromProvenGoal (gref : GoalRef) : SearchM Q Unit := do
   let g ← gref.get
@@ -153,7 +160,7 @@ private def appendCopiedGoalsFromProvenGoal (gref : GoalRef) : SearchM Q Unit :=
     | return
   let rapp ← rappRef.get
 
-  let state := obun.metaState?.getD g.preNormState
+  let state := Goal.currentSavedState g
   let sourceGoal := g.normalizationState.normalizedGoal?.getD g.preNormGoal
   let (infos, postState) ←
     mkCopiedGoalInfos rapp g.mask state sourceGoal used

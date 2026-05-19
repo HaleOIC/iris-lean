@@ -33,7 +33,8 @@ def mkRuleInput (ruleName : String) (parentRef : GoalRef)
   let mvars ← goal.getMVarDependencies
   return some { goal, state, mvars := mvars.toArray, matchResult }
 
-def commitRuleOutput (gref : GoalRef) (output : RuleOutput) : SearchM Q RuleResult := do
+def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)
+    (output : RuleOutput) : SearchM Q RuleResult := do
   if output.rappSepcs.isEmpty then return .failed
 
   -- Collect new added RappRefs and Subgoals and update state
@@ -42,9 +43,9 @@ def commitRuleOutput (gref : GoalRef) (output : RuleOutput) : SearchM Q RuleResu
   for spec in output.rappSepcs do
     let (rappRef, goalRefs) ←
       if (← readThe SearchM.Context).config.baseline? then
-        Rule.Commit.Baseline.addRappSpec gref spec
+        Rule.Commit.Baseline.mkRappSpec gref usedRule spec
       else
-        Rule.Commit.Builtin.addRappSpec gref spec
+        Rule.Commit.Builtin.mkRappSpec gref usedRule spec
     rappRefs := rappRefs.push rappRef
     goalsToEnqueue := goalsToEnqueue ++ goalRefs
 

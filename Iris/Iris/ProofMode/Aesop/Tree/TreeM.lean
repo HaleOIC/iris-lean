@@ -31,8 +31,8 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     isIrrelevant := false
     state := .unknown
     kind := .plain
+    fullContextIrisSubgoals := #[]
     scriptSteps? := none
-    metaState? := some rootMetaState
   }
   let rootGoalRef ← IO.mkRef $ Goal.mk {
     id := .zero

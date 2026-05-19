@@ -66,7 +66,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     goals := children
     postState := postState
     successPossibility := .hundred
-    effect := .contextManagement fullContextIrisSubgoals
+    effect := some (.contextManagement fullContextIrisSubgoals none)
   }
 
 end Iris.ProofMode.Aesop.Rule.Identity
