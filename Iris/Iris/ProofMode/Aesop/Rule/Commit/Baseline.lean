@@ -16,6 +16,12 @@ variable {Q : Type} [Queue Q]
 private def RappSpec.nodeState (spec : RappSpec) : NodeState :=
   if spec.goals.isEmpty then .proven else .unknown
 
+private def getMVarDependenciesAtState
+    (state : SavedState) (goal : MVarId) : SearchM Q (Std.HashSet MVarId) := do
+  liftM (show MetaM _ from do
+    restoreState state
+    goal.getMVarDependencies)
+
 /- Make an initial rappRef for later modification -/
 private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
     (usedRule : Rule RuleInfo) (postState : SavedState) : SearchM Q RappRef := do
@@ -129,7 +135,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
       preNormGoal := child.goal
       preNormState := spec.postState
       normalizationState := .notNormal
-      unassignedMvars := ← child.goal.getMVarDependencies
+      unassignedMvars := ← getMVarDependenciesAtState spec.postState child.goal
       successProbability
       addedInIteration := ← getIteration
       lastExpandedInIteration := .zero

@@ -325,7 +325,7 @@ private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
         let proof ← mkAssumptionProof irisGoal.hyps irisGoal.goal
         goal.assign proof
 
-public meta def finalizeProof : SearchM Q Unit := do
+public meta def baselineFinalizeProof : SearchM Q Unit := do
   let root ← getRootGoal
   finalizeGoal root
 

@@ -277,8 +277,4 @@ meta partial def propogateFromRapp (rappRef : RappRef) : SearchM Q Unit := do
   propogateFromGoal parentRef
 
 end
-
-meta partial def propogateProvenFromGoal (gref : GoalRef) : SearchM Q Unit :=
-  propogateFromGoal gref
-
 end Search

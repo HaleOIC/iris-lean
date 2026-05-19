@@ -4,7 +4,10 @@ public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
 public meta import Iris.ProofMode.Aesop.Search.Propogation
+public meta import Iris.ProofMode.Aesop.Search.BaselinePropogation
 public meta import Iris.ProofMode.Aesop.Search.Finalization
+public meta import Iris.ProofMode.Aesop.Search.BaselineFinalization
+public meta import Iris.ProofMode.Aesop.Tree.Print
 public meta import Iris.ProofMode.Aesop.Rule.Common.Main
 -- Temporarily disabled while the common rule set is the only active backend.
 -- public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
@@ -40,7 +43,10 @@ private meta def expandNextGoal : SearchM Q Bool := do
       -- [Note]: Trace some information here about new generated Rapps
       let _ ← rref.get
   if (← gref.get).state.isProven then
-    propogateProvenFromGoal gref
+    if (← readThe SearchM.Context).config.baseline? then
+      baselinePropogateProvenFromGoal gref
+    else
+      propogateFromGoal gref
   return true
 
 private meta def Goal.currentMVar? (g : Goal) : Option MVarId :=
@@ -65,8 +71,13 @@ private meta def collectRemainingGoals : SearchM Q (Array MVarId) := do
 
 /-- Check tree status function set -/
 private meta def checkRootProven : SearchM Q Bool := do
-  if (← (← getRootGoal).get).state.isProven then
-    finalizeProof
+  let rootRef := ← getRootGoal
+  if (← rootRef.get).state.isProven then
+    printSearchTreeBeforeFinalization
+    if (← readThe SearchM.Context).config.baseline? then
+      baselineFinalizeProof
+    else
+      finalizeProof
     return true
   else
     return false

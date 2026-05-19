@@ -1,12 +1,6 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Index.Query
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.ApplyHyps
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IMod
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IModIntro
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IExact
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.IPureIntro
-public meta import Iris.ProofMode.Aesop.Rule.Builtin.Identity
 
 public meta section
 

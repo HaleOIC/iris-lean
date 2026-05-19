@@ -8,6 +8,7 @@ public meta section
 
 namespace Iris.ProofMode.Aesop.Rule.Commit.Builtin
 
+open Lean Meta
 open Iris.ProofMode.Aesop
 
 variable {Q : Type} [Queue Q]
@@ -19,6 +20,12 @@ private def RappSpec.obunKind (spec : RappSpec) : ObunKind :=
 
 private def RappSpec.nodeState (spec : RappSpec) : NodeState :=
   if spec.goals.isEmpty then .proven else .unknown
+
+private def getMVarDependenciesAtState
+    (state : SavedState) (goal : MVarId) : SearchM Q (Std.HashSet MVarId) := do
+  liftM (show MetaM _ from do
+    restoreState state
+    goal.getMVarDependencies)
 
 def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec) :
     SearchM Q (RappRef × Array GoalRef) := do
@@ -71,7 +78,7 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
       preNormGoal := child.goal
       preNormState := spec.postState
       normalizationState := .notNormal
-      unassignedMvars := ← child.goal.getMVarDependencies
+      unassignedMvars := ← getMVarDependenciesAtState spec.postState child.goal
       successProbability
       addedInIteration := currentIteration
       lastExpandedInIteration := currentIteration
