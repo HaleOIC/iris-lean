@@ -1,4 +1,4 @@
 module
 
 public import IrisITree.Core
-public import IrisITree.Effect
+public import IrisITree.Effects

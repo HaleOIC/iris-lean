@@ -1,14 +1,15 @@
 module
 
-public import IrisITree.Core.Handler
-public import IrisITree.Core.ITree
-public import Iris.ProofMode
-public import Iris.BI.Lib.Fixpoint
+import Iris.BI.Lib.Fixpoint
+public import Iris.ProofMode.Classes
+import Iris.ProofMode
 public import ITree.Definition
 public import ITree.Effect
+public import IrisITree.Core.Handler
+import IrisITree.Core.ITree
 
-namespace Iris.ITree
-open Iris.BI _root_.ITree
+namespace IrisITree.Core
+open Iris Iris.BI ITree
 
 variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]
 
@@ -78,6 +79,7 @@ instance {R Ms Me} {t : ITree E R} : OFE.NonExpansive (wpi H Ms Me t) := by
 
 end wp_itree_def
 
+-- TODO: This turns }} into a token. Can we somehow prevent this?
 macro:max "WPi " t:term:20 " @> " H:term:20 ";" Ms:term:20 "," Me:term:20 " {{ " Φ:term:20 " }}" : term => `(wpi (H := $H) $Ms $Me $t $Φ)
 macro:max "WPi " t:term:20 " @> " H:term:20 ";" Ms:term:20 "," Me:term:20 " {{ " v:ident " , " Q:term:20 " }}" : term => `(wpi (H := $H) $Ms $Me $t <| λ $v => $Q)
 
@@ -139,7 +141,7 @@ theorem wpi_pure' {R} (Φ : R → PROP) (r : R) :
   isplit
   · iintro >$
   · iintro >_; iapply fupd_mask_intro
-    · exact Std.LawfulSet.empty_subset
+    · simp
     iintro >Hemp !>; iframe
 
 theorem wpi_pure {R} (M : CoPset) (Φ : R → PROP) (r : R) :
@@ -163,8 +165,8 @@ theorem wpi_trigger_bind {E' A} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     (|={Ms, ∅}=> H'.ihandle i
       (λ a => WPi (k a) @> H; ∅,Me {{ Φ }})
       (λ a => WPi (k a) @> H; ∅,Me {{ λ _ => iprop(False) }})) -∗
-    WPi ITree.trigger E' i >>= k @> H; Ms, Me {{ Φ }} := by
-  iintro >HH; simp [ITree.trigger]
+    WPi E'.trigger i >>= k @> H; Ms, Me {{ Φ }} := by
+  iintro >HH; simp [Effect.trigger]
   iapply wpi_vis; imodintro
   iapply H.ihandle_mono; rotate_left 2
   · iapply InH.is_inH $$ HH
@@ -176,8 +178,8 @@ theorem wpi_trigger {E'} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     (|={Ms, ∅}=> H'.ihandle i
       (λ a => iprop(|={∅, Me}=> Φ a))
       (λ _ => iprop(False))) -∗
-    WPi (ITree.trigger E' i) @> H; Ms,Me {{ Φ }} := by
-  iintro HH; unfold ITree.trigger
+    WPi (E'.trigger i) @> H; Ms,Me {{ Φ }} := by
+  iintro HH; unfold Effect.trigger
   iapply wpi_vis; imod HH; imodintro
   iapply H.ihandle_mono
   · iintro %r HΦ; iapply wpi_pure'; iexact HΦ
@@ -341,13 +343,13 @@ variable {E1 E2 : Effect} {Ms Me : CoPset}
 
 /-- Translate a WPi proof across handlers by interpreting each `E₁` event as an `E₂` itree. -/
 theorem wpi_translation {R} (t : ITree E1 R) (Φ : R → PROP) :
-    (WPi t @> H1; Ms, Me {{ Φ }}) -∗
+    WPi t @> H1; Ms, Me {{ Φ }} -∗
     □ (∀ i (k : E1.O i → ITree E1 R) Ψ,
       H1.ihandle i
         (λ a => WPi (ITree.interp f (k a)) @> H2; ∅,Me {{ Ψ }})
         (λ a => WPi (ITree.interp f (k a)) @> H2; ∅,Me {{ λ _ => iprop(False) }}) -∗
-      (WPi (f i >>= λ a => ITree.interp f (k a)) @> H2; ∅,Me {{ Ψ }})) -∗
-    (WPi (ITree.interp f t) @> H2; Ms, Me {{ Φ }}) := by
+      WPi (f i >>= λ a => ITree.interp f (k a)) @> H2; ∅,Me {{ Ψ }}) -∗
+    WPi (ITree.interp f t) @> H2; Ms, Me {{ Φ }} := by
   iintro >Hwp #HH
   let G : ITree E1 R → (R → PROP) → PROP := λ t Φ => WPi (ITree.interp f t) @> H2; ∅,Me {{Φ}}
   iapply (wpi_iter' G) $$ [] [] [] Hwp
@@ -374,8 +376,6 @@ end wp_itree_translation
 
 section wp_itree_mono
 
-open ITree BIUpdate OFE
-
 variable {E : Effect} {Ms Me : CoPset}
   {PROP : Type _} [BI PROP] [BIFUpdate PROP]
   {H1 : IHandler PROP E} {H2 : IHandler PROP E}
@@ -384,11 +384,11 @@ variable {E : Effect} {Ms Me : CoPset}
 theorem wpi_wandH {R} (t : ITree E R) (Φ : R → PROP) :
     WPi t @> H1; Ms, Me {{ Φ }} ⊢ WPi t @> H2; Ms, Me {{ Φ }} := by
   iintro Hwp
-  have ht : t = interp (λ i => trigger E i) t := by simp
+  have ht : t = t.interp (λ i => E.trigger i) := by simp
   rw (occs:=[2]) [ht]
   iapply wpi_translation $$ Hwp
   iintro !> %i %k %Ψ Hh
-  simp [ITree.trigger]; iapply wpi_vis; imodintro
+  simp [Effect.trigger]; iapply wpi_vis; imodintro
   iapply Hwand.is_wandH
   iapply H1.ihandle_mono i $$ [] [] Hh
   · iintro %a $
@@ -398,8 +398,6 @@ end wp_itree_mono
 
 section wp_itree_inH
 
-open ITree BIUpdate OFE
-
 variable {E1 E2 : Effect} {Ms Me : CoPset}
   {PROP : Type _} [BI PROP] [BIFUpdate PROP] [BIAffine PROP]
   {H1 : IHandler PROP E1} {H2 : IHandler PROP E2}
@@ -407,15 +405,15 @@ variable {E1 E2 : Effect} {Ms Me : CoPset}
 
 theorem wpi_inH {R} (t : ITree E1 R) (Φ : R → PROP) :
     (WPi t @> H1; Ms, Me {{ Φ }}) ⊣⊢
-    (WPi (ITree.interp (λ i => ITree.trigger E1 i) t) @> H2; Ms, Me {{ Φ }}) := by
+    (WPi (t.interp (λ i => E1.trigger i)) @> H2; Ms, Me {{ Φ }}) := by
   isplit <;> iintro Hwp
   · iapply wpi_translation $$ Hwp
     iintro !> %i %k %Ψ Hh
-    iapply wpi_trigger_bind (H':=H1); imodintro
+    iapply wpi_trigger_bind; imodintro
     iapply H1.ihandle_mono $$ [] [] Hh
     · iintro %a $
     · iintro !> %a $
-  · let emb : (i : E1.I) → ITree E2 (E1.O i) := fun i => ITree.trigger E1 i
+  · let emb : (i : E1.I) → ITree E2 (E1.O i) := fun i => E1.trigger i
     let G : ITree E2 R → (R → PROP) → PROP := λ u Ψ =>
       iprop(∀ t', ⌜ITree.interp emb t' = u⌝ -∗ (WPi t' @> H1; ∅ {{ Ψ }}))
     ihave Hgen : (∀ u Ψ, (WPi u @> H2; ∅ {{ Ψ }}) -∗ G u Ψ) $$ []

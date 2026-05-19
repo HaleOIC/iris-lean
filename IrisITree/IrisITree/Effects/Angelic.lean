@@ -1,14 +1,14 @@
 module
 
-public import IrisITree.Core.HandlerAdequate
+import Iris.ProofMode
+public import ITree.Effects.Angelic
 public import IrisITree.Core.Wpi
-public import ITree
 
 @[expose] public section
 
-namespace IrisITree.Effect
+namespace IrisITree.Effects
 
-open Iris BI ITree Effects
+open Iris Iris.BI ITree IrisITree.Core ITree.Effects
 
 section handler
 
@@ -39,12 +39,12 @@ variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {E : Effect}
 
 theorem wpi_angelic (M : CoPset) (p : α → Prop) (a : {x // p x}) (Ψ : {x // p x} → PROP) :
     Ψ a ⊢ (WPi (choose_angelic p) @> H; M {{ Ψ }}) := by
-  change Ψ a ⊢ (WPi trigger (angelicE α) p @> H; M {{ Ψ }})
-  iintro HΨ; iapply wpi_trigger (H := H) (angelicH (PROP := PROP) α) M p Ψ
+  iintro HΨ; unfold choose_angelic
+  iapply wpi_trigger
   iapply fupd_mask_intro
-  · exact Std.LawfulSet.empty_subset
-  · iintro Hfalse; simp [angelicH]; iexists a
-    imod Hfalse; imodintro; iexact HΨ
+  · simp
+  iintro Hfalse; simp [angelicH]; iexists a
+  imod Hfalse; imodintro; iexact HΨ
 
 end wpi_rules
 
@@ -54,16 +54,11 @@ open ITree.Exec IrisITree.Core
 
 instance angelicEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] {α : Type _} :
     SEHandlerAdequate (angelicH (PROP := PROP) α) (angelicEH α) where
-  sehandler_inv _ := iprop(True)
-  sehandler_adequate := by
+  inv _ := iprop(emp)
+  adequate := by
     intro i s C Φ1 Φ2 Hhandle
     simp [angelicH, angelicEH] at Hhandle ⊢
-    iintro Hwp Hinv; icases Hwp with ⟨%a, HΦ⟩
-    imodintro; iexists a, s
-    isplitl []
-    · ipure_intro; exact Hhandle a.1 a.2
-    · isplitl [Hinv]; iexact Hinv; iexact HΦ
+    iintro ⟨%a, HΦ⟩ Hinv !>; iexists a, s; iframe
+    ipure_intro; apply Hhandle
 
 end exec
-
-end IrisITree.Effect

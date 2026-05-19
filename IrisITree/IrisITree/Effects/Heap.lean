@@ -4,6 +4,4 @@ module
 
 -- A heap, represented as a [gmap] of [option val]s, with [None] representing deallocated locations.
 
-namespace IrisITree.Effect
-
-end IrisITree.Effect
+namespace IrisITree.Effects

@@ -1,8 +1,9 @@
 module
 
-public import Iris.ProofMode
-public import Iris.Instances.IProp
+public import Iris.BI
+import Iris.ProofMode
 public import ITree.Definition
+public import ITree.Exec
 
 @[expose] public section
 
@@ -79,7 +80,7 @@ variable {PROP : Type _} [BI PROP]
 
 /- `InH H1 H2` means that, on events [E1], [H1] is equivalent to [H2] -/
 class InH {E₁ E₂} [Hsub : E₁ -< E₂]
-    (H1 : IHandler PROP E₁) (H2 : IHandler PROP E₂) where
+    (H1 : outParam (IHandler PROP E₁)) (H2 : IHandler PROP E₂) where
   is_inH : ∀ (i₁ : E₁.I) (Φ₁ s₁ : E₁.O i₁ → PROP),
     let ⟨i₂, f⟩ := Hsub.map i₁
     let Φ₂ := fun x => Φ₁ <| f x
@@ -90,17 +91,16 @@ instance {PROP E} [BI PROP] (H : IHandler PROP E) : InH H H := by
   constructor; intro i Φ s; simp
 
 instance {PROP E₁ E₂ E₃} [BI PROP] [f : E₁ -< E₂]
-    (H1 : IHandler PROP E₁) (H2 : IHandler PROP E₂) (H3 : IHandler PROP E₃) :
-  InH H1 H2 → InH H1 (H2 ⊕ₕ H3) := by
-    intro Hin
+    (H1 : IHandler PROP E₁) (H2 : IHandler PROP E₂) (H3 : IHandler PROP E₃)
+    [Hin : InH H1 H2]:
+   InH H1 (H2 ⊕ₕ H3) := by
     constructor
     intro i Φ s
     exact Hin.is_inH i Φ s
 
 instance {PROP E₁ E₂ E₃} [BI PROP] [f : E₁ -< E₃]
-    (H1 : IHandler PROP E₁) (H2 : IHandler PROP E₂) (H3 : IHandler PROP E₃) :
-  InH H1 H3 → InH H1 (H2 ⊕ₕ H3) := by
-    intro Hin
+    (H1 : IHandler PROP E₁) (H2 : IHandler PROP E₂) (H3 : IHandler PROP E₃)  [Hin : InH H1 H3]:
+   InH H1 (H2 ⊕ₕ H3) := by
     constructor
     intro i Φ s
     exact Hin.is_inH i Φ s
@@ -148,3 +148,52 @@ instance {PROP E₁ E₂} [BI PROP]
     | inr e2 => simp only [sumH_inr]; iapply Hs2.is_seq $$ H
 
 end handler_Sequential
+
+section adequate
+open ITree.Exec
+
+variable {PROP : Type _} [BI PROP] [BIFUpdate PROP]
+
+class EHandlerAdequate {E GE : Effect.{u} } {R σ : Type _}
+    (H : IHandler PROP E) (EH : EHandler E GE R σ) where
+  inv : σ → List (((ITree GE R → PROP) → PROP)) → PROP
+  adequate :
+    ∀ (G : ITree GE R → PROP) (i : E.I) (s : σ)
+      (Ms : List (((ITree GE R → PROP) → PROP)))
+      (C : ITree GE R → σ → Prop) (k : E.O i → ITree GE R),
+      EH.handle i s k C →
+      H.ihandle i (λ a => G (k a)) (λ a => G (k a)) -∗
+      inv s Ms -∗
+      |={∅}=> ∃ t' s' M' Ms' Msn, <affine> ⌜C t' s'⌝ ∗
+        <affine> ⌜(M' :: Ms').Perm (Msn ++ Ms)⌝ ∗
+        ([∗list] M ∈ Msn, M G) ∗ inv s' Ms' ∗
+        (∀ P, M' P ={∅}=∗ P t')
+
+/-- Logical adequacy interface for simple executable handlers. -/
+class SEHandlerAdequate {E : Effect.{_} } {σ : Type _}
+    (H : IHandler PROP E) (EH : SEHandler E σ) where
+  inv : σ → PROP
+  adequate :
+    ∀ (i : E.I) (s : σ) (C : E.O i → σ → Prop) (Φ1 Φ2 : E.O i → PROP),
+      EH.handle i s C →
+      H.ihandle i Φ1 Φ2 ⊢
+      inv s -∗
+      |={∅}=> ∃ a s', <affine> ⌜C a s'⌝ ∗ inv s' ∗ Φ1 a
+
+instance {E GE : Effect.{u} } {R σ : Type _}
+    (H : IHandler PROP E) (EH : SEHandler E σ)
+    [A : SEHandlerAdequate H EH] :
+    EHandlerAdequate H (EH : EHandler E GE R σ) where
+  inv s _ := A.inv s
+  adequate := by
+    intro G i s Ms C k H0; simp at H0
+    iintro Hh Hinv
+    ihave >⟨%a, %s', %_, _, _⟩ := A.adequate $$ Hh [$]; assumption
+    imodintro; iexists (k a), _, (λ P => P (k a)), Ms, [λ P => P (k a)]
+    isplitr; ipure_intro; trivial
+    iframe
+    isplitr; ipure_intro; simp
+    simp; iframe
+    iintro %_ $ !>; ipure_intro; trivial
+
+end adequate

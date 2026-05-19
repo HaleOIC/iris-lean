@@ -1,14 +1,15 @@
 module
 
-public import IrisITree.Core.HandlerAdequate
+import Iris.ProofMode
+public import ITree.Effects.Demonic
 public import IrisITree.Core.Wpi
-public import ITree
 
 @[expose] public section
 
-namespace IrisITree.Effect
 
-open Iris BI ITree Effects
+namespace IrisITree.Effects
+
+open Iris Iris.BI ITree IrisITree.Core ITree.Effects
 
 section handler
 
@@ -36,14 +37,14 @@ variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {E : Effect}
 
 theorem wpi_demonic (M : CoPset) (Φ : α → Prop) [Hdec : DecidablePred Φ]
     [Hi: Inhabited {a // Φ a}] (Ψ : {a // Φ a} → PROP) :
-    (∀ a, Ψ a) ⊢ (WPi (choose Φ) @> H; M {{ Ψ }}) := by
-  change (∀ a, Ψ a) ⊢ (WPi (ITree.trigger (demonicE α) ⟨Φ, Hdec, Hi⟩) @> H; M {{ Ψ }})
-  iintro HΨ;
-  iapply wpi_trigger (demonicH (PROP := PROP) α) M ⟨Φ, Hdec, Hi⟩ Ψ
+    (∀ a, Ψ a) ⊢ WPi choose Φ @> H;M {{ Ψ }} := by
+  iintro HΨ; unfold choose
+  set_option pp.all true in
+  iapply wpi_trigger
   iapply fupd_mask_intro
-  · exact Std.LawfulSet.empty_subset
-  · iintro Hclose; simp [demonicH]; iintro %a
-    imod Hclose; imodintro; iapply HΨ
+  · simp
+  iintro Hclose; simp [demonicH]; iintro %a
+  imod Hclose; imodintro; iapply HΨ
 
 end wpi_rules
 
@@ -54,17 +55,14 @@ open ITree.Exec IrisITree.Core
 abbrev demonicEH := ITree.Effects.demonicEH
 instance demonicEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] {α : Type _} :
     SEHandlerAdequate (demonicH (PROP := PROP) α) (demonicEH α) where
-  sehandler_inv _ := iprop(True)
-  sehandler_adequate := by
+  inv _ := iprop(emp)
+  adequate := by
     intro i s C Φ1 Φ2 Hhandle
     simp [demonicH, demonicEH] at Hhandle ⊢
     rcases Hhandle with ⟨a, s', HC⟩
     iintro HΦ1 Hinv; imodintro
-    iexists ⟨a, s'⟩; iexists s
-    isplitl []; ipure_intro; exact HC
-    isplitl [Hinv]; iexact Hinv
+    iexists ⟨a, s'⟩; iexists s; iframe
+    isplitr; ipure_intro; trivial
     iapply HΦ1
 
 end exec
-
-end IrisITree.Effect
