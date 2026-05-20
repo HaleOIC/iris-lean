@@ -38,7 +38,7 @@ theorem wpi_halt {R} (Φ : R → PROP) :
   iapply wpi_trigger
   iapply fupd_mask_intro
   · exact Std.LawfulSet.empty_subset
-  iintro Hclose; simp [haltH]; imod Hclose; imodintro; ipure_intro; trivial
+  iintro Hclose; simp [haltH]; imod Hclose; itrivial
 
 theorem wpi_assume [BIAffine PROP] (P : Prop) [Decidable P] (Φ : { _x // P } → PROP) :
     (∀ HP, Φ HP) ⊢ WPi HaltE.assume P @> H; ⊤ {{ Φ }} := by

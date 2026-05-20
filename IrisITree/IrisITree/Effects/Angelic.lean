@@ -58,7 +58,6 @@ instance angelicEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] {α : Typ
   adequate := by
     intro i s C Φ1 Φ2 Hhandle
     simp [angelicH, angelicEH] at Hhandle ⊢
-    iintro ⟨%a, HΦ⟩ Hinv !>; iexists a, s; iframe
-    ipure_intro; apply Hhandle
+    iintro ⟨%a, HΦ⟩ Hinv !>; iexists a, s; iframe; itrivial
 
 end exec

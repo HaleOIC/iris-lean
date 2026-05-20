@@ -24,7 +24,7 @@ def concH : IHandler PROP concE where
     cases i <;> simp
     · icases HH with ⟨HΦ, HΦs⟩; icases HΦwand $$ [$] with $
       imod HΦs; imodintro; iapply Hswand $$ [$]
-    · imod HH; ipure_intro; trivial
+    · imod HH; itrivial
     · imod HH; imodintro; imod HH; imodintro; iapply HΦwand $$ [$]
 
 end handler
@@ -40,7 +40,7 @@ theorem wpi_kill M (Φ : PUnit → PROP) :
   iintro Ht; unfold kill
   iapply wpi_trigger_bind
   iapply fupd_mask_intro (by simp); iintro Hm
-  simp [concH]; imod Hm; ipure_intro; trivial
+  simp [concH]; imod Hm; itrivial
 
 theorem wpi_fork M (Φ : PUnit → PROP) :
     Φ ⟨⟩ -∗
@@ -89,7 +89,7 @@ instance coneEH_adequate {GE GR} :
       isplitr; ipure_intro; simp
       simp; iframe; isplitr
       · ipure_intro; simp [h, ConcState.add]
-      · iintro %_ $ !>; ipure_intro; trivial
+      · iintro %_ $ //
     · iintro Ht %h !>
       rcases Hhandle with ⟨i, _, _, _, _⟩
       -- iexists _, _, _, _, _

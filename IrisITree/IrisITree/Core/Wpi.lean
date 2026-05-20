@@ -151,7 +151,7 @@ theorem wpi_pure {R} (M : CoPset) (Φ : R → PROP) (r : R) :
 theorem wpi_tau {R} (Φ : R → PROP) (t : ITree E R) :
     (WPi t.tau @> H;Ms,Me {{ Φ }}) ⊣⊢ (WPi t @> H;Ms,Me {{ Φ }}) := (wpi_unfold _ _).trans <| by
   simp [wpiF]
-  isplit <;> iintro >$; ipure_intro; trivial
+  isplit <;> iintro >$ //
 
 theorem wpi_vis {R} (Φ : R → PROP) (i : E.I) (k : E.O i → ITree E R) :
     (WPi (ITree.vis i k) @> H;Ms,Me {{ Φ }}) ⊣⊢
@@ -216,13 +216,13 @@ theorem wpi_ind :
   iintro #HPre %t %Φ Hwp
   let G' := λ (Ms : CoPset) t Φ => iprop(<affine> ⌜Ms = ∅⌝ -∗ G t Φ)
   have : ∀ Ms t, OFE.NonExpansive (G' Ms t) := by sorry
-  iapply wpi_ind_mask G' $$ [] Hwp; rotate_left 1; ipure_intro; trivial
+  iapply wpi_ind_mask G' $$ [] Hwp; rotate_left 1; itrivial
   iintro !> %Ms %t %Φ Hwpi %hp; subst hp
   iapply HPre
   iapply wpiF_mono $$ [] Hwpi
   iintro !> %_ %_ HG
   isplit
-  · icases HG with ⟨HG, -⟩; iapply HG; ipure_intro; trivial
+  · icases HG with ⟨HG, -⟩; iapply HG $$ [//]
   · icases HG with ⟨-, $⟩
 
 theorem wpi_iter :
@@ -289,11 +289,11 @@ theorem wpi_fupd (Φ : R → PROP) :
     (WPi t @> H; Ms, Me {{ v, iprop(|={Me}=> Φ v) }})
      := by
   isplit <;> iintro Hwp
-  · iapply wpi_wand $$ Hwp; iintro %_ $; ipure_intro; trivial
+  · iapply wpi_wand $$ Hwp; iintro %_ $ //
   · iapply wpi_fupd_empty
     iapply wpi_wand $$ [Hwp]
     · iapply (wpi_fupd_empty (Me:=Me)) $$ Hwp
-    iintro %_ > > $; ipure_intro; trivial
+    iintro %_ > > $ //
 
 theorem wpi_bind' {A} M' t (k : A → ITree E R) (Φ : R → PROP) :
     WPi t @> H; Ms, M' {{ r, WPi k r @> H;M',Me {{ Φ }} }} ⊢
