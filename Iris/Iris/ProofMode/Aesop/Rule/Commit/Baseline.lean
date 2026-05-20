@@ -170,16 +170,18 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
 
   /- Fabricate the new goals with removed context in the current goal context. -/
   let parent ← parentRef.get
-  let (pendingGoals, postState) ← liftM (show MetaM (Array (MVarId × Std.HashSet MVarId) × SavedState) from do
+  let (pendingGoals, postState) ←
+      liftM (show MetaM (Array (IrisGoal × MVarId × Std.HashSet MVarId) × SavedState) from do
     restoreState spec.postState
     let tag ← parent.preNormGoal.getTag
     let pendingGoals ← pending.leftIrisGoals.mapM λ pendingGoal => do
       let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal pending.usedSpatialHyps
       let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
       let goal := goalExpr.mvarId!
-      return (goal, ← goal.getMVarDependencies)
+      return (irisGoal, goal, ← goal.getMVarDependencies)
     return (pendingGoals, ← saveState))
-  let goalRefs ← pendingGoals.mapIdxM λ idx (goal, unassignedMvars) => do
+  let irisSubgoals := pendingGoals.map λ (irisGoal, _, _) => irisGoal
+  let goalRefs ← pendingGoals.mapIdxM λ idx (_, goal, unassignedMvars) => do
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty pendingGoals.size).mark idx
@@ -200,8 +202,10 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
       rulesQueue := {}
       appendiedGoalId := #[]
     }
+  /- Inherited obun also preserve the irisSubgoals template -/
   obunRef.modify λ o =>
     o.setKind (.inherited pending.sourceObunId)
+      |>.setFullContextIrisSubgoals irisSubgoals
       |>.setGoals goalRefs
 
 /- Make new rapp and goal according to the given RappSpec -/
