@@ -3,6 +3,7 @@ module
 public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
+public meta import Iris.ProofMode.Aesop.Search.Tracing
 public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.BaselinePropogation
 public meta import Iris.ProofMode.Aesop.Search.Finalization
@@ -42,11 +43,14 @@ private meta def expandNextGoal : SearchM Q Bool := do
     for rref in newRapps do
       -- [Note]: Trace some information here about new generated Rapps
       let _ ← rref.get
-  if (← gref.get).state.isProven then
-    if (← readThe SearchM.Context).config.baseline? then
-      baselinePropogateProvenFromGoal gref
-    else
-      propogateFromGoal gref
+
+  /- Check whether new goal's obun child is proven and collected back -/
+  if let some rref ← (← gref.get).children.findM? λ r => do
+    return (← r.get).state.isProven
+  then baselinePropogateProvenFromRapp rref
+
+  if (← gref.get).state.isProven && !(← readThe SearchM.Context).config.baseline? then
+    propogateFromGoal gref
   return true
 
 private meta def Goal.currentMVar? (g : Goal) : Option MVarId :=

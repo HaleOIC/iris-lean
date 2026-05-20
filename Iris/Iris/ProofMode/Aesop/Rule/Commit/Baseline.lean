@@ -166,7 +166,11 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   let here := usedHyp?.bind AppliedHyp.consumedSpatialHyp? |>.toArray
   let pending := { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
   if pending.leftIrisGoals.isEmpty then
-    throwError "iaesop(baseline): close-goal inherited construction without pending goals is not supported yet"
+    obunRef.modify λ o =>
+      o.setKind (.inherited pending.sourceObunId)
+        |>.setFullContextIrisSubgoals #[]
+        |>.setState .proven
+    return
 
   /- Fabricate the new goals with removed context in the current goal context. -/
   let parent ← parentRef.get
@@ -224,6 +228,8 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
   rappRef.modify λ r =>
     r.setUsedHyp? <| spec.effect.bind RuleEffect.usedHyp?
   obunRef.modify λ o => o.setParent rappRef
+  if (← obunRef.get).state.isProven then
+    rappRef.modify λ r => r.setState .proven
   let goalRefs := (← obunRef.get).goals
   return (rappRef, goalRefs)
 

@@ -87,8 +87,8 @@ private meta partial def propogateFromRapp (rappRef : RappRef) : SearchM Q Unit 
 
 end
 
-public meta partial def baselinePropogateProvenFromGoal
-    (gref : GoalRef) : SearchM Q Unit :=
-  propogateFromGoal gref
+public meta partial def baselinePropogateProvenFromRapp
+    (rref : RappRef) : SearchM Q Unit :=
+  propogateFromRapp rref
 
 end Iris.ProofMode.Aesop.Search
