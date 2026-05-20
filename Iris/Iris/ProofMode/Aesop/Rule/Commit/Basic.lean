@@ -43,7 +43,7 @@ def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)
   for spec in output.rappSepcs do
     let (rappRef, goalRefs) ←
       if (← readThe SearchM.Context).config.baseline? then
-        Rule.Commit.Baseline.mkRappSpec gref usedRule spec
+        Baseline.mkRappSpec gref usedRule spec
       else
         Rule.Commit.Builtin.mkRappSpec gref usedRule spec
     rappRefs := rappRefs.push rappRef

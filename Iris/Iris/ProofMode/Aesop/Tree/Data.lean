@@ -45,13 +45,13 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
-  scriptSteps? : Option (Array Script.LazyStep)
-
-  /- ### Iris context-management data -/
   /- Indicates whether this obligation bundle uses context-management mode. -/
   kind : ObunKind
   /- Full-context Iris subgoal templates managed by this obligation bundle. -/
   fullContextIrisSubgoals : Array IrisGoal
+
+  /- ### Script generation data -/
+  scriptSteps? : Option (Array Script.LazyStep)
 
   deriving Nonempty
 
