@@ -283,3 +283,29 @@ def isInherited : ObunKind → Bool
   | _ => false
 
 end ObunKind
+
+structure CaseId where
+  toNat : Nat
+  deriving Inhabited, DecidableEq, BEq, Hashable, Repr
+
+namespace CaseId
+
+protected def zero : CaseId :=
+  ⟨0⟩
+
+protected def ofNat (n : Nat) : CaseId :=
+  ⟨n⟩
+
+def ofIndex (index : Nat) : CaseId :=
+  ⟨index + 1⟩
+
+def isUsed (id : CaseId) : Bool :=
+  id.toNat != 0
+
+def index? (id : CaseId) : Option Nat :=
+  if id.toNat == 0 then none else some (id.toNat - 1)
+
+instance : ToString CaseId where
+  toString id := toString id.toNat
+
+end CaseId

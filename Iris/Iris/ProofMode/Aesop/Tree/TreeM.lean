@@ -31,12 +31,14 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     isIrrelevant := false
     state := .unknown
     kind := .plain
+    contextDepth := 0
     fullContextIrisSubgoals := #[]
     scriptSteps? := none
   }
   let rootGoalRef ← IO.mkRef $ Goal.mk {
     id := .zero
     mask := .empty 0
+    caseId := .zero
     parent := rootObunRef
     children := #[]
     origin := .subgoal

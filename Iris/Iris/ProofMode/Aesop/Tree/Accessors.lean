@@ -24,6 +24,7 @@ instance : Nonempty Obun :=
     state := .unknown
     isIrrelevant := false
     kind := .plain
+    contextDepth := 0
     fullContextIrisSubgoals := #[]
     scriptSteps? := none
   }⟩
@@ -63,6 +64,10 @@ def kind (o : Obun) : ObunKind :=
   o.elim.kind
 
 @[inline]
+def contextDepth (o : Obun) : Nat :=
+  o.elim.contextDepth
+
+@[inline]
 def fullContextIrisSubgoals (o : Obun) : Array IrisGoal :=
   o.elim.fullContextIrisSubgoals
 
@@ -93,6 +98,10 @@ def setIsIrrelevant (isIrrelevant : Bool) (o : Obun) : Obun :=
 @[inline]
 def setKind (kind : ObunKind) (o : Obun) : Obun :=
   o.modify fun o => { o with kind }
+
+@[inline]
+def setContextDepth (contextDepth : Nat) (o : Obun) : Obun :=
+  o.modify fun o => { o with contextDepth }
 
 @[inline]
 def setFullContextIrisSubgoals
@@ -134,6 +143,14 @@ protected def modify
 @[inline]
 def id (g : Goal) : GoalId :=
   g.elim.id
+
+@[inline]
+def caseId (g : Goal) : CaseId :=
+  g.elim.caseId
+
+@[inline]
+def caseIndex? (g : Goal) : Option Nat :=
+  g.caseId.index?
 
 @[inline]
 def mask (g : Goal) : ProgressMask :=
@@ -214,6 +231,24 @@ def hasNoChildren (g : Goal) : Bool :=
 @[inline]
 def setId (id : GoalId) (g : Goal) : Goal :=
   g.modify fun g => { g with id }
+
+@[inline]
+def setCaseId (caseId : CaseId) (g : Goal) : Goal :=
+  g.modify λ g => { g with caseId }
+
+@[inline]
+def setCaseIndex? (caseIndex? : Option Nat) (g : Goal) : Goal :=
+  match caseIndex? with
+  | some index => g.setCaseId (CaseId.ofIndex index)
+  | none => g.setCaseId .zero
+
+@[inline]
+def setCaseIndex (caseIndex : Nat) (g : Goal) : Goal :=
+  g.setCaseId (CaseId.ofIndex caseIndex)
+
+@[inline]
+def clearCaseId (g : Goal) : Goal :=
+  g.setCaseId .zero
 
 @[inline]
 def setMask (mask : ProgressMask) (g : Goal) : Goal :=

@@ -9,9 +9,6 @@ namespace Iris.ProofMode.Aesop.Search
 
 variable {Q : Type} [Queue Q]
 
-private def allGoalsProven (goals : Array GoalRef) : SearchM Q Bool := do
-  goals.allM λ gref => return (← gref.get).state.isProven
-
 mutual
 
 private meta partial def markGoalIrrelevant (gref : GoalRef) : SearchM Q Unit := do
@@ -46,49 +43,87 @@ private def markOtherRappsIrrelevant
     if (← rref.get).id != keepId then
       markRappIrrelevant rref
 
+private def writeSplit
+    (minSize : Nat) (splits : Array (Array IrisHyp))
+    (idx : Nat) (hyps : Array IrisHyp) : Array (Array IrisHyp) :=
+  let size := max minSize (idx + 1)
+  (List.range size).foldl (init := #[]) λ acc j =>
+    acc.push <| if idx == j then hyps else splits[j]?.getD #[]
+
+private def markOtherGoalsIrrelevant
+    (obunRef : ObunRef) (keepId : GoalId) : SearchM Q Unit := do
+  for gref in (← obunRef.get).goals do
+    if (← gref.get).id != keepId then
+      markGoalIrrelevant gref
+
 mutual
 
-private meta partial def propogateFromGoal (gref : GoalRef) : SearchM Q Unit := do
+private meta partial def propogateFromGoal (gref : GoalRef)
+    (cur : Array IrisHyp) (fixed : Array (Array IrisHyp)) : SearchM Q Unit := do
   let g ← gref.get
   if !g.state.isProven then
-    throwError "iaesop: internal error : unproved goal should not be propagated"
+    throwError "iaesop(baseline): unproved goal should not be propagated"
 
   let obunRef := g.parent
   let obun ← obunRef.get
   if obun.state.isProven then
     return
-  if ← allGoalsProven obun.goals then
+  if obun.id == .zero then
     obunRef.modify λ o => o.setState .proven
-    propogateFromObun obunRef
+    return
+  if obun.kind.isPlain && obun.goals.size > 1 then
+    throwError "iaesop(baseline): multiple goals plain obun is not supported"
+  let some idx := g.caseIndex?
+    | throwError s!"iaesop(baseline): non-plain goal {g.id} does not have a split case id"
+  markOtherGoalsIrrelevant obunRef g.id
+  obunRef.modify λ o => o.setState .proven
+  propogateFromObun obunRef idx cur fixed
 
-private meta partial def propogateFromObun (obunRef : ObunRef) : SearchM Q Unit := do
+private meta partial def propogateFromObun (obunRef : ObunRef)
+    (idx : Nat) (cur : Array IrisHyp) (fixed : Array (Array IrisHyp)) :
+    SearchM Q Unit := do
   let obun ← obunRef.get
   if !obun.state.isProven then
-    throwError "iaesop: internal error : unproved obun should not be propogated"
+    throwError "iaesop(baseline): unproved obun should not be propogated"
 
+  /- Already reached the root, just return -/
   let some rappRef := obun.parent?
     | return
   let rapp ← rappRef.get
-  if rapp.state.isProven then
-    return
-  rappRef.modify λ r => r.setState .proven
-  propogateFromRapp rappRef
+  if !rapp.state.isProven then
+    rappRef.modify λ r => r.setState .proven
 
-private meta partial def propogateFromRapp (rappRef : RappRef) : SearchM Q Unit := do
+  /- Save the used hypothesis or finalize the split case -/
+  match obun.kind with
+  | .plain => propogateFromRapp rappRef cur fixed
+  | .inherited .. =>
+    let onemoreFixed := writeSplit fixed.size fixed idx cur
+    propogateFromRapp rappRef #[] onemoreFixed
+  | .managed =>
+    let finalSplit := writeSplit obun.fullContextIrisSubgoals.size fixed idx cur
+    rappRef.modify λ r => r.setFinalizedSpatialSplits finalSplit
+    propogateFromRapp rappRef #[] #[]
+
+private meta partial def propogateFromRapp (rappRef : RappRef)
+    (cur : Array IrisHyp) (fixed : Array (Array IrisHyp)) : SearchM Q Unit := do
   let rapp ← rappRef.get
   if !rapp.state.isProven then
-    throwError "iaesop: internal error: unproved rapp should not be propagated"
+    throwError "iaesop(baseline): unproved rapp should not be propagated"
 
   let parentRef := rapp.parent
   markOtherRappsIrrelevant parentRef rappRef
-  parentRef.modify λ g =>
-    g.setState (.provenByRuleApplication rapp.consumedSpatialHyp?.toArray)
-  propogateFromGoal parentRef
+  let used :=
+    rapp.finalizedSpatialSplits.foldl
+      (init := rapp.consumedSpatialHyp?.toArray) λ acc hyps => acc ++ hyps
+  let cur := cur ++ used
+  parentRef.modify λ g => g.setState (.provenByRuleApplication cur)
+  propogateFromGoal parentRef cur fixed
 
 end
 
+/- Baseline propogation stage starts from rapp -/
 public meta partial def baselinePropogateProvenFromRapp
     (rref : RappRef) : SearchM Q Unit :=
-  propogateFromRapp rref
+  propogateFromRapp rref #[] #[]
 
 end Iris.ProofMode.Aesop.Search

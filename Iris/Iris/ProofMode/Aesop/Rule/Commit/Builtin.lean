@@ -31,6 +31,11 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     SearchM Q (RappRef × Array GoalRef) := do
   let parent ← parentRef.get
   let nodeState := RappSpec.nodeState spec
+  let obunKind := RappSpec.obunKind spec
+  let parentObun ← parent.parent.get
+  let contextDepth :=
+    if obunKind.isManaged then parentObun.contextDepth + 1
+    else parentObun.contextDepth
   let successProbability := parent.successProbability * spec.successPossibility
   let obunRef ← IO.mkRef $ Obun.mk {
     id := ← getAndIncrementNextObunId
@@ -39,7 +44,8 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     state := nodeState
     isIrrelevant := false
     scriptSteps? := none
-    kind := RappSpec.obunKind spec
+    kind := obunKind
+    contextDepth
     fullContextIrisSubgoals :=
       match spec.effect with
       | some effect => effect.fullContextIrisSubgoals
@@ -68,6 +74,7 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty spec.goals.size).mark i
+      caseId := CaseId.ofIndex i
       parent := obunRef
       children := #[]
       origin := .subgoal

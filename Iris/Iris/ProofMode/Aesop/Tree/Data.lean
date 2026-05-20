@@ -35,6 +35,11 @@ structure GoalData (RappRef ObunRef : Type) : Type where
 
   rulesQueue : RuleQueue
   appendiedGoalId : Array GoalId
+
+  /- ### Context manage data -/
+  /- Split case identifier for this goal; `0` means it is not tied to a split case. -/
+  caseId : CaseId
+
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where
@@ -45,8 +50,11 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
+  /- ### Context manage data -/
   /- Indicates whether this obligation bundle uses context-management mode. -/
   kind : ObunKind
+  /- Nesting depth of active context-management frames. -/
+  contextDepth : Nat
   /- Full-context Iris subgoal templates managed by this obligation bundle. -/
   fullContextIrisSubgoals : Array IrisGoal
 

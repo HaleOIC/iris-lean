@@ -38,16 +38,15 @@ private meta partial def collectUsedHypsByIndex
   let here := g.state.usedIrisHyps?.getD #[]
   match g.origin with
   | .subgoal =>
-    let some i := g.mask.onlyOneIndex?
-      | throwError "iaesop: internal error: root split goal does not have singleton mask"
+    let some i := g.caseIndex?
+      | throwError "iaesop: internal error: root split goal does not have case id"
     return #[(i, here)]
   | .copied fromId =>
     let some fromRef ← findGoalById g.parent fromId
       | throwError "iaesop: internal error: fromRef does not exist in current Obun"
     let prev ← collectUsedHypsByIndex fromRef
-    let prevMask := (← fromRef.get).mask
-    let some i := g.mask.firstNewBit? prevMask
-      | throwError "iaesop: internal error: copied goal did not add exactly one mask bit"
+    let some i := g.caseIndex?
+      | throwError "iaesop: internal error: copied goal does not have case id"
     return prev.push (i, here)
   | .droppedMVar =>
     return #[]
@@ -125,6 +124,7 @@ private def appendCopiedGoalInfos
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := g.mask.mark info.index
+      caseId := CaseId.ofIndex info.index
       parent := obunRef
       children := #[]
       origin := .copied g.id

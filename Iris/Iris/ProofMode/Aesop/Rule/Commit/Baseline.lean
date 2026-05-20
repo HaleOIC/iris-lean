@@ -54,23 +54,43 @@ private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
 /- Pending information during the collection procedure -/
 private structure PendingContextGoals where
   sourceObunId : ObunId
-  leftIrisGoals : Array IrisGoal
+  sourceObunDepth : Nat
+  leftIrisGoals : Array (CaseId × IrisGoal)
   usedSpatialHyps : Array IrisHyp
   deriving Inhabited
 
 private def PendingContextGoals.empty  : PendingContextGoals := {
   sourceObunId := .zero
+  sourceObunDepth := 0
   leftIrisGoals := #[]
   usedSpatialHyps := #[]
 }
 
 /- Recursively collect pending information -/
-private meta partial def collectPendingContextGoals
-    (gref : GoalRef) : SearchM Q PendingContextGoals := do
+private meta partial def collectPendingContextGoals (gref : GoalRef)
+    (skip? : Option ObunId) : SearchM Q PendingContextGoals := do
   let g ← gref.get
   let parentObun ← g.parent.get
   /- Reached root, all determined, finished. -/
   if parentObun.id == .zero then return .empty
+
+  /- Skip the solved context manage obun -/
+  if let some source := skip? then
+    match parentObun.kind with
+    | .inherited source' =>
+      if source' == source then
+        let some rref := parentObun.parent?
+          | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
+        let rapp ← rref.get
+        return ← collectPendingContextGoals rapp.parent skip?
+    | .managed =>
+      if parentObun.id == source then
+        let some rref := parentObun.parent?
+          | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
+        let rapp ← rref.get
+        return ← collectPendingContextGoals rapp.parent none
+    | .plain =>
+      pure ()
 
   /- Plain obun: collect its parent rapp's used spatial hypothesis. -/
   if parentObun.kind.isPlain then
@@ -81,7 +101,7 @@ private meta partial def collectPendingContextGoals
     let rapp ← rref.get
     let here := rapp.usedHyp?.bind (·.consumedSpatialHyp?) |>.toArray
     let parentGoalRef := rapp.parent
-    let pending ← collectPendingContextGoals parentGoalRef
+    let pending ← collectPendingContextGoals parentGoalRef skip?
     return { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
 
   /- Non-plain obun: collect siblings context and IrisGoal(template) -/
@@ -90,14 +110,25 @@ private meta partial def collectPendingContextGoals
     let some irisGoal := parentObun.fullContextIrisSubgoals[idx]?
       | throwError s!"iaesop(baseline): missing full-context iris subgoal at index {idx}"
     -- [TODO]: Not sure whether we should check the sibling's state is irrelevant or proven
-    let acc := if other.id != g.id then acc.push irisGoal else acc
+    let acc := if other.id != g.id then acc.push (other.caseId, irisGoal) else acc
     return (idx + 1, acc)
 
-  let sourceObunId ← match parentObun.kind with
-    | .managed => pure parentObun.id
-    | .inherited source => pure source
+  /- Start to skip the already managed obun covering range -/
+  if leftIrisGoals.isEmpty then
+    let some rref := parentObun.parent?
+      | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
+    let rapp ← rref.get
+    match parentObun.kind with
+    | .managed => return ← collectPendingContextGoals rapp.parent none
+    | .inherited source => return ← collectPendingContextGoals rapp.parent (some source)
     | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
-  return { sourceObunId, leftIrisGoals, usedSpatialHyps := #[] }
+
+  /- Otherwise, return current pending info -/
+  let (sourceObunId, sourceObunDepth) ← match parentObun.kind with
+    | .managed => pure (parentObun.id, parentObun.contextDepth)
+    | .inherited source => pure (source, parentObun.contextDepth)
+    | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
+  return { sourceObunId, sourceObunDepth, leftIrisGoals, usedSpatialHyps := #[] }
 
 /- Make an initial version ObunRef with its initial subgoals. -/
 private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
@@ -110,6 +141,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
     state := .unknown
     isIrrelevant := false
     kind := .plain
+    contextDepth := (← parent.parent.get).contextDepth
     fullContextIrisSubgoals := #[]
     scriptSteps? := none
   }
@@ -117,6 +149,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty spec.goals.size).mark idx
+      caseId := CaseId.ofIndex idx
       parent := obunRef
       children := #[]
       origin := .subgoal
@@ -142,6 +175,7 @@ private def applyContextManagementEffect (obunRef : ObunRef)
     (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
   obunRef.modify λ o =>
     o.setKind .managed
+     |>.setContextDepth (o.contextDepth + 1)
      |>.setFullContextIrisSubgoals irisSubgoals
 
 /- Helper function: remove usedSpatialHyps from given irisGoal template -/
@@ -162,12 +196,13 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   if !obun.goals.isEmpty then throwError "iaesop(baseline): close-goal obun still has subgoals"
 
   /- Collect pending information from above tree, ready for copying siblings as new subgoals -/
-  let pending ← collectPendingContextGoals parentRef
+  let pending ← collectPendingContextGoals parentRef none
   let here := usedHyp?.bind AppliedHyp.consumedSpatialHyp? |>.toArray
   let pending := { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
   if pending.leftIrisGoals.isEmpty then
     obunRef.modify λ o =>
       o.setKind (.inherited pending.sourceObunId)
+        |>.setContextDepth pending.sourceObunDepth
         |>.setFullContextIrisSubgoals #[]
         |>.setState .proven
     return
@@ -175,20 +210,21 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   /- Fabricate the new goals with removed context in the current goal context. -/
   let parent ← parentRef.get
   let (pendingGoals, postState) ←
-      liftM (show MetaM (Array (IrisGoal × MVarId × Std.HashSet MVarId) × SavedState) from do
+      liftM (show MetaM (Array (CaseId × IrisGoal × MVarId × Std.HashSet MVarId) × SavedState) from do
     restoreState spec.postState
     let tag ← parent.preNormGoal.getTag
-    let pendingGoals ← pending.leftIrisGoals.mapM λ pendingGoal => do
+    let pendingGoals ← pending.leftIrisGoals.mapM λ (caseId, pendingGoal) => do
       let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal pending.usedSpatialHyps
       let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
       let goal := goalExpr.mvarId!
-      return (irisGoal, goal, ← goal.getMVarDependencies)
+      return (caseId, irisGoal, goal, ← goal.getMVarDependencies)
     return (pendingGoals, ← saveState))
-  let irisSubgoals := pendingGoals.map λ (irisGoal, _, _) => irisGoal
-  let goalRefs ← pendingGoals.mapIdxM λ idx (_, goal, unassignedMvars) => do
+  let irisSubgoals := pendingGoals.map λ (_, irisGoal, _, _) => irisGoal
+  let goalRefs ← pendingGoals.mapIdxM λ idx (caseId, _, goal, unassignedMvars) => do
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty pendingGoals.size).mark idx
+      caseId
       parent := obunRef
       children := #[]
       origin := .subgoal
@@ -209,6 +245,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   /- Inherited obun also preserve the irisSubgoals template -/
   obunRef.modify λ o =>
     o.setKind (.inherited pending.sourceObunId)
+      |>.setContextDepth pending.sourceObunDepth
       |>.setFullContextIrisSubgoals irisSubgoals
       |>.setGoals goalRefs
 
