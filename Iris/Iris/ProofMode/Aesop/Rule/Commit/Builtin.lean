@@ -50,6 +50,7 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
       match spec.effect with
       | some effect => effect.fullContextIrisSubgoals
       | none => #[]
+    finalizedSpatialSplits := #[]
   }
   let rappRef ← IO.mkRef $ Rapp.mk {
     id := ← getAndIncrementNextRappId
@@ -64,7 +65,6 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
       match spec.effect with
       | some effect => effect.usedHyp?
       | none => none
-    finalizedSpatialSplits := #[]
     metaState := spec.postState
     introducedMVars := {}
     assignedMVars := {}

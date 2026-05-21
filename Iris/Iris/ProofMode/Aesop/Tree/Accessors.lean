@@ -26,6 +26,7 @@ instance : Nonempty Obun :=
     kind := .plain
     contextDepth := 0
     fullContextIrisSubgoals := #[]
+    finalizedSpatialSplits := #[]
     scriptSteps? := none
   }⟩
 
@@ -72,6 +73,10 @@ def fullContextIrisSubgoals (o : Obun) : Array IrisGoal :=
   o.elim.fullContextIrisSubgoals
 
 @[inline]
+def finalizedSpatialSplits (o : Obun) : Array (Array IrisHyp) :=
+  o.elim.finalizedSpatialSplits
+
+@[inline]
 def scriptSteps? (o : Obun) : Option (Array Script.LazyStep) :=
   o.elim.scriptSteps?
 
@@ -107,6 +112,11 @@ def setContextDepth (contextDepth : Nat) (o : Obun) : Obun :=
 def setFullContextIrisSubgoals
     (fullContextIrisSubgoals : Array IrisGoal) (o : Obun) : Obun :=
   o.modify fun o => { o with fullContextIrisSubgoals }
+
+@[inline]
+def setFinalizedSpatialSplits
+    (finalizedSpatialSplits : Array (Array IrisHyp)) (o : Obun) : Obun :=
+  o.modify fun o => { o with finalizedSpatialSplits }
 
 @[inline]
 def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
@@ -398,10 +408,6 @@ def consumedSpatialHyp? (r : Rapp) : Option IrisHyp :=
   r.usedHyp?.bind AppliedHyp.consumedSpatialHyp?
 
 @[inline]
-def finalizedSpatialSplits (r : Rapp) : Array (Array IrisHyp) :=
-  r.elim.finalizedSpatialSplits
-
-@[inline]
 def metaState (r : Rapp) : SavedState :=
   r.elim.metaState
 
@@ -460,15 +466,6 @@ def setconsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : R
 @[inline]
 def setConsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
   r.setconsumedSpatialHyp? consumedSpatialHyp?
-
-@[inline]
-def setfinalizedSpatialSplits (finalizedSpatialSplits : Array (Array IrisHyp)) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with finalizedSpatialSplits }
-
-@[inline]
-def setFinalizedSpatialSplits
-    (finalizedSpatialSplits : Array (Array IrisHyp)) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with finalizedSpatialSplits }
 
 @[inline]
 def setMetaState (metaState : SavedState) (r : Rapp) : Rapp :=

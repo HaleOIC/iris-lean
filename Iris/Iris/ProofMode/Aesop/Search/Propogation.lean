@@ -18,30 +18,54 @@ private def findGoalById (oref : ObunRef) (id : GoalId) :
   (← oref.get).goals.findM? λ gref => do
     return (← gref.get).id == id
 
+private def findProvenRapp? (rrefs : Array RappRef) :
+    SearchM Q (Option RappRef) := do
+  rrefs.findM? λ rref => do
+    let rapp ← rref.get
+    return rapp.state.isProven && !rapp.isIrrelevant
+
+private def collectUsedHypsFromRapp (rappRef : RappRef) :
+    SearchM Q (Array IrisHyp) := do
+  let rapp ← rappRef.get
+  let childObun ← rapp.children.get
+  return childObun.finalizedSpatialSplits.foldl
+    (init := rapp.consumedSpatialHyp?.toArray) λ acc hyps => acc ++ hyps
+
+private def collectUsedHypsFromGoalProof (gref : GoalRef) :
+    SearchM Q (Array IrisHyp) := do
+  let g ← gref.get
+  if !g.state.isProven then
+    throwError "iaesop: internal error: cannot collect used hypotheses from unproven goal"
+  match ← findProvenRapp? g.children with
+  | some rref => collectUsedHypsFromRapp rref
+  | none => return #[]
+
 private meta partial def collectUsedHyps (gref : GoalRef) : SearchM Q (Array IrisHyp) := do
   let g ← gref.get
-  let here := g.state.usedIrisHyps?.getD #[]
   match g.origin with
   | .subgoal =>
+    let here ← collectUsedHypsFromGoalProof gref
     if g.mask.onlyOne then pure here
     else throwError "iaesop: internal error: collect used iris hypothesis's root is not the start one"
   | .copied fromId =>
+    let here ← collectUsedHypsFromGoalProof gref
     let some fromRef ← findGoalById g.parent fromId
       | throwError "iaesop: internal error: fromRef does not exist in current Obun"
     return (← collectUsedHyps fromRef) ++ here
   | .droppedMVar =>
-    return here
+    return #[]
 
 private meta partial def collectUsedHypsByIndex
     (gref : GoalRef) : SearchM Q (Array (Nat × Array IrisHyp)) := do
   let g ← gref.get
-  let here := g.state.usedIrisHyps?.getD #[]
   match g.origin with
   | .subgoal =>
+    let here ← collectUsedHypsFromGoalProof gref
     let some i := g.caseId?
       | throwError "iaesop: internal error: root split goal does not have case id"
     return #[(i.toNat, here)]
   | .copied fromId =>
+    let here ← collectUsedHypsFromGoalProof gref
     let some fromRef ← findGoalById g.parent fromId
       | throwError "iaesop: internal error: fromRef does not exist in current Obun"
     let prev ← collectUsedHypsByIndex fromRef
@@ -62,18 +86,19 @@ private partial def collectGoalLineageIds (gref : GoalRef) :
   | .subgoal | .droppedMVar =>
     return #[g.id]
 
--- Store the used split context into the parent rule application.
-private def writeUsedHypsToRapp
+-- Store the used split context into the child obligation bundle.
+private def writeUsedHypsToObun
     (rappRef : RappRef) (usedByIndex : Array (Nat × Array IrisHyp)) :
     SearchM Q Unit := do
   let rapp ← rappRef.get
-  let obun ← rapp.children.get
+  let obunRef := rapp.children
+  let obun ← obunRef.get
   let size := obun.fullContextIrisSubgoals.size
   let spatialSplits :=
     usedByIndex.foldl (init := #[]) λ ctx (i, irisHyps) =>
       (List.range size).foldl (init := #[]) λ acc j =>
         acc.push <| if i == j then irisHyps else ctx[j]?.getD #[]
-  rappRef.modify λ r => r.setfinalizedSpatialSplits spatialSplits
+  obunRef.modify λ o => o.setFinalizedSpatialSplits spatialSplits
 
 -- Create copied metavariables for every uncovered split target.
 private def mkCopiedGoalInfos
@@ -140,7 +165,7 @@ private def appendCopiedGoalInfos
       lastExpandedInIteration := .zero
       rulesQueue := {}
       appendiedGoalId := #[]
-      caseId? := CaseId.ofNat info.index
+      caseId? := some (CaseId.ofNat info.index)
     }
   obunRef.modify λ o => o.setGoals (o.goals ++ newGoalRefs)
   enqueueGoals newGoalRefs
@@ -218,36 +243,37 @@ private def markOtherGoalsIrrelevant
 mutual
 
 meta partial def propogateFromGoal (gref : GoalRef) : SearchM Q Unit := do
-  let g ← gref.get
-  if !g.state.isProven then
-    throwError "iaesop: internal error : unproved goal should not be propagated"
+  -- let g ← gref.get
+  -- if !g.state.isProven then
+  --   throwError "iaesop: internal error : unproved goal should not be propagated"
 
-  let obunRef := g.parent
-  let obun ← obunRef.get
-  if obun.state.isProven then
-    return
-  -- Plain obuns do not own a context split, so they only close after all
-  -- their children have been proven.
-  if obun.kind.isPlain then
-    if ← allGoalsProven obun.goals then
-      obunRef.modify λ o => o.setState .proven
-      propogateFromObun obunRef
-    return
+  -- let obunRef := g.parent
+  -- let obun ← obunRef.get
+  -- if obun.state.isProven then
+  --   return
+  -- -- Plain obuns do not own a context split, so they only close after all
+  -- -- their children have been proven.
+  -- if obun.kind.isPlain then
+  --   if ← allGoalsProven obun.goals then
+  --     obunRef.modify λ o => o.setState .proven
+  --     propogateFromObun obunRef
+  --   return
 
-  -- If still goal left, generate new goals for expansion.
-  if !g.mask.isComplete then
-    appendCopiedGoalsFromProvenGoal gref
-    return
+  -- -- If still goal left, generate new goals for expansion.
+  -- if !g.mask.isComplete then
+  --   appendCopiedGoalsFromProvenGoal gref
+  --   return
 
-  -- Otherwise, record the completed context split info and propagate upward.
-  let usedByIndex ← collectUsedHypsByIndex gref
-  let keepIds ← collectGoalLineageIds gref
-  obunRef.modify λ o => o.setState .proven
-  markOtherGoalsIrrelevant obunRef keepIds
-  let some rappRef := obun.parent?
-    | return
-  writeUsedHypsToRapp rappRef usedByIndex
-  propogateFromObun obunRef
+  -- -- Otherwise, record the completed context split info and propagate upward.
+  -- let usedByIndex ← collectUsedHypsByIndex gref
+  -- let keepIds ← collectGoalLineageIds gref
+  -- obunRef.modify λ o => o.setState .proven
+  -- markOtherGoalsIrrelevant obunRef keepIds
+  -- let some rappRef := obun.parent?
+  --   | return
+  -- writeUsedHypsToObun rappRef usedByIndex
+  -- propogateFromObun obunRef
+  return
 
 meta partial def propogateFromObun (obunRef : ObunRef) : SearchM Q Unit := do
   let obun ← obunRef.get
@@ -268,12 +294,9 @@ meta partial def propogateFromRapp (rappRef : RappRef) : SearchM Q Unit := do
   if !rapp.state.isProven then
     throwError "iaesop: internal error: unproved rapp should not be propagated"
 
-  let used :=
-    rapp.finalizedSpatialSplits.foldl
-      (init := rapp.consumedSpatialHyp?.toArray) λ acc hyps => acc ++ hyps
   let parentRef := rapp.parent
   markOtherRappsIrrelevant parentRef rappRef
-  parentRef.modify λ g => g.setState (.provenByRuleApplication used)
+  parentRef.modify λ g => g.setState .provenByRuleApplication
   propogateFromGoal parentRef
 
 end

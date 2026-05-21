@@ -153,7 +153,7 @@ end NodeState
 
 inductive GoalState
   | unknown
-  | provenByRuleApplication (used : Array IrisHyp)
+  | provenByRuleApplication
   | provenByNormalization
   | locallySettled
   | unprovable
@@ -164,13 +164,13 @@ namespace GoalState
 instance : ToString GoalState where
   toString
     | unknown => "unknown"
-    | provenByRuleApplication .. => "provenByRuleApplication"
+    | provenByRuleApplication => "provenByRuleApplication"
     | provenByNormalization =>  "provenByNormalization"
     | locallySettled => "locallySettled"
     | unprovable => "unprovable"
 
 def isProvenByRuleApplication : GoalState → Bool
-  | provenByRuleApplication .. => true
+  | provenByRuleApplication => true
   | _ => false
 
 def isProvenByNormalization : GoalState → Bool
@@ -178,7 +178,7 @@ def isProvenByNormalization : GoalState → Bool
   | _ => false
 
 def isProven : GoalState → Bool
-  | provenByRuleApplication .. => true
+  | provenByRuleApplication => true
   | provenByNormalization => true
   | _ => false
 
@@ -196,14 +196,10 @@ def isLocallySettled : GoalState → Bool
 
 def toNodeState : GoalState → NodeState
   | unknown => NodeState.unknown
-  | provenByRuleApplication .. => NodeState.proven
+  | provenByRuleApplication => NodeState.proven
   | provenByNormalization => NodeState.proven
   | locallySettled => NodeState.locallySettled
   | unprovable => NodeState.unprovable
-
-def usedIrisHyps? : GoalState → Option (Array IrisHyp)
-  | provenByRuleApplication used => some used
-  | _ => none
 
 def isIrrelevant (s : GoalState) : Bool :=
   s.toNodeState.isIrrelevant

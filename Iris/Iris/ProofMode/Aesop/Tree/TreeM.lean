@@ -33,6 +33,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     kind := .plain
     contextDepth := 0
     fullContextIrisSubgoals := #[]
+    finalizedSpatialSplits := #[]
     scriptSteps? := none
   }
   let rootGoalRef ← IO.mkRef $ Goal.mk {

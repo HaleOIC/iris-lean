@@ -57,6 +57,8 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   contextDepth : Nat
   /- Full-context Iris subgoal templates managed by this obligation bundle. -/
   fullContextIrisSubgoals : Array IrisGoal
+  /- Finalized spatial-context split assignments, ordered by split case. -/
+  finalizedSpatialSplits : Array (Array IrisHyp)
 
   /- ### Script generation data -/
   scriptSteps? : Option (Array Script.LazyStep)
@@ -76,8 +78,6 @@ structure RappData (GoalRef ObunRef : Type) : Type where
 
   /- ### Script generation data -/
   scriptSteps? : Option (Array Script.LazyStep)
-  /- Finalized spatial-context split assignments, ordered by split case -/
-  finalizedSpatialSplits : Array (Array IrisHyp)
 
   /- Concrete hypothesis used by this rule application, if any. -/
   usedHyp? : Option AppliedHyp

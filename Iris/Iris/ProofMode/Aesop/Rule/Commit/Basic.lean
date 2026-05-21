@@ -49,19 +49,14 @@ def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)
     rappRefs := rappRefs.push rappRef
     goalsToEnqueue := goalsToEnqueue ++ goalRefs
 
-  let provenBy? ← rappRefs.findSomeM? λ rappRef => do
+  let provenBy? ← rappRefs.findM? λ rappRef => do
     let rapp ← rappRef.get
-    if rapp.state.isProven then
-    -- TODO: This only collects the hypothesis consumed by the current `rapp`.
-    -- If this `rapp` is proven via downstream applications, we should traverse
-    -- the corresponding proof subtree and collect all hypotheses consumed there.
-      return some rapp.consumedSpatialHyp?.toArray
-    return none
+    return rapp.state.isProven
 
   gref.modify λ g =>
     let g := g.setChildren (g.children ++ rappRefs)
     match provenBy? with
-    | some used => g.setState (.provenByRuleApplication used)
+    | some _ => g.setState .provenByRuleApplication
     | none => g
   enqueueGoals goalsToEnqueue
 

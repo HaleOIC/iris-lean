@@ -275,6 +275,7 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
   let parent ← rapp.parent.get
   let childObun ← rapp.children.get
   let fullContextIrisSubgoals := childObun.fullContextIrisSubgoals
+  let finalizedSpatialSplits := childObun.finalizedSpatialSplits
   liftM (show MetaM Unit from restoreState rapp.metaState)
   let goal : MVarId := Goal.currentMVar parent
   let assigned ← liftM (show MetaM Bool from goal.isAssignedOrDelayedAssigned)
@@ -292,16 +293,16 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
           match rapp.usedHyp? with
           | none =>
             let leafCount := (splitSepTargets irisGoal.goal).size
-            if leafCount != rapp.finalizedSpatialSplits.size then
+            if leafCount != finalizedSpatialSplits.size then
               throwError
-                "iaesop: finalization got {rapp.finalizedSpatialSplits.size} context parts for {leafCount} split goals"
-            mkSplitProof irisGoal.hyps irisGoal.goal rapp.finalizedSpatialSplits
+                "iaesop: finalization got {finalizedSpatialSplits.size} context parts for {leafCount} split goals"
+            mkSplitProof irisGoal.hyps irisGoal.goal finalizedSpatialSplits
           | some (.spatial applyHyp) | some (.intuitionistic applyHyp) =>
             mkApplyHypProof irisGoal.hyps irisGoal.goal applyHyp
-              fullContextIrisSubgoals rapp.finalizedSpatialSplits
+              fullContextIrisSubgoals finalizedSpatialSplits
           | some (.lean _ fvarId) =>
             mkLeanApplyHypProof irisGoal.hyps irisGoal.goal fvarId
-              fullContextIrisSubgoals rapp.finalizedSpatialSplits
+              fullContextIrisSubgoals finalizedSpatialSplits
       goal.assign proof
 
 private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do

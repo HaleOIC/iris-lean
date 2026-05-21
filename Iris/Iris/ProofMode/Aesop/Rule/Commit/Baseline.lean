@@ -46,7 +46,6 @@ private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
     /- The following context/script fields are filled by callers/finalization. -/
     usedHyp? := none
     scriptSteps? := none
-    finalizedSpatialSplits := #[]
     introducedMVars
     assignedMVars := {}
   }
@@ -145,6 +144,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
     kind := .plain
     contextDepth := (← parent.parent.get).contextDepth
     fullContextIrisSubgoals := #[]
+    finalizedSpatialSplits := #[]
     scriptSteps? := none
   }
   let goalRefs ← spec.goals.mapIdxM λ idx child => do

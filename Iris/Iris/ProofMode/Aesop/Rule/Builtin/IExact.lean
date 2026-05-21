@@ -63,7 +63,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     obunKind := .plain
     consumedSpatialHyp? := none
     metaState := result.postState
-    parentState? := some (.provenByRuleApplication result.used)
+    parentState? := some .provenByRuleApplication
   }
     (some <| .closeGoal result.used[0]?)
 

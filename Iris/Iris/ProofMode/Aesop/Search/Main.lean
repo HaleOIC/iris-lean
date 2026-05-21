@@ -5,7 +5,7 @@ public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
 public meta import Iris.ProofMode.Aesop.Search.Tracing
 public meta import Iris.ProofMode.Aesop.Search.Propogation
-public meta import Iris.ProofMode.Aesop.Search.BaselinePropogation
+public meta import Iris.ProofMode.Aesop.Search.Settlement
 public meta import Iris.ProofMode.Aesop.Search.Finalization
 public meta import Iris.ProofMode.Aesop.Search.BaselineFinalization
 public meta import Iris.ProofMode.Aesop.Tree.Print
@@ -47,7 +47,7 @@ private meta def expandNextGoal : SearchM Q Bool := do
   /- Check whether new goal's obun child is proven and collected back -/
   if let some rref ← (← gref.get).children.findM? λ r => do
     return (← r.get).state.isProven
-  then baselinePropogateProvenFromRapp rref
+  then Baseline.settleFromRapp rref
 
   if (← gref.get).state.isProven && !(← readThe SearchM.Context).config.baseline? then
     propogateFromGoal gref

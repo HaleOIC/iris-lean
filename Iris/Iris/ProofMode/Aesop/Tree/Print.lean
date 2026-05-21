@@ -14,9 +14,6 @@ private def indent (n : Nat) : String :=
 private def boolMark (b : Bool) : String :=
   if b then "true" else "false"
 
-private def arrayToString (xs : Array String) : String :=
-  "[" ++ String.intercalate ", " xs.toList ++ "]"
-
 private def irisHypToString (hyp : IrisHyp) : String :=
   toString hyp.name
 
@@ -39,11 +36,6 @@ private def normalizationStateToString : NormalizationState → String
   | .normal goal .. => s!"normal {goal.name}"
   | .provenByNorm .. => "provenByNorm"
 
-private def usedIrisHypsToString (state : GoalState) : String :=
-  match state.usedIrisHyps? with
-  | none => "[]"
-  | some hyps => arrayToString (hyps.map irisHypToString)
-
 private def maskToString (mask : ProgressMask) : String :=
   s!"{mask.mask.cpop.toNat}/{mask.n}"
 
@@ -63,7 +55,8 @@ private partial def renderObun (depth : Nat) (oref : ObunRef) :
     s!"state={o.state} " ++
     s!"irrelevant={boolMark o.isIrrelevant} " ++
     s!"goals={o.goals.size} " ++
-    s!"fullCtxGoals={o.fullContextIrisSubgoals.size}\n"
+    s!"fullCtxGoals={o.fullContextIrisSubgoals.size} " ++
+    s!"splits={o.finalizedSpatialSplits.size}\n"
   let children ← o.goals.mapM (renderGoal (depth + 2))
   return header ++ String.join children.toList
 
@@ -79,7 +72,6 @@ private partial def renderGoal (depth : Nat) (gref : GoalRef) :
     s!"irrelevant={boolMark g.isIrrelevant} " ++
     s!"norm={normalizationStateToString g.normalizationState} " ++
     s!"mvar={currentGoalName g} " ++
-    s!"used={usedIrisHypsToString g.state} " ++
     s!"rapps={g.children.size}\n"
   let children ← g.children.mapM (renderRapp (depth + 2))
   return header ++ String.join children.toList
@@ -93,7 +85,6 @@ private partial def renderRapp (depth : Nat) (rref : RappRef) :
     s!"state={r.state} " ++
     s!"irrelevant={boolMark r.isIrrelevant} " ++
     s!"usedHyp={usedHypToString r.usedHyp?} " ++
-    s!"splits={r.finalizedSpatialSplits.size} " ++
     s!"introducedMVars={r.introducedMVars.size} " ++
     s!"assignedMVars={r.assignedMVars.size}\n"
   let child ← renderObun (depth + 2) r.children
