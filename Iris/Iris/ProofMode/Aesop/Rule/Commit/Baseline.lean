@@ -109,8 +109,10 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
     let other ← otherRef.get
     let some irisGoal := parentObun.fullContextIrisSubgoals[idx]?
       | throwError s!"iaesop(baseline): missing full-context iris subgoal at index {idx}"
+    let some caseId := other.caseId?
+      | throwError s!"iaesop(baseline): copied sibling does not have caseId"
     -- [TODO]: Not sure whether we should check the sibling's state is irrelevant or proven
-    let acc := if other.id != g.id then acc.push (other.caseId, irisGoal) else acc
+    let acc := if other.id != g.id then acc.push (caseId, irisGoal) else acc
     return (idx + 1, acc)
 
   /- Start to skip the already managed obun covering range -/
@@ -119,8 +121,8 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
       | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
     let rapp ← rref.get
     match parentObun.kind with
-    | .managed => return ← collectPendingContextGoals rapp.parent none
     | .inherited source => return ← collectPendingContextGoals rapp.parent (some source)
+    | .managed => throwError "iaesop(baseline): managed obun branch should not be reached when collecting pending goals"
     | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
 
   /- Otherwise, return current pending info -/
@@ -149,7 +151,6 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty spec.goals.size).mark idx
-      caseId := CaseId.ofIndex idx
       parent := obunRef
       children := #[]
       origin := .subgoal
@@ -166,6 +167,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
       lastExpandedInIteration := .zero
       rulesQueue := {}
       appendiedGoalId := #[]  -- Not used in baseline
+      caseId? := none
     }
   obunRef.modify λ o => o.setGoals goalRefs
   return obunRef
@@ -173,6 +175,15 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
 /- Apply context management effect to the given obunRef -/
 private def applyContextManagementEffect (obunRef : ObunRef)
     (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
+  -- Single subgoal does not need context management
+  if irisSubgoals.size == 1 then return
+
+  let obun ← obunRef.get
+  if obun.goals.size != irisSubgoals.size then
+    throwError s!"iaesop(baseline): context management has {irisSubgoals.size} templates but {obun.goals.size} goals"
+  let _ ← obun.goals.foldlM (init := 0) λ idx gref => do
+    gref.modify λ g => g.setCaseId (CaseId.ofNat idx)
+    return idx + 1
   obunRef.modify λ o =>
     o.setKind .managed
      |>.setContextDepth (o.contextDepth + 1)
@@ -189,7 +200,6 @@ private def removeUsedSpatialHypsFromGoal
     return { irisGoal with e := e', hyps := hyps' }
 
 /- Apply close goal effect to the given obunRef -/
--- [TODO] What if we are in nested context manage case? （refer to something like skip list？）
 private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
     (spec : RappSpec) (usedHyp? : Option AppliedHyp) : SearchM Q Unit := do
   let obun ← obunRef.get
@@ -224,7 +234,6 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty pendingGoals.size).mark idx
-      caseId
       parent := obunRef
       children := #[]
       origin := .subgoal
@@ -241,6 +250,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
       lastExpandedInIteration := .zero
       rulesQueue := {}
       appendiedGoalId := #[]
+      caseId? := some caseId
     }
   /- Inherited obun also preserve the irisSubgoals template -/
   obunRef.modify λ o =>

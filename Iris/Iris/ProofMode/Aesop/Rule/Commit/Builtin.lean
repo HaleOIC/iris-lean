@@ -74,7 +74,6 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     IO.mkRef $ Goal.mk {
       id := ← getAndIncrementNextGoalId
       mask := (ProgressMask.empty spec.goals.size).mark i
-      caseId := CaseId.ofIndex i
       parent := obunRef
       children := #[]
       origin := .subgoal
@@ -91,6 +90,7 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
       lastExpandedInIteration := currentIteration
       rulesQueue := {}
       appendiedGoalId := #[]
+      caseId? := some $ CaseId.ofNat i
     }
   obunRef.modify fun o => (o.setParent rappRef).setGoals goalRefs
   return (rappRef, goalRefs)

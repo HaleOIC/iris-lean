@@ -38,7 +38,6 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
   let rootGoalRef ← IO.mkRef $ Goal.mk {
     id := .zero
     mask := .empty 0
-    caseId := .zero
     parent := rootObunRef
     children := #[]
     origin := .subgoal
@@ -55,6 +54,7 @@ def mkInitialTree (root : MVarId) : ProofModeM SearchTree := do
     lastExpandedInIteration := 1
     rulesQueue := {}
     appendiedGoalId := #[]
+    caseId? := none
   }
 
   -- Patch Obun's goals

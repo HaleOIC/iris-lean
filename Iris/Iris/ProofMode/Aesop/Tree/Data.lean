@@ -38,7 +38,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
 
   /- ### Context manage data -/
   /- Split case identifier for this goal; `0` means it is not tied to a split case. -/
-  caseId : CaseId
+  caseId? : Option CaseId
 
   deriving Nonempty
 

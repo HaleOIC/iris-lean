@@ -145,12 +145,8 @@ def id (g : Goal) : GoalId :=
   g.elim.id
 
 @[inline]
-def caseId (g : Goal) : CaseId :=
-  g.elim.caseId
-
-@[inline]
-def caseIndex? (g : Goal) : Option Nat :=
-  g.caseId.index?
+def caseId? (g : Goal) : Option CaseId :=
+  g.elim.caseId?
 
 @[inline]
 def mask (g : Goal) : ProgressMask :=
@@ -234,17 +230,11 @@ def setId (id : GoalId) (g : Goal) : Goal :=
 
 @[inline]
 def setCaseId (caseId : CaseId) (g : Goal) : Goal :=
-  g.modify λ g => { g with caseId }
+  g.modify λ g => { g with caseId? := some caseId }
 
 @[inline]
-def setCaseIndex? (caseIndex? : Option Nat) (g : Goal) : Goal :=
-  match caseIndex? with
-  | some index => g.setCaseId (CaseId.ofIndex index)
-  | none => g.setCaseId .zero
-
-@[inline]
-def setCaseIndex (caseIndex : Nat) (g : Goal) : Goal :=
-  g.setCaseId (CaseId.ofIndex caseIndex)
+def setCaseId? (caseId? : Option CaseId) (g : Goal) : Goal :=
+  g.modify λ g => { g with caseId? }
 
 @[inline]
 def clearCaseId (g : Goal) : Goal :=

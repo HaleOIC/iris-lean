@@ -71,16 +71,22 @@ private meta partial def propogateFromGoal (gref : GoalRef)
   if obun.id == .zero then
     obunRef.modify λ o => o.setState .proven
     return
-  if obun.kind.isPlain && obun.goals.size > 1 then
-    throwError "iaesop(baseline): multiple goals plain obun is not supported"
-  let some idx := g.caseIndex?
-    | throwError s!"iaesop(baseline): non-plain goal {g.id} does not have a split case id"
+  let idx? ←
+    if obun.kind.isPlain then
+      if obun.goals.size > 1 then
+        throwError "iaesop(baseline): multiple goals plain obun is not supported"
+      else
+        pure none
+    else
+      let some caseId := g.caseId?
+        | throwError s!"iaesop(baseline): non-plain goal {g.id} does not have a split case id"
+      pure (some caseId.toNat)
   markOtherGoalsIrrelevant obunRef g.id
   obunRef.modify λ o => o.setState .proven
-  propogateFromObun obunRef idx cur fixed
+  propogateFromObun obunRef idx? cur fixed
 
 private meta partial def propogateFromObun (obunRef : ObunRef)
-    (idx : Nat) (cur : Array IrisHyp) (fixed : Array (Array IrisHyp)) :
+    (idx? : Option Nat) (cur : Array IrisHyp) (fixed : Array (Array IrisHyp)) :
     SearchM Q Unit := do
   let obun ← obunRef.get
   if !obun.state.isProven then
@@ -97,9 +103,13 @@ private meta partial def propogateFromObun (obunRef : ObunRef)
   match obun.kind with
   | .plain => propogateFromRapp rappRef cur fixed
   | .inherited .. =>
+    let some idx := idx?
+      | throwError "iaesop(baseline): inherited obun proven by goal without case id"
     let onemoreFixed := writeSplit fixed.size fixed idx cur
     propogateFromRapp rappRef #[] onemoreFixed
   | .managed =>
+    let some idx := idx?
+      | throwError "iaesop(baseline): managed obun proven by goal without case id"
     let finalSplit := writeSplit obun.fullContextIrisSubgoals.size fixed idx cur
     rappRef.modify λ r => r.setFinalizedSpatialSplits finalSplit
     propogateFromRapp rappRef #[] #[]
