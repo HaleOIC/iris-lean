@@ -41,9 +41,13 @@ private def sepParts? (target : Expr) : Option (Expr × Expr) :=
   else
     none
 
-private def mkFreshBinder (goal : MVarId) (pref : Name) :
+private def depthName (pref : Name) (depth : Nat) : Name :=
+  let pref := pref.eraseMacroScopes
+  if depth == 0 then pref else pref.appendAfter s!"_{depth}"
+
+private def mkFreshBinder (goal : MVarId) (depth : Nat) (pref : Name) :
     ProofModeM (TSyntax ``binderIdent) := do
-  let ident ← liftM <| freshIdentM goal pref
+  let ident ← liftM <| freshIdentM goal (depthName pref depth)
   `(binderIdent| $ident:ident)
 
 private def splitName (name : Name) (suffix : String) : Name :=
@@ -76,26 +80,27 @@ private def runIntroPat (goal : MVarId) (pat : IntroPat) :
     liftM <| preState.restore
     return none
 
-private def tryIntro (goal : MVarId) : ProofModeM (Option MVarId) := do
-  let pureName ← mkFreshBinder goal `h
+private def tryIntro (goal : MVarId) (depth : Nat) : ProofModeM (Option MVarId) := do
+  let pureName ← mkFreshBinder goal depth `h
   if let some newGoal ← runIntroPat goal (.intro (.pure pureName)) then
     return some newGoal
-  let name ← mkFreshBinder goal `H
+  let name ← mkFreshBinder goal depth `H
   runIntroPat goal (.intro (.one name))
 
-private def splitPat (goal : MVarId) (info : IrisHypInfo) :
+private def splitPat (goal : MVarId) (depth : Nat) (info : IrisHypInfo) :
     ProofModeM iCasesPat := do
-  let h₁ ← mkFreshBinder goal (splitName info.name "_l")
-  let h₂ ← mkFreshBinder goal (splitName info.name "_r")
+  let h₁ ← mkFreshBinder goal depth (splitName info.name "_l")
+  let h₂ ← mkFreshBinder goal depth (splitName info.name "_r")
   return .conjunction [.one h₁, .one h₂]
 
-private def purePat (goal : MVarId) (info : IrisHypInfo) :
+private def purePat (goal : MVarId) (depth : Nat) (info : IrisHypInfo) :
     ProofModeM iCasesPat := do
-  return .pure (← mkFreshBinder goal (splitName info.name "_pure"))
+  return .pure (← mkFreshBinder goal depth (splitName info.name "_pure"))
 
-private def intuitionisticPat (goal : MVarId) (info : IrisHypInfo) :
+private def intuitionisticPat (goal : MVarId) (depth : Nat) (info : IrisHypInfo) :
     ProofModeM iCasesPat := do
-  return .intuitionistic (.one (← mkFreshBinder goal (splitName info.name "_pers")))
+  return .intuitionistic
+    (.one (← mkFreshBinder goal depth (splitName info.name "_pers")))
 
 private def runCasesPatOnHyp (goal : MVarId) (info : IrisHypInfo)
     (pat : iCasesPat) : ProofModeM (Option MVarId) := do
@@ -177,20 +182,21 @@ private def canIntuitionistic {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
   | .some _ => return true
   | _ => return false
 
-private def tryCasesStep (goal : MVarId) : ProofModeM (Option MVarId) := do
+private def tryCasesStep (goal : MVarId) (depth : Nat) :
+    ProofModeM (Option MVarId) := do
   goal.withContext do
     let goalType ← instantiateMVars (← goal.getType)
     let some irisGoal := parseIrisGoal? goalType
       | return none
     let infos := collectHypInfos irisGoal.hyps
     if let some newGoal ←
-        firstSuccessfulCasesStep goal infos (splitPat goal) canSplitSep then
+        firstSuccessfulCasesStep goal infos (splitPat goal depth) canSplitSep then
       return some newGoal
     if let some newGoal ←
-        firstSuccessfulCasesStep goal infos (purePat goal)
+        firstSuccessfulCasesStep goal infos (purePat goal depth)
           (canPure (prop := irisGoal.prop) (bi := irisGoal.bi)) then
       return some newGoal
-    firstSuccessfulCasesStep goal infos (intuitionisticPat goal)
+    firstSuccessfulCasesStep goal infos (intuitionisticPat goal depth)
       (canIntuitionistic (prop := irisGoal.prop) (bi := irisGoal.bi))
 
 private inductive SimpNormResult where
@@ -265,7 +271,8 @@ private inductive NormSeqResult where
   | changed (goal : MVarId)
   | unchanged
 
-private partial def normalizeGoalMVar (goal : MVarId) (maxIterations : Nat)
+private partial def normalizeGoalMVar (goal : MVarId) (depth : Nat)
+    (maxIterations : Nat)
     (enableSimp : Bool) (goalMVars : Std.HashSet MVarId) :
     ProofModeM NormSeqResult := do
   go 0 goal false
@@ -276,12 +283,12 @@ where
       throwError
         "iaesop: exceeded maximum number of normalisation iterations ({maxIterations})."
     let preState ← liftM (show MetaM SavedState from saveState)
-    match ← tryIntro goal with
+    match ← tryIntro goal depth with
     | some newGoal =>
       go (iteration + 1) newGoal true
     | none =>
       liftM <| preState.restore
-      match ← tryCasesStep goal with
+      match ← tryCasesStep goal depth with
       | some newGoal =>
         go (iteration + 1) newGoal true
       | none =>
@@ -309,7 +316,7 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
     let (result, postState) ← liftM (show ProofModeM _ from do
       liftM <| g.preNormState.restore
       let result ←
-        normalizeGoalMVar preGoal config.maxNormIterations config.enableSimp?
+        normalizeGoalMVar preGoal g.depth config.maxNormIterations config.enableSimp?
           g.unassignedMvars
       let postState ← liftM (show MetaM SavedState from saveState)
       return (result, postState))

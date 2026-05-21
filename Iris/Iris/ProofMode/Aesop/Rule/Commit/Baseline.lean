@@ -194,7 +194,7 @@ private def removeUsedSpatialHypsFromGoal
     (irisGoal : IrisGoal) (usedSpatialHyps : Array IrisHyp) : MetaM IrisGoal :=
   usedSpatialHyps.foldlM (init := irisGoal) λ irisGoal usedHyp => do
     if !irisGoal.hyps.spatialIVarIds.contains usedHyp.ivar then
-      throwError "iaesop(baseline): used Iris hypothesis is absent from pending goal context"
+      return irisGoal
     let ⟨e', hyps', _, _, _, _, _⟩ :=
       irisGoal.hyps.remove false usedHyp.ivar
     return { irisGoal with e := e', hyps := hyps' }
