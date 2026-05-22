@@ -1,7 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Frontend.Main
-public meta import Iris.ProofMode.Aesop.Search
+public meta import Iris.ProofMode.Aesop.Search.Main
 
 public section
 namespace Iris.ProofMode.Aesop

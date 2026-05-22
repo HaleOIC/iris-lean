@@ -7,7 +7,7 @@ public meta import Iris.ProofMode.Aesop.Search.Tracing
 public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Settlement
 public meta import Iris.ProofMode.Aesop.Search.Finalization
-public meta import Iris.ProofMode.Aesop.Search.BaselineFinalization
+public meta import Iris.ProofMode.Aesop.Search.Replay
 public meta import Iris.ProofMode.Aesop.Tree.Print
 public meta import Iris.ProofMode.Aesop.Rule.Common.Main
 -- Temporarily disabled while the common rule set is the only active backend.
@@ -79,7 +79,7 @@ private meta def checkRootProven : SearchM Q Bool := do
   if (← rootRef.get).state.isProven then
     printSearchTreeBeforeFinalization
     if (← readThe SearchM.Context).config.baseline? then
-      baselineFinalizeProof
+      Baseline.replayProof
     else
       finalizeProof
     return true

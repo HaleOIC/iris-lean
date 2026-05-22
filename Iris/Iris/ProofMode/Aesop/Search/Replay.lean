@@ -10,7 +10,7 @@ public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Search
+namespace Iris.ProofMode.Aesop.Baseline
 
 open Lean Meta Qq Std
 open Iris.BI
@@ -263,17 +263,11 @@ private def mkLeanApplyHypProof
     mkApplyHypCoreProof hyps q(true) hyp target premises contexts
   return q(Entails.trans $haveProof $coreProof)
 
-private def findProvenRapp? (rrefs : Array RappRef) :
-    SearchM Q (Option RappRef) := do
-  for rref in rrefs do
-    let rapp ← rref.get
-    if rapp.state.isProven && !rapp.isIrrelevant then
-      return some rref
-  return none
-
-private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
+/- Assign the proof term from Rapp -/
+private def assignProof (rapp : Rapp) : SearchM Q Unit := do
   let parent ← rapp.parent.get
   let childObun ← rapp.children.get
+
   let fullContextIrisSubgoals := childObun.fullContextIrisSubgoals
   let finalizedSpatialSplits := childObun.finalizedSpatialSplits
   liftM (show MetaM Unit from restoreState rapp.metaState)
@@ -305,29 +299,21 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
               fullContextIrisSubgoals finalizedSpatialSplits
       goal.assign proof
 
-private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
-  let goalNode ← gref.get
-  if !goalNode.state.isProven then
-    throwError "iaesop: finalization reached an unproven goal"
-  let goal : MVarId := Goal.currentMVar goalNode
-  let assigned ← liftM (show MetaM Bool from goal.isAssignedOrDelayedAssigned)
-  if assigned then
-    return
-  match ← findProvenRapp? goalNode.children with
-  | some rref =>
+/- (Baseline) Replay proof entry point -/
+public meta def replayProof : SearchM Q Unit := do
+  let rootGoal ← (← getRootGoal).get
+  if !rootGoal.state.isProven then
+    throwError "iaesop(baseline): replay procedure reach an unproven goal"
+
+  /- Make sure goal's mvarId has not been assigned -/
+  let rootMVarId := Goal.currentMVar rootGoal
+  let assigned ← liftM (m := MetaM) rootMVarId.isAssignedOrDelayedAssigned
+  if assigned then return
+
+  /- Find an already proven Rapp node to replay -/
+  let rappEntry? ← rootGoal.children.findM? (m := SearchM Q) λ rref => do
     let rapp ← rref.get
-    assignProofFromRapp rapp
-  | none =>
-    liftM do
-      MVarId.withContext goal do
-        let goalType ← instantiateMVars (← goal.getType)
-        let some irisGoal := parseIrisGoal? goalType
-          | throwError "iaesop: finalization failed, goal is not an Iris goal"
-        let proof ← mkAssumptionProof irisGoal.hyps irisGoal.goal
-        goal.assign proof
-
-public meta def baselineFinalizeProof : SearchM Q Unit := do
-  let root ← getRootGoal
-  finalizeGoal root
-
-end Iris.ProofMode.Aesop.Search
+    pure $ rapp.state.isProven && !rapp.isIrrelevant
+  match rappEntry? with
+  | none => throwError "iaesop(baseline): replay procedure could not find a proven rapp to move"
+  | some rappEntry => assignProof (← rappEntry.get)

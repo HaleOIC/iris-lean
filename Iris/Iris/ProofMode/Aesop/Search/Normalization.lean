@@ -1,7 +1,7 @@
 module
 
 public meta import Lean.Meta.Tactic.Simp.SimpAll
-public meta import Iris.ProofMode.Aesop.Names
+public meta import Iris.ProofMode.Aesop.Search.Names
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Tactics.Cases
 public meta import Iris.ProofMode.Tactics.Intro
@@ -15,14 +15,32 @@ open Iris.BI ProofMode
 
 variable {Q : Type} [Queue Q]
 
+private inductive NormStepResult where
+  | proved
+  | changed (goal : MVarId)
+  | unchanged
+
+private structure NormStepInput where
+  goal : MVarId
+  depth : Nat
+  enableSimp : Bool
+  goalMVars : Std.HashSet MVarId
+
+private inductive NormStepKind where
+  | intro
+  | cases
+  | simp
+  deriving Inhabited, BEq, Repr
+
+private structure NormStep where
+  kind : NormStepKind
+  run : NormStepInput → ProofModeM NormStepResult
+
 private structure IrisHypInfo where
   name : Name
   ivar : IVarId
   p : Expr
   ty : Expr
-
-private def IrisHypInfo.isSpatial (info : IrisHypInfo) : Bool :=
-  info.p.constName? == some ``false
 
 private partial def collectHypInfos {u prop bi} :
     ∀ {e}, @Hyps u prop bi e → Array IrisHypInfo
@@ -31,31 +49,6 @@ private partial def collectHypInfos {u prop bi} :
     #[{ name, ivar, p := p, ty := ty }]
   | _, .sep _ _ _ _ lhs rhs =>
     collectHypInfos lhs ++ collectHypInfos rhs
-
-private def sepParts? (target : Expr) : Option (Expr × Expr) :=
-  let target := target.consumeMData
-  if target.getAppFn.constName? == some ``BIBase.sep then
-    match target.getAppArgs.toList.reverse with
-    | rhs :: lhs :: _ => some (lhs, rhs)
-    | _ => none
-  else
-    none
-
-private def depthName (pref : Name) (depth : Nat) : Name :=
-  let pref := pref.eraseMacroScopes
-  if depth == 0 then pref else pref.appendAfter s!"_{depth}"
-
-private def mkFreshBinder (goal : MVarId) (depth : Nat) (pref : Name) :
-    ProofModeM (TSyntax ``binderIdent) := do
-  let ident ← liftM <| freshIdentM goal (depthName pref depth)
-  `(binderIdent| $ident:ident)
-
-private def splitName (name : Name) (suffix : String) : Name :=
-  let name := name.eraseMacroScopes
-  if name.isAnonymous then
-    (`H).appendAfter suffix
-  else
-    name.appendAfter suffix
 
 private def runIntroPat (goal : MVarId) (pat : IntroPat) :
     ProofModeM (Option MVarId) := do
@@ -79,28 +72,6 @@ private def runIntroPat (goal : MVarId) (pat : IntroPat) :
     set prePMState
     liftM <| preState.restore
     return none
-
-private def tryIntro (goal : MVarId) (depth : Nat) : ProofModeM (Option MVarId) := do
-  let pureName ← mkFreshBinder goal depth `h
-  if let some newGoal ← runIntroPat goal (.intro (.pure pureName)) then
-    return some newGoal
-  let name ← mkFreshBinder goal depth `H
-  runIntroPat goal (.intro (.one name))
-
-private def splitPat (goal : MVarId) (depth : Nat) (info : IrisHypInfo) :
-    ProofModeM iCasesPat := do
-  let h₁ ← mkFreshBinder goal depth (splitName info.name "_l")
-  let h₂ ← mkFreshBinder goal depth (splitName info.name "_r")
-  return .conjunction [.one h₁, .one h₂]
-
-private def purePat (goal : MVarId) (depth : Nat) (info : IrisHypInfo) :
-    ProofModeM iCasesPat := do
-  return .pure (← mkFreshBinder goal depth (splitName info.name "_pure"))
-
-private def intuitionisticPat (goal : MVarId) (depth : Nat) (info : IrisHypInfo) :
-    ProofModeM iCasesPat := do
-  return .intuitionistic
-    (.one (← mkFreshBinder goal depth (splitName info.name "_pers")))
 
 private def runCasesPatOnHyp (goal : MVarId) (info : IrisHypInfo)
     (pat : iCasesPat) : ProofModeM (Option MVarId) := do
@@ -131,35 +102,33 @@ private def runCasesPatOnHyp (goal : MVarId) (info : IrisHypInfo)
     liftM <| preState.restore
     return none
 
-private def checkEligible (goal : MVarId)
-    (eligible : IrisHypInfo → MetaM Bool) (info : IrisHypInfo) :
-    ProofModeM Bool := do
-  liftM do
-    let preState ← saveState
-    try
-      let ok ← goal.withContext <| eligible info
-      preState.restore
-      return ok
-    catch _ =>
-      preState.restore
-      return false
-
 private def firstSuccessfulCasesStep (goal : MVarId)
     (infos : Array IrisHypInfo)
-    (mkPat : IrisHypInfo → ProofModeM iCasesPat)
+    (pat : iCasesPat)
     (eligible : IrisHypInfo → MetaM Bool) :
     ProofModeM (Option MVarId) := do
-  for info in infos do
-    unless ← checkEligible goal eligible info do
-      continue
-    let pat ← mkPat info
-    if let some newGoal ← runCasesPatOnHyp goal info pat then
-      return some newGoal
-  return none
+  infos.findSomeM? λ info => do
+    let ok ← liftM (m := MetaM) do
+      let preState ← saveState
+      try
+        let ok ← goal.withContext <| eligible info
+        preState.restore
+        return ok
+      catch _ =>
+        preState.restore
+        return false
+    if !ok then
+      return none
+    runCasesPatOnHyp goal info pat
 
 private def canSplitSep (info : IrisHypInfo) : MetaM Bool := do
   let ty ← instantiateMVars info.ty
-  return sepParts? ty |>.isSome
+  let target := ty.consumeMData
+  if target.getAppFn.constName? == some ``BIBase.sep then
+    match target.getAppArgs.toList.reverse with
+    | _ :: _ :: _ => return true
+    | _ => return false
+  return false
 
 private def canPure {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (info : IrisHypInfo) : MetaM Bool := do
@@ -172,7 +141,7 @@ private def canPure {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
 
 private def canIntuitionistic {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (info : IrisHypInfo) : MetaM Bool := do
-  if !info.isSpatial then
+  if !info.p.constName? == some ``false then
     return false
   let ty ← instantiateMVars info.ty
   let some irisTy ← checkTypeQ ty prop | return false
@@ -182,147 +151,133 @@ private def canIntuitionistic {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
   | .some _ => return true
   | _ => return false
 
-private def tryCasesStep (goal : MVarId) (depth : Nat) :
-    ProofModeM (Option MVarId) := do
-  goal.withContext do
-    let goalType ← instantiateMVars (← goal.getType)
-    let some irisGoal := parseIrisGoal? goalType
-      | return none
-    let infos := collectHypInfos irisGoal.hyps
-    if let some newGoal ←
-        firstSuccessfulCasesStep goal infos (splitPat goal depth) canSplitSep then
-      return some newGoal
-    if let some newGoal ←
-        firstSuccessfulCasesStep goal infos (purePat goal depth)
-          (canPure (prop := irisGoal.prop) (bi := irisGoal.bi)) then
-      return some newGoal
-    firstSuccessfulCasesStep goal infos (intuitionisticPat goal depth)
-      (canIntuitionistic (prop := irisGoal.prop) (bi := irisGoal.bi))
-
-private inductive SimpNormResult where
-  | solved
-  | unchanged
-  | simplified (newGoal : MVarId)
-
-private def simpGoalWithAllHypotheses (goal : MVarId) :
-    MetaM SimpNormResult := do
-  goal.withContext do
-    let ctx ← Simp.mkContext
-      (config := ({} : Simp.Config))
-      (simpTheorems := #[← getSimpTheorems])
-      (congrTheorems := ← getSimpCongrTheorems)
-    let ctx := ctx.setFailIfUnchanged false
-    let lctx ← getLCtx
-    let mut fvarIdsToSimp := Array.mkEmpty lctx.decls.size
-    for ldecl in lctx do
-      if ldecl.isImplementationDetail then
-        continue
-      fvarIdsToSimp := fvarIdsToSimp.push ldecl.fvarId
-    let (result?, _) ←
-      Meta.simpGoal goal ctx (simprocs := #[]) (discharge? := none)
-        (simplifyTarget := true) (fvarIdsToSimp := fvarIdsToSimp)
-    match result? with
-    | none =>
-      return .solved
-    | some (_, newGoal) =>
-      if newGoal == goal then
-        return .unchanged
-      else
-        return .simplified newGoal
-
-private def anyMVarDropped (goalMVars : Std.HashSet MVarId) : MetaM Bool := do
-  for mvar in goalMVars do
-    if !(← mvar.isAssignedOrDelayedAssigned) then
-      return true
-  return false
-
-private inductive NormStepResult where
-  | proved
-  | changed (goal : MVarId)
-  | unchanged
-
-private def trySimp (goal : MVarId) (goalMVars : Std.HashSet MVarId) :
-    ProofModeM NormStepResult := do
-  let hasSpatialHyp ← liftM <| goal.withContext do
-    let goalType ← instantiateMVars (← goal.getType)
-    let some irisGoal := parseIrisGoal? goalType
-      | return false
-    return (collectHypInfos irisGoal.hyps).any (·.isSpatial)
-  if hasSpatialHyp then
-    return .unchanged
-  let preState ← liftM (show MetaM SavedState from saveState)
-  try
-    match ← liftM <| simpGoalWithAllHypotheses goal with
-    | .solved =>
-      if ← liftM <| anyMVarDropped goalMVars then
-        liftM <| preState.restore
-        return .unchanged
-      return .proved
-    | .simplified newGoal =>
+/- `iintro`-related normalization step -/
+private def introNormStep : NormStep where
+  kind := .intro
+  run input := do
+    let names ← liftM <| collectIrisHypNames input.goal
+    let pureName ← mkFreshBinderFromNames names input.depth
+    if let some newGoal ← runIntroPat input.goal (.intro (.pure pureName)) then
       return .changed newGoal
-    | .unchanged =>
-      return .unchanged
-  catch _ =>
-    liftM <| preState.restore
+    let name ← mkFreshBinderFromNames names input.depth
+    if let some newGoal ← runIntroPat input.goal (.intro (.one name)) then
+      return .changed newGoal
     return .unchanged
 
+/- `icases`-related normalization step -/
+private def casesNormStep : NormStep where
+  kind := .cases
+  run input := do
+    input.goal.withContext do
+      let goalType ← instantiateMVars (← input.goal.getType)
+      let some irisGoal := parseIrisGoal? goalType
+        | return .unchanged
+      let infos := collectHypInfos irisGoal.hyps
+      let names := infos.map (·.name)
+      let h₁ ← mkFreshBinderFromNames names input.depth
+      let h₂ ← mkFreshBinderFromNames names input.depth 2
+      if let some newGoal ←
+          firstSuccessfulCasesStep input.goal infos
+            (.conjunction [.one h₁, .one h₂]) canSplitSep then
+        return .changed newGoal
+      let h ← mkFreshBinderFromNames names input.depth
+      if let some newGoal ←
+          firstSuccessfulCasesStep input.goal infos
+            (.pure h)
+            (canPure (prop := irisGoal.prop) (bi := irisGoal.bi)) then
+        return .changed newGoal
+      let h ← mkFreshBinderFromNames names input.depth
+      match ←
+          firstSuccessfulCasesStep input.goal infos
+            (.intuitionistic (.one h))
+            (canIntuitionistic (prop := irisGoal.prop) (bi := irisGoal.bi)) with
+      | some newGoal => return .changed newGoal
+      | none => return .unchanged
+
+/- Simplify normalization step -/
+private def simpNormStep : NormStep where
+  kind := .simp
+  run input := do
+    if !input.enableSimp then return .unchanged
+    /- Run the whole simp step in `MetaM`, where saved states and contexts live. -/
+    liftM (m := MetaM) do
+      let preState ← saveState
+      try
+        input.goal.withContext do
+          let ctx := (← Simp.mkContext {} #[← getSimpTheorems]
+            <| ← getSimpCongrTheorems).setFailIfUnchanged false
+          let fvarIdsToSimp := (← getLCtx).foldl (init := (#[] : Array FVarId)) λ acc ldecl =>
+            if ldecl.isImplementationDetail then acc else acc.push ldecl.fvarId
+          match (← Meta.simpGoal input.goal ctx (fvarIdsToSimp := fvarIdsToSimp)).1 with
+          | none =>
+            if !(← input.goalMVars.anyM (notM ·.isAssignedOrDelayedAssigned)) then
+              return .proved
+            preState.restore
+            return .unchanged
+          | some (_, newGoal) =>
+            if newGoal == input.goal then return .unchanged
+            return .changed newGoal
+      catch _ =>
+        preState.restore
+        return .unchanged
+
+/- [TODO] take NormStep propority into account? -/
+private def normalizationSteps : Array NormStep :=
+  #[introNormStep, casesNormStep, simpNormStep]
+
+private def runFirstNormStep (input : NormStepInput) :
+    ProofModeM NormStepResult := do
+  let result? ← normalizationSteps.findSomeM? λ step => do
+    let preState ← liftM (m := MetaM) saveState
+    match ← step.run input with
+    | .unchanged =>
+      liftM <| preState.restore
+      return none
+    | result => return some result
+  return result?.getD .unchanged
+
+/- Auxilliary data type for normalization stage -/
 private inductive NormSeqResult where
   | proved
   | changed (goal : MVarId)
   | unchanged
 
+/- Invoked by `normalizeGoal` during search stage and `assignProof` during replay stage -/
+/- [Note]: ensure already been in the correct `Meta.SavedState` before calling -/
 private partial def normalizeGoalMVar (goal : MVarId) (depth : Nat)
-    (maxIterations : Nat)
-    (enableSimp : Bool) (goalMVars : Std.HashSet MVarId) :
+    (maxIterations : Nat) (enableSimp : Bool) (goalMVars : Std.HashSet MVarId) :
     ProofModeM NormSeqResult := do
   go 0 goal false
 where
-  go (iteration : Nat) (goal : MVarId) (changed : Bool) :
-      ProofModeM NormSeqResult := do
+  go (iteration : Nat) (goal : MVarId) (changed : Bool) : ProofModeM NormSeqResult := do
     if iteration >= maxIterations then
-      throwError
-        "iaesop: exceeded maximum number of normalisation iterations ({maxIterations})."
-    let preState ← liftM (show MetaM SavedState from saveState)
-    match ← tryIntro goal depth with
-    | some newGoal =>
-      go (iteration + 1) newGoal true
-    | none =>
-      liftM <| preState.restore
-      match ← tryCasesStep goal depth with
-      | some newGoal =>
-        go (iteration + 1) newGoal true
-      | none =>
-        if enableSimp then
-          match ← trySimp goal goalMVars with
-          | .proved => return .proved
-          | .changed newGoal => go (iteration + 1) newGoal true
-          | .unchanged =>
-            if changed then return .changed goal
-            else return .unchanged
-        else
-          if changed then return .changed goal
-          else return .unchanged
+      throwError "iaesop: exceeded maximum number of normalisation iterations ({maxIterations})."
+    let input : NormStepInput := { goal, depth, enableSimp, goalMVars }
+    match ← runFirstNormStep input with
+    | .proved => return .proved
+    | .changed newGoal => go (iteration + 1) newGoal true
+    | .unchanged =>
+      if changed then return .changed goal
+      else return .unchanged
 
+/- Search stage entry point -/
 def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
-  let g ← gref.get
-  let preGoal := g.preNormGoal
-  match g.normalizationState with
-  | .provenByNorm .. =>
-    gref.modify λ g => g.setState .provenByNormalization
-  | .normal .. =>
-    return
+  let goal ← gref.get
+  match goal.normalizationState with
+  | .provenByNorm .. => gref.modify λ g => g.setState .provenByNormalization
+  | .normal .. => return
   | .notNormal =>
+    let preGoalMVarId := goal.preNormGoal
     let config := (← readThe SearchM.Context).config
-    let (result, postState) ← liftM (show ProofModeM _ from do
-      liftM <| g.preNormState.restore
-      let result ←
-        normalizeGoalMVar preGoal g.depth config.maxNormIterations config.enableSimp?
-          g.unassignedMvars
-      let postState ← liftM (show MetaM SavedState from saveState)
-      return (result, postState))
+    let (result, postState) ← liftM (m := ProofModeM) do
+      goal.preNormState.restore
+      let result ← normalizeGoalMVar preGoalMVarId goal.depth config.maxNormIterations config.enableSimp? goal.unassignedMvars
+      let postState ← liftM (m := MetaM) saveState
+      return (result, postState)
+
+    /- According to the result, set goal-related feilds -/
     match result with
-    | .proved =>
-      gref.modify λ g =>
+    | .proved => gref.modify λ g =>
         g.setNormalizationState (.provenByNorm postState #[])
           |>.setState .provenByNormalization
     | .changed postGoal =>
@@ -330,8 +285,7 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
       gref.modify λ g =>
         g.setNormalizationState (.normal postGoal postState #[])
           |>.setUnassignedMvars mvars
-    | .unchanged =>
-      gref.modify λ g =>
-        g.setNormalizationState (.normal preGoal postState #[])
+    | .unchanged => gref.modify λ g =>
+        g.setNormalizationState (.normal preGoalMVarId postState #[])
 
 end Aesop
