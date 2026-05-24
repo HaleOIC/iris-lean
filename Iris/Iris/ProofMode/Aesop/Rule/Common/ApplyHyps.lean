@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
+public meta import Iris.ProofMode.Tactics.Assumption
 public meta import Iris.ProofMode.Tactics.HaveCore
 
 public meta section
@@ -43,6 +44,10 @@ private partial def collectIntoWandPremises?
   let some target ← checkTypeQ targetExpr prop
     | throwError "iaesop: internal error: applyHyps target has wrong type"
   let preState ← saveState
+  match ← ProofMode.trySynthInstanceQ q(FromAssumption $p .in $hypType $target) with
+  | .some _ => return some #[]
+  | .none | .undef => restoreState preState
+  let preState ← saveState
   let premise ← mkFreshExprMVarQ prop
   let premiseExpr : Expr := premise
   match ← ProofMode.trySynthInstanceQ
@@ -65,8 +70,7 @@ private partial def collectIntoWandPremises?
       restoreState preState
       return none
 
-private def mkChildren
-    (irisGoal : IrisGoal) (tag : Name)
+private def mkChildren (irisGoal : IrisGoal) (tag : Name)
     {e' : Q($irisGoal.prop)} (hyps' : Hyps irisGoal.bi e')
     (premises : Array Expr) : MetaM (Array SubGoal × Array IrisGoal) := do
   let mut goals : Array SubGoal := #[]
@@ -91,119 +95,89 @@ private def mkChildren
     irisSubgoals := irisSubgoals.push childIrisGoal
   return (goals, irisSubgoals)
 
-private def mkIrisApplyHypExpansion?
+/- Collect apply expansions from Iris local hypotheses. -/
+private partial def collectFromIris
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
-    (irisGoal : IrisGoal) (target : Q($prop)) (tag : Name)
-    (name : Name) (ivar : IVarId) (p : Q(Bool)) (ty : Q($prop)) :
-    MetaM (Option ApplyHypExpansion) := do
-  let some premises ← collectIntoWandPremises? (bi := bi) p ty target
-    | return none
-  if premises.isEmpty then
-    return none
-  let some ⟨_, _, hyps', _, _, _, _, _⟩ ←
-      irisGoal.hyps.removeG true fun _ ivar' _ _ => do
-        if ivar == ivar' then return some ()
-        else return none
-    | throwError "iaesop: internal error: applyHyps candidate disappeared"
-  let (goals, fullContextIrisSubgoals) ←
-    mkChildren irisGoal tag hyps' premises
-  return some {
-    source := .iris { name, ivar } (isTrue p)
-    goals
-    fullContextIrisSubgoals
-    postState := ← saveState
-  }
-
-private def mkLeanApplyHypExpansion?
-    (irisGoal : IrisGoal) (targetExpr : Expr) (tag : Name)
-    (decl : LocalDecl) : MetaM (Option ApplyHypExpansion) := do
-  let { prop, bi, .. } := irisGoal
-  let targetExpr ← instantiateMVars targetExpr
-  let some target ← checkTypeQ targetExpr prop
-    | throwError "iaesop: internal error: applyHyps target has wrong type"
-  let val := mkFVar decl.fvarId
-  let ty ← instantiateMVars (← inferType val)
-  let ⟨newMVars, _, _⟩ ← forallMetaTelescope ty
-  let val := mkAppN val newMVars
-  let ty ← instantiateMVars (← inferType val)
-  if ! (← Meta.isProp ty) then
-    return none
-  have ty : Q(Prop) := ty
-  let hyp ← mkFreshExprMVarQ prop
-  match ← ProofMode.trySynthInstanceQ
-      q(AsEmpValid .into $ty .in $prop .in $bi $hyp) with
-  | .none | .undef =>
-    return none
-  | .some _ =>
-    let some premises ← collectIntoWandPremises? (bi := bi) q(true) hyp target
-      | return none
-    if premises.isEmpty then
-      return none
-    let (goals, fullContextIrisSubgoals) ←
-      mkChildren irisGoal tag irisGoal.hyps premises
-    return some {
-      source := .lean decl.userName decl.fvarId
+    (irisGoal : IrisGoal) (tag : Name) (baseState : SavedState) :
+    ∀ {e}, Hyps bi e → MetaM (Array ApplyHypExpansion)
+  | _, .emp _ => return #[]
+  | _, .sep _ _ _ _ lhs rhs => do
+    return (← collectFromIris irisGoal tag baseState lhs) ++
+      (← collectFromIris irisGoal tag baseState rhs)
+  | _, .hyp _ name ivar p ty _ => do
+    baseState.restore
+    let some premises ← collectIntoWandPremises? (bi := bi) p ty irisGoal.goal
+      | return #[]
+    let some ⟨_, _, hyps', _, _, _, _, _⟩ ←
+        irisGoal.hyps.removeG false λ _ ivar' _ _ => do
+          if ivar == ivar' then return some ()
+          else return none
+      | throwError "iaesop: applyHyps candidate disappear from Hyps"
+    let (goals, fullContextIrisSubgoals) ← mkChildren irisGoal tag hyps' premises
+    let expansion : ApplyHypExpansion := {
+      source := .iris { name, ivar } (isTrue p)
       goals
       fullContextIrisSubgoals
       postState := ← saveState
     }
+    baseState.restore
+    return #[expansion]
 
-private partial def collectIrisApplyHypExpansions
-    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
-    (irisGoal : IrisGoal) (target : Q($prop)) (tag : Name)
-    (baseState : SavedState) :
-    ∀ {e}, Hyps bi e → MetaM (Array ApplyHypExpansion)
-  | _, .emp _ => return #[]
-  | _, .hyp _ name ivar p ty _ => do
-    restoreState baseState
-    let expansion? ←
-      mkIrisApplyHypExpansion? (bi := bi) irisGoal target tag name ivar p ty
-    restoreState baseState
-    return expansion?.toArray
-  | _, .sep _ _ _ _ lhs rhs => do
-    return (← collectIrisApplyHypExpansions irisGoal target tag baseState lhs) ++
-      (← collectIrisApplyHypExpansions irisGoal target tag baseState rhs)
-
-private def collectLeanApplyHypExpansions
-    (irisGoal : IrisGoal) (targetExpr : Expr) (tag : Name)
+/- Collect apply expansions from Lean local hypotheses. -/
+private def collectFromLean (irisGoal : IrisGoal) (tag : Name)
     (baseState : SavedState) : MetaM (Array ApplyHypExpansion) := do
+  let { prop, bi, goal := target, .. } := irisGoal
+  baseState.restore
+
+  /- Try each usable local declaration independently from the same base state. -/
   let mut expansions := #[]
   for decl in ← getLCtx do
     if decl.isImplementationDetail then
       continue
-    restoreState baseState
-    if let some expansion ← mkLeanApplyHypExpansion? irisGoal targetExpr tag decl then
-      expansions := expansions.push expansion
-  restoreState baseState
+    baseState.restore
+
+    /- Peel explicit and implicit forall binders to expose the proposition being proved. -/
+    let ⟨_, _, ty⟩ ← forallMetaTelescope (← instantiateMVars decl.type)
+    if ! (← Meta.isProp ty) then continue
+    have ty : Q(Prop) := ty
+
+    /- Bridge the Lean proposition into the current Iris BI before probing apply premises. -/
+    let hyp ← mkFreshExprMVarQ prop
+    match ← ProofMode.trySynthInstanceQ q(AsEmpValid .into $ty .in $prop .in $bi $hyp) with
+    | .none | .undef => continue
+    | .some _ =>
+      let some premises ← collectIntoWandPremises? (bi := bi) q(true) hyp target
+        | continue
+      let (goals, fullContextIrisSubgoals) ← mkChildren irisGoal tag irisGoal.hyps premises
+      expansions := expansions.push {
+        source := .lean decl.userName decl.fvarId
+        goals
+        fullContextIrisSubgoals
+        postState := ← saveState
+      }
+  baseState.restore
   return expansions
 
-private def mkApplyHypExpansions (goal : MVarId) :
-    MetaM (Option (Array ApplyHypExpansion)) := do
-  goal.withContext do
-    let goalType ← instantiateMVars (← goal.getType)
-    let some irisGoal := parseIrisGoal? goalType
-      | return none
-    let targetExpr ← instantiateMVars irisGoal.goal
-    let some target ← checkTypeQ targetExpr irisGoal.prop
-      | throwError "iaesop: internal error: applyHyps target has wrong type"
-    let tag ← goal.getTag
-    let baseState ← saveState
-    let irisExpansions ←
-      collectIrisApplyHypExpansions irisGoal target tag baseState irisGoal.hyps
-    restoreState baseState
-    let leanExpansions ←
-      collectLeanApplyHypExpansions irisGoal targetExpr tag baseState
-    let expansions := irisExpansions ++ leanExpansions
-    if expansions.isEmpty then
-      return none
-    return some expansions
-
+/- Search stage work -/
 def run (input : RuleInput) : SearchM Q RuleOutput := do
+  /- Collect possible hypothesis that can be applied in current goal -/
   let goal := input.goal
-  let some expansions ← liftM do
-      restoreState input.state
-      mkApplyHypExpansions goal
-    | return {}
+  let expansions ← liftM do
+    restoreState input.state
+    goal.withContext do
+      let goalType ← instantiateMVars (← goal.getType)
+      let some irisGoal := parseIrisGoal? goalType
+        | throwError "iaesop: applyHyps rule search must work in iris proof-mode context"
+      let tag ← goal.getTag
+      let baseState ← saveState
+      let irisExpansions ←
+        collectFromIris irisGoal tag baseState irisGoal.hyps
+      let leanExpansions ←
+        collectFromLean irisGoal tag baseState
+      return irisExpansions ++ leanExpansions
+  if expansions.isEmpty then return {}
+
+  /- Construct corresponding Rapp specs for each probed hypothesis -/
   let specs ← expansions.mapM λ expansion => do
     dbg_trace s!"applyHyps selected {expansion.source.name} and generated {expansion.goals.size} goals"
     for irisGoal in expansion.fullContextIrisSubgoals do
@@ -213,8 +187,12 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       goals := expansion.goals
       postState := expansion.postState
       successPossibility := .hundred
-      effect := some (.contextManagement
-        expansion.fullContextIrisSubgoals expansion.source.usedHyp?)
+      effect :=
+        if expansion.goals.isEmpty then
+          some (.closeGoal expansion.source.usedHyp?)
+        else
+          some (.contextManagement
+            expansion.fullContextIrisSubgoals expansion.source.usedHyp?)
     }
   return RuleOutput.ofRappSpecs specs
 

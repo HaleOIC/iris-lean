@@ -18,7 +18,6 @@ inductive RuleBuilder where
   | tactic
   | iapply
   | iintro
-  | iexact
   | iassumption
   | icases
   | ileft
@@ -38,7 +37,6 @@ instance : ToString RuleBuilder where
     | tactic => "tactic"
     | iapply => "iapply"
     | iintro => "iintro"
-    | iexact => "iexact"
     | iassumption => "iassumption"
     | icases => "icases"
     | ileft => "ileft"

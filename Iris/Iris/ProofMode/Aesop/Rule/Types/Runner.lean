@@ -17,7 +17,6 @@ inductive RuleRunnerDescr where
   | ipureIntro
   | imodIntro
   | imod
-  | iexact
   | custom
   deriving Inhabited, BEq, Hashable, Ord
 
@@ -29,7 +28,6 @@ def ofBuilder : RuleBuilder → RuleRunnerDescr
   | .ipureIntro => .ipureIntro
   | .imodintro => .imodIntro
   | .imod => .imod
-  | .iexact => .iexact
   | _ => .custom
 
 def ofInfo (info : RuleInfo) : RuleRunnerDescr :=

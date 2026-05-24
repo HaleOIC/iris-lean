@@ -176,6 +176,15 @@ private partial def mkApplyHypCoreProof
   if premises.size != contexts.size then
     throwError
       "iaesop: finalization got {contexts.size} context parts for {premises.size} apply premises"
+  if premises.isEmpty then
+    let .some (inst, _) ← ProofMode.trySynthInstanceQ
+        q(FromAssumption $p .in $hypType $target)
+      | throwError "iaesop: finalization failed, selected hypothesis cannot directly prove target"
+    let _ : Q(FromAssumption $p .in $hypType $target) := inst
+    let .some _ ← trySynthInstanceQ q(TCOr (Affine $e) (Absorbing $target))
+      | throwError "iaesop: finalization failed, unused context is not affine and target is not absorbing"
+    have rfl : Q($e ∗ □?$p $hypType ⊣⊢ $e ∗ □?$p $hypType) := q(.rfl)
+    return q(Iris.ProofMode.assumption (Q := $target) $rfl)
   let some firstPremise := premises[0]?
     | throwError "iaesop: finalization cannot apply a hypothesis without premises"
   let some firstContext := contexts[0]?
@@ -287,22 +296,19 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
       let some irisGoal := parseIrisGoal? goalType
         | throwError "iaesop: finalization failed, parent goal is not an Iris goal"
       let proof ←
-        if rapp.appliedRule.info.builder == RuleBuilder.iexact then
-          mkAssumptionProof irisGoal.hyps irisGoal.goal
-        else
-          match rapp.usedHyp? with
-          | none =>
-            let leafCount := (splitSepTargets irisGoal.goal).size
-            if leafCount != finalizedSpatialSplits.size then
-              throwError
-                "iaesop: finalization got {finalizedSpatialSplits.size} context parts for {leafCount} split goals"
-            mkSplitProof irisGoal.hyps irisGoal.goal finalizedSpatialSplits
-          | some (.spatial applyHyp) | some (.intuitionistic applyHyp) =>
-            mkApplyHypProof irisGoal.hyps irisGoal.goal applyHyp
-              fullContextIrisSubgoals finalizedSpatialSplits
-          | some (.lean _ fvarId) =>
-            mkLeanApplyHypProof irisGoal.hyps irisGoal.goal fvarId
-              fullContextIrisSubgoals finalizedSpatialSplits
+        match rapp.usedHyp? with
+        | none =>
+          let leafCount := (splitSepTargets irisGoal.goal).size
+          if leafCount != finalizedSpatialSplits.size then
+            throwError
+              "iaesop: finalization got {finalizedSpatialSplits.size} context parts for {leafCount} split goals"
+          mkSplitProof irisGoal.hyps irisGoal.goal finalizedSpatialSplits
+        | some (.spatial applyHyp) | some (.intuitionistic applyHyp) =>
+          mkApplyHypProof irisGoal.hyps irisGoal.goal applyHyp
+            fullContextIrisSubgoals finalizedSpatialSplits
+        | some (.lean _ fvarId) =>
+          mkLeanApplyHypProof irisGoal.hyps irisGoal.goal fvarId
+            fullContextIrisSubgoals finalizedSpatialSplits
       goal.assign proof
 
 private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do

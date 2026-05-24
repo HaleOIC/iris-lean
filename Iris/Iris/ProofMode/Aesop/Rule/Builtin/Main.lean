@@ -10,7 +10,6 @@ namespace Iris.ProofMode.Aesop
 
 -- def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
 --   | .identity => Rule.Builtin.Identity.run
---   | .iexact => Rule.Builtin.IExact.run
 --   | .applyHyps => Rule.Builtin.ApplyHyps.run
 --   | .ipureIntro => Rule.Builtin.IPureIntro.run
 --   | .imodIntro => Rule.Builtin.IModIntro.run
@@ -29,17 +28,6 @@ namespace Iris.ProofMode.Aesop
 --   id := identityRuleId
 --   indexingMode := .unindexed
 --   info := RuleInfo.ofBuilder .identity
-
--- def iexactRuleId : RuleId where
---   name := `iexact
---   kind := .apply
---   phase := .safe
---   scope := .global
-
--- def iexactRule : Rule RuleInfo where
---   id := iexactRuleId
---   indexingMode := .unindexed
---   info := RuleInfo.ofBuilder .iexact
 
 -- def applyHypsRuleId : RuleId where
 --   name := `applyHyps
@@ -88,7 +76,6 @@ namespace Iris.ProofMode.Aesop
 def builtinRuleIndex : Index RuleInfo :=
   ({} : Index RuleInfo)
     -- |>.add identityRule identityRule.indexingMode
-    -- |>.add iexactRule iexactRule.indexingMode
     -- |>.add applyHypsRule applyHypsRule.indexingMode
     -- |>.add ipureIntroRule ipureIntroRule.indexingMode
     -- |>.add imodIntroRule imodIntroRule.indexingMode
