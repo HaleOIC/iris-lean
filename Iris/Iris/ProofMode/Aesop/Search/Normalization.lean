@@ -1,6 +1,7 @@
 module
 
 public meta import Lean.Meta.Tactic.Simp.SimpAll
+public meta import Iris.ProofMode.Aesop.Search.Types
 public meta import Iris.ProofMode.Aesop.Search.Names
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Tactics.Cases
@@ -236,15 +237,9 @@ private def runFirstNormStep (input : NormStepInput) :
     | result => return some result
   return result?.getD .unchanged
 
-/- Auxilliary data type for normalization stage -/
-private inductive NormSeqResult where
-  | proved
-  | changed (goal : MVarId)
-  | unchanged
-
 /- Invoked by `normalizeGoal` during search stage and `assignProof` during replay stage -/
 /- [Note]: ensure already been in the correct `Meta.SavedState` before calling -/
-private partial def normalizeGoalMVar (goal : MVarId) (depth : Nat)
+partial def normalizeGoalMVar (goal : MVarId) (depth : Nat)
     (maxIterations : Nat) (enableSimp : Bool) (goalMVars : Std.HashSet MVarId) :
     ProofModeM NormSeqResult := do
   go 0 goal false

@@ -73,4 +73,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     | return {}
   return RuleOutput.ofEffect postState (.closeGoal none)
 
+def replay (input : RuleReplayInput) : SearchM Q MVarId := do
+  return input.goal
+
 end Iris.ProofMode.Aesop.Rule.IPureIntro

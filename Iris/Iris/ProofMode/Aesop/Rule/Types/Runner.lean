@@ -44,6 +44,10 @@ structure RuleInput where
   state : SavedState
   matchResult : RuleMatch
 
+structure RuleReplayInput where
+  goal : MVarId
+  rapp : Rapp
+
 /- SubGoal produced by a rule application -/
 structure SubGoal where
   goal : MVarId
@@ -105,5 +109,8 @@ end RuleOutput
 
 abbrev RuleRunner (Q : Type) [Queue Q] :=
   RuleInput → SearchM Q RuleOutput
+
+abbrev RuleReplayer (Q : Type) [Queue Q] :=
+  RuleReplayInput → SearchM Q MVarId
 
 end Iris.ProofMode.Aesop

@@ -17,7 +17,14 @@ def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .applyHyps => Rule.ApplyHyps.run
   | .iexact => Rule.IExact.run
   | .ipureIntro => Rule.IPureIntro.run
-  | _ => fun _ => return {}
+  | _ => λ _ => return {}
+
+def replay {Q : Type} [Queue Q] : RuleRunnerDescr → RuleReplayer Q
+  | .identity => Rule.Identity.replay
+  | .applyHyps => Rule.ApplyHyps.replay
+  | .iexact => Rule.IExact.replay
+  | .ipureIntro => Rule.IPureIntro.replay
+  | _ => λ input => return input.goal
 
 end RuleRunnerDescr
 

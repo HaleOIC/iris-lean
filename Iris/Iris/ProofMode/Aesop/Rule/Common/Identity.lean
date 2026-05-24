@@ -69,4 +69,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     effect := some (.contextManagement fullContextIrisSubgoals none)
   }
 
+def replay (input : RuleReplayInput) : SearchM Q MVarId := do
+  return input.goal
+
 end Iris.ProofMode.Aesop.Rule.Identity

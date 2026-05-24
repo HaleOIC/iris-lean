@@ -8,6 +8,12 @@ namespace Iris.ProofMode.Aesop
 
 open Lean Lean.Meta
 
+inductive NormSeqResult where
+  | proved
+  | changed (goal : MVarId)
+  | unchanged
+  deriving Inhabited
+
 inductive RuleResult
   | proved (newRapps : Array RappRef)
   | succeeded (newRapps : Array RappRef)

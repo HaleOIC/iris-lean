@@ -39,4 +39,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     dbg_trace "iexact closed goal using intuitionistic/persistent hypothesis"
   return RuleOutput.ofEffect result.2 (.closeGoal (result.1.map AppliedHyp.spatial))
 
+def replay (input : RuleReplayInput) : SearchM Q MVarId := do
+  return input.goal
+
 end Iris.ProofMode.Aesop.Rule.IExact
