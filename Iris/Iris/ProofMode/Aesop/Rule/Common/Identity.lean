@@ -1,32 +1,15 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
+public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
 
 namespace Iris.ProofMode.Aesop.Rule.Identity
 
 open Lean Meta Qq Std
-open Iris.BI
-open Iris.ProofMode
 
 variable {Q : Type} [Queue Q]
-
-/- Auxiliary function for split multiple goals -/
-private partial def splitSepTargets
-    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
-    (target : Q($prop)) : MetaM (Array Q($prop)) := do
-  let target : Q($prop) ← instantiateMVars target
-  let lhs : Q($prop) ← mkFreshExprMVarQ prop
-  let rhs : Q($prop) ← mkFreshExprMVarQ prop
-  match ← ProofMode.trySynthInstanceQ q(FromSep $target $lhs $rhs) with
-  | .some _ =>
-    let lhs : Q($prop) ← instantiateMVars lhs
-    let rhs : Q($prop) ← instantiateMVars rhs
-    return (← splitSepTargets (prop := prop) (bi := bi) lhs) ++
-      (← splitSepTargets (prop := prop) (bi := bi) rhs)
-  | _ =>
-    return #[target]
 
 private def mkSplitChildren (goal : MVarId) :
     MetaM (Option (Array SubGoal × Array IrisGoal)) := do
@@ -34,19 +17,25 @@ private def mkSplitChildren (goal : MVarId) :
     let goalType ← instantiateMVars (← goal.getType)
     let some irisGoal := parseIrisGoal? goalType
       | throwError "iaesop: internal error: identity must work in iris proof-mode context"
-    let targets ← splitSepTargets (prop := irisGoal.prop) (bi := irisGoal.bi)
-      (← instantiateMVars irisGoal.goal)
-    -- [TODO] Should I report error here if we have index match ?
-    if targets.size <= 1 then return none
-    let mut children : Array SubGoal := #[]
-    let mut fullContextIrisSubgoals : Array IrisGoal := #[]
-    for target in targets do
-      let irisGoal := { irisGoal with goal := target }
-      let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) (← goal.getTag)
-      let goal := goalExpr.mvarId!
-      children := children.push { goal, addedFVars := {}, removedFVars := {} }
-      fullContextIrisSubgoals := fullContextIrisSubgoals.push irisGoal
-    return some (children, fullContextIrisSubgoals)
+    let { prop, goal := target, .. } := irisGoal
+    let target : Q($prop) ← instantiateMVars target
+    let lhs : Q($prop) ← mkFreshExprMVarQ prop
+    let rhs : Q($prop) ← mkFreshExprMVarQ prop
+    match ← ProofMode.trySynthInstanceQ q(FromSep $target $lhs $rhs) with
+    | .none | .undef => return none
+    | .some _ =>
+      let lhs : Q($prop) ← instantiateMVars lhs
+      let rhs : Q($prop) ← instantiateMVars rhs
+      let targets := #[lhs, rhs]
+      let mut children : Array SubGoal := #[]
+      let mut fullContextIrisSubgoals : Array IrisGoal := #[]
+      for target in targets do
+        let irisGoal := { irisGoal with goal := target }
+        let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) (← goal.getTag)
+        let goal := goalExpr.mvarId!
+        children := children.push { goal, addedFVars := {}, removedFVars := {} }
+        fullContextIrisSubgoals := fullContextIrisSubgoals.push irisGoal
+      return some (children, fullContextIrisSubgoals)
 
 def run (input : RuleInput) : SearchM Q RuleOutput := do
   let goal := input.goal
@@ -69,7 +58,51 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     effect := some (.contextManagement fullContextIrisSubgoals none)
   }
 
-def replay (input : RuleReplayInput) : SearchM Q MVarId := do
-  return input.goal
+/- Replay one identity split and return the immediate left and right subgoals. -/
+private def replaySplit (goalMVarId : MVarId)
+    (contexts : Array (Array IrisHyp)) : ProofModeM (Array MVarId) := do
+  if contexts.size != 2 then
+    throwError s!"iaesop(baseline): identity replay expected two split contexts, got {contexts.size}"
+  let some _ := contexts[0]?
+    | throwError "iaesop(baseline): identity replay is missing the left split context"
+  let some rhsContext := contexts[1]?
+    | throwError "iaesop(baseline): identity replay is missing the right split context"
+  goalMVarId.withContext do
+    let goalType ← instantiateMVars (← goalMVarId.getType)
+    let some { prop, bi, hyps, goal := target, .. } := parseIrisGoal? goalType
+      | throwError "iaesop(baseline): identity replay expected an Iris goal"
+    let Q1 ← mkFreshExprMVarQ prop
+    let Q2 ← mkFreshExprMVarQ prop
+    let some _ ← ProofModeM.trySynthInstanceQ q(FromSep $target $Q1 $Q2)
+      | throwError "iaesop(baseline): identity replay cannot split target"
+    let rightNames := rhsContext.map (·.name)
+    let ⟨_, _, lhsHyps, rhsHyps, pf⟩ :=
+      hyps.split bi λ name _ => rightNames.contains name
+    let lhsGoal ← mkBIGoal lhsHyps Q1 (← goalMVarId.getTag)
+    let rhsGoal ← mkBIGoal rhsHyps Q2 (← goalMVarId.getTag)
+    goalMVarId.assign q(sep_split (Q := $target) $pf $lhsGoal $rhsGoal)
+    return #[lhsGoal.mvarId!, rhsGoal.mvarId!]
+
+/- [Note] Make sure you are in the correct context -/
+def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
+  let rapp := input.rapp
+
+  /- Sanity check -/
+  let obun ← rapp.children.get
+  if !obun.state.isProven then
+    throwError s!"iaesop(baseline): identity replay expected child obun to be proven"
+  if !obun.kind.isManaged || obun.finalizedSpatialSplits.size <= 1 then
+    throwError s!"iaesop(baseline): identity replay expected a managed obun"
+  if obun.finalizedSpatialSplits.isEmpty then
+    throwError s!"iaesop(baseline): identity replay has no finalized spatial splits"
+  if obun.finalizedSpatialSplits.size != obun.goals.size then
+    throwError s!"iaesop(baseline): identity replay got " ++
+      s!"{obun.finalizedSpatialSplits.size} finalized split entries for {obun.goals.size} child goals"
+
+  /- Assign the proof term and return all replay-generated child metavariables. -/
+  let goals ← replaySplit input.goal obun.finalizedSpatialSplits
+  if goals.size != obun.goals.size then
+    throwError s!"iaesop(baseline): identity replay produced {goals.size} goals for {obun.goals.size} search children"
+  return goals
 
 end Iris.ProofMode.Aesop.Rule.Identity
