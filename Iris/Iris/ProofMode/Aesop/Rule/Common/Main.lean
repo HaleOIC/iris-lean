@@ -19,12 +19,12 @@ def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .ipureIntro => Rule.IPureIntro.run
   | _ => λ _ => return {}
 
-def replay {Q : Type} [Queue Q] : RuleRunnerDescr → RuleReplayer Q
+def replay : RuleRunnerDescr → RuleReplayer
   | .identity => Rule.Identity.replay
   | .applyHyps => Rule.ApplyHyps.replay
   | .iexact => Rule.IExact.replay
   | .ipureIntro => Rule.IPureIntro.replay
-  | _ => λ input => return input.goal
+  | _ => λ input => return #[input.goal]
 
 end RuleRunnerDescr
 

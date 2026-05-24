@@ -110,7 +110,7 @@ end RuleOutput
 abbrev RuleRunner (Q : Type) [Queue Q] :=
   RuleInput → SearchM Q RuleOutput
 
-abbrev RuleReplayer (Q : Type) [Queue Q] :=
-  RuleReplayInput → SearchM Q MVarId
+abbrev RuleReplayer :=
+  RuleReplayInput → ProofModeM (Array MVarId)
 
 end Iris.ProofMode.Aesop

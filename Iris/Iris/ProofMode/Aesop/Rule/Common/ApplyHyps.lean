@@ -218,7 +218,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     }
   return RuleOutput.ofRappSpecs specs
 
-def replay (input : RuleReplayInput) : SearchM Q MVarId := do
-  return input.goal
+def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
+  return #[input.goal]
 
 end Iris.ProofMode.Aesop.Rule.ApplyHyps
