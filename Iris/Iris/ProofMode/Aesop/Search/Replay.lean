@@ -52,6 +52,10 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
   let goalMVarIds ← liftM <| RuleRunnerDescr.ofInfo rapp.appliedRule.info |>.replay
     { goal := goalMVarId, rapp }
 
+  /- The replayed rule closed the focused metavariable and produced no children. -/
+  if goalMVarIds.isEmpty && obun.goals.isEmpty then
+    return ()
+
   /- Select the focus goal and record the remaining -/
   if goalMVarIds.size == 1 then
     let some goalMVarId := goalMVarIds[0]?
