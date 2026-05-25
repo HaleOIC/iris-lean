@@ -9,6 +9,7 @@ public meta section
 namespace Iris.ProofMode.Aesop
 
 open Lean Meta Qq Std
+open Iris.BI
 
 public meta partial def hypNameArray : ∀ {prop : Q(Type u)} {bi : Q(BI $prop)} {e},
     Hyps bi e → Array Name
@@ -45,5 +46,23 @@ public meta def mkFreshBinderFromNames (names : Array Name) (depth : Nat)
     if nameDepth? name == some depth then count + 1 else count
   let ident := mkIdent $ (`H).appendAfter s!"{depth}_{index + offset}"
   `(binderIdent| $ident:ident)
+
+public meta def mkBinderFromName (name : Name) :
+    ProofModeM (TSyntax ``binderIdent) := do
+  let ident := mkIdent name.eraseMacroScopes
+  `(binderIdent| $ident:ident)
+
+public meta def forallBinderName? (target : Expr) : Option Name := do
+  let target := target.consumeMData
+  if target.getAppFn.constName? != some ``BIBase.forall then
+    none
+  let some arg := target.getAppArgs.back?
+    | none
+  match arg.consumeMData with
+  | .lam name .. =>
+    match name.eraseMacroScopes with
+    | .anonymous => none
+    | name => some name
+  | _ => none
 
 end Iris.ProofMode.Aesop

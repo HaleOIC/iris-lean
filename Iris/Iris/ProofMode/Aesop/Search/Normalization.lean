@@ -157,7 +157,17 @@ private def introNormStep : NormStep where
   kind := .intro
   run input := do
     let names ← liftM <| collectIrisHypNames input.goal
-    let pureName ← mkFreshBinderFromNames names input.depth
+    /- Try to find name for pure from given binder -/
+    let pureName? ← liftM (m := MetaM) do
+      input.goal.withContext do
+        let goalType ← instantiateMVars (← input.goal.getType)
+        let some irisGoal := parseIrisGoal? goalType
+          | return none
+        return forallBinderName? irisGoal.goal
+    let pureName ←
+      match pureName? with
+      | some name => mkBinderFromName name
+      | none => mkFreshBinderFromNames names input.depth
     if let some newGoal ← runIntroPat input.goal (.intro (.pure pureName)) then
       return .changed newGoal
     let name ← mkFreshBinderFromNames names input.depth
