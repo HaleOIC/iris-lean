@@ -3,6 +3,7 @@ module
 public meta import Iris.ProofMode.Aesop.Index.Query
 public meta import Iris.ProofMode.Aesop.Rule.Common.ApplyHyps
 public meta import Iris.ProofMode.Aesop.Rule.Common.Identity
+public meta import Iris.ProofMode.Aesop.Rule.Common.IMod
 public meta import Iris.ProofMode.Aesop.Rule.Common.IPureIntro
 
 public meta section
@@ -14,12 +15,14 @@ namespace RuleRunnerDescr
 def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .identity => Rule.Identity.run
   | .applyHyps => Rule.ApplyHyps.run
+  | .imod => Rule.IMod.run
   | .ipureIntro => Rule.IPureIntro.run
   | _ => λ _ => return {}
 
 def replay : RuleRunnerDescr → RuleReplayer
   | .identity => Rule.Identity.replay
   | .applyHyps => Rule.ApplyHyps.replay
+  | .imod => Rule.IMod.replay
   | .ipureIntro => Rule.IPureIntro.replay
   | _ => λ input => return #[input.goal]
 
@@ -58,10 +61,22 @@ def commonIPureIntroRule : Rule RuleInfo where
   indexingMode := .unindexed
   info := RuleInfo.ofBuilder .ipureIntro
 
+def commonIModRuleId : RuleId where
+  name := `imod
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def commonIModRule : Rule RuleInfo where
+  id := commonIModRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder .imod
+
 def commonRuleIndex : Index RuleInfo :=
   ({} : Index RuleInfo)
     |>.add commonIdentityRule commonIdentityRule.indexingMode
     |>.add commonApplyHypsRule commonApplyHypsRule.indexingMode
+    |>.add commonIModRule commonIModRule.indexingMode
     |>.add commonIPureIntroRule commonIPureIntroRule.indexingMode
 
 end Iris.ProofMode.Aesop

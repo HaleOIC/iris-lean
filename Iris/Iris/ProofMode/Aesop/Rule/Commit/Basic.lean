@@ -36,7 +36,7 @@ def mkRuleInput (ruleName : String) (parentRef : GoalRef)
     let mvars ← goal.getMVarDependencies
     preState.restore
     return mvars
-  return some { goal, state, mvars := mvars.toArray, matchResult }
+  return some { goal, depth := parent.depth, state, mvars := mvars.toArray, matchResult }
 
 def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)
     (output : RuleOutput) : SearchM Q RuleResult := do

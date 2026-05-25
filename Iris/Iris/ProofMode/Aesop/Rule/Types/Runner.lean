@@ -37,6 +37,7 @@ end RuleRunnerDescr
 
 structure RuleInput where
   goal : MVarId
+  depth : Nat
   /- all involved meta variables in goal -/
   mvars : Array MVarId
   state : SavedState

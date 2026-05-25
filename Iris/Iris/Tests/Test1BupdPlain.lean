@@ -38,51 +38,50 @@ instance BUpdPlain_ne : NonExpansive (BUpdPlain (PROP := PROP)) where
 
 theorem BUpdPlain_intro {P : PROP} : P ⊢ BUpdPlain P := by
   unfold BUpdPlain
-  iaesop
+  iaesop baseline
 
 theorem BUpdPlain_mono {P Q : PROP} : (P ⊢ Q) → (BUpdPlain P ⊢ BUpdPlain Q) := by
-  intro H
   unfold BUpdPlain
-  -- iaesop
-  iintro R %HQR Hp
-  iapply R
-  iintro HP
-  iapply Hp
-  iapply H $$ HP
+  iaesop baseline
+  -- iintro R %HQR Hp
+  -- iapply R
+  -- iintro HP
+  -- iapply Hp
+  -- iapply H $$ HP
 
 theorem BUpdPlain_idemp {P : PROP} : BUpdPlain (BUpdPlain P) ⊢ BUpdPlain P := by
   unfold BUpdPlain
-  -- iaesop
-  iintro Hp %R H
-  iapply Hp
-  iintro Hp
-  iapply Hp $$ H
+  iaesop baseline
+  -- iintro Hp %R H
+  -- iapply Hp
+  -- iintro Hp
+  -- iapply Hp $$ H
 
 theorem BUpdPlain_frame_r {P Q : PROP} : BUpdPlain P ∗ Q ⊢ (BUpdPlain iprop(P ∗ Q)) := by
   unfold BUpdPlain
-  -- iaesop
-  iintro ⟨Hp, Hq⟩ %R H
-  iapply Hp
-  iintro Hp
-  iapply H
-  isplitl [Hp]
-  · iexact Hp
-  · iexact Hq
+  iaesop baseline
+  -- iintro ⟨Hp, Hq⟩ %R H
+  -- iapply Hp
+  -- iintro Hp
+  -- iapply H
+  -- isplitl [Hp]
+  -- · iexact Hp
+  -- · iexact Hq
 
 theorem BUpdPlain_plainly {P : PROP} : BUpdPlain iprop(■ P) ⊢ (■ P) := by
   unfold BUpdPlain
-  -- iaesop
-  iintro H
-  iapply H
-  iapply wand_rfl
+  iaesop baseline
+  -- iintro H
+  -- iapply H
+  -- iapply wand_rfl
 
 /- BiBUpdPlainly entails the alternative definition -/
 theorem BUpd_BUpdPlain [BIUpdate PROP] [BIBUpdatePlainly PROP] {P : PROP} : (|==> P) ⊢ BUpdPlain P := by
   unfold BUpdPlain
-  -- iaesop
-  iintro HP %_ Hx
-  imod HP
-  iapply Hx $$ HP
+  iaesop baseline
+  -- iintro HP %_ Hx
+  -- imod HP
+  -- iapply Hx $$ HP
 
 -- We get the usual rule for frame preserving updates if we have an [own]
 -- connective satisfying the following rule w.r.t. interaction with plainly.
@@ -93,7 +92,7 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
   (Hup : x ~~>: Φ) :
     own x ⊢ BUpdPlain iprop(∃ y, ⌜Φ y⌝ ∧ own y) := by
   unfold BUpdPlain
-  -- iaesop
+  -- iaesop baseline
   iintro Hx
   iintro %R H
   iapply own_updateP_plainly x Φ R Hup
@@ -102,10 +101,10 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
   iintro %y %HΦ Hy
   iapply H
   iexists y
-  isplit
-  · ipure_intro
-    exact HΦ
-  · iexact Hy
+  isplit <;> iaesop baseline
+  -- · ipure_intro
+  --   exact HΦ
+  -- · iexact Hy
 
 end BupdPlainDef
 end BUpdPlain
