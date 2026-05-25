@@ -187,12 +187,9 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       postState := expansion.postState
       successPossibility := .hundred
       effect :=
-        match expansion.goals.size with
-        | 0 => some (.closeGoal (some expansion.usedHyp))
-        | 1 => none
-        | _ =>
-          some (.contextManagement
-            expansion.fullContextIrisSubgoals (some expansion.usedHyp))
+        if expansion.goals.isEmpty then some (.closeGoal (some expansion.usedHyp))
+        else some (.contextManagement
+          expansion.fullContextIrisSubgoals (some expansion.usedHyp))
     }
   return RuleOutput.ofRappSpecs specs
 
