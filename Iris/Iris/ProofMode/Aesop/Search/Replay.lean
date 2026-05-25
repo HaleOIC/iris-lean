@@ -54,6 +54,8 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
 
   /- The replayed rule closed the focused metavariable and produced no children. -/
   if goalMVarIds.isEmpty && obun.goals.isEmpty then
+    if !(← getThe ReplayM.State).pendingByCase.isEmpty then
+      throwError "iaesop(baseline): replay closed the focus while split cases are still pending"
     return ()
 
   /- Select the focus goal and record the remaining -/
@@ -131,8 +133,10 @@ public meta def replayProof : SearchM Q Unit := do
 
   /- Enter the replay context -/
   rootGoal.preNormState.restore
-  discard <| liftM (m := ProofModeM) <|
+  let (_, replayState) ← liftM (m := ProofModeM) <|
     ReaderT.run (assignProof rootGoal) { config } |>.run {
       focus := rootGoal.preNormGoal
       pendingByCase := {}
     }
+  if !replayState.pendingByCase.isEmpty then
+    throwError "iaesop(baseline): replay finished with pending split cases"
