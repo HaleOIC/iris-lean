@@ -17,6 +17,14 @@ private def boolMark (b : Bool) : String :=
 private def irisHypToString (hyp : IrisHyp) : String :=
   toString hyp.name
 
+private def irisHypsToString (hyps : Array IrisHyp) : String :=
+  "[" ++ String.intercalate ", " (hyps.map irisHypToString).toList ++ "]"
+
+private def finalizedSpatialSplitsToString
+    (splits : Array (Array IrisHyp)) : String :=
+  "[" ++ String.intercalate ", "
+    (splits.mapIdx λ idx hyps => s!"{idx}={irisHypsToString hyps}").toList ++ "]"
+
 private def appliedHypToString : AppliedHyp → String
   | .spatial hyp => s!"spatial {irisHypToString hyp}"
   | .intuitionistic hyp => s!"intuitionistic {irisHypToString hyp}"
@@ -56,7 +64,7 @@ private partial def renderObun (depth : Nat) (oref : ObunRef) :
     s!"irrelevant={boolMark o.isIrrelevant} " ++
     s!"goals={o.goals.size} " ++
     s!"fullCtxGoals={o.fullContextIrisSubgoals.size} " ++
-    s!"splits={o.finalizedSpatialSplits.size}\n"
+    s!"splits={finalizedSpatialSplitsToString o.finalizedSpatialSplits}\n"
   let children ← o.goals.mapM (renderGoal (depth + 2))
   return header ++ String.join children.toList
 

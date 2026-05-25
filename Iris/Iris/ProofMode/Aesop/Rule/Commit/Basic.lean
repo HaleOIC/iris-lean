@@ -30,7 +30,12 @@ def mkRuleInput (ruleName : String) (parentRef : GoalRef)
     (matchResult : RuleMatch) : SearchM Q (Option RuleInput) := do
   let parent ← parentRef.get
   let (goal, state) ← normalizedGoalAndState ruleName parent
-  let mvars ← goal.getMVarDependencies
+  let mvars ← liftM (m := MetaM) do
+    let preState ← saveState
+    state.restore
+    let mvars ← goal.getMVarDependencies
+    preState.restore
+    return mvars
   return some { goal, state, mvars := mvars.toArray, matchResult }
 
 def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)

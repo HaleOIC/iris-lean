@@ -73,8 +73,9 @@ private def replaySplit (goalMVarId : MVarId)
       | throwError "iaesop(baseline): identity replay expected an Iris goal"
     let Q1 ← mkFreshExprMVarQ prop
     let Q2 ← mkFreshExprMVarQ prop
-    let some _ ← ProofModeM.trySynthInstanceQ q(FromSep $target $Q1 $Q2)
+    let some inst ← ProofModeM.trySynthInstanceQ q(FromSep $target $Q1 $Q2)
       | throwError "iaesop(baseline): identity replay cannot split target"
+    let _ : Q(FromSep $target $Q1 $Q2) := inst
     let rightNames := rhsContext.map (·.name)
     let ⟨_, _, lhsHyps, rhsHyps, pf⟩ :=
       hyps.split bi λ name _ => rightNames.contains name
