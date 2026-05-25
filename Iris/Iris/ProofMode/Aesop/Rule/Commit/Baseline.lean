@@ -75,21 +75,13 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
 
   /- Skip the solved context manage obun -/
   if let some source := skip? then
-    match parentObun.kind with
-    | .inherited source' =>
-      if source' == source then
-        let some rref := parentObun.parent?
-          | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
-        let rapp ← rref.get
-        return ← collectPendingContextGoals rapp.parent skip?
-    | .managed =>
-      if parentObun.id == source then
-        let some rref := parentObun.parent?
-          | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
-        let rapp ← rref.get
-        return ← collectPendingContextGoals rapp.parent none
-    | .plain =>
-      pure ()
+    let some rref := parentObun.parent?
+      | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
+    let rapp ← rref.get
+    if parentObun.kind.isManaged && parentObun.id == source then
+      return ← collectPendingContextGoals rapp.parent none
+    else
+      return ← collectPendingContextGoals rapp.parent skip?
 
   /- Plain obun: collect its parent rapp's used spatial hypothesis. -/
   if parentObun.kind.isPlain then
