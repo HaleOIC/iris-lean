@@ -99,9 +99,10 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
   isplitl [Hx]
   · iexact Hx
   iintro %y %HΦ Hy
-  iapply H
-  iexists y
-  isplit <;> iaesop baseline
+  iaesop baseline
+  -- iapply H
+  -- iexists y
+  -- isplit
   -- · ipure_intro
   --   exact HΦ
   -- · iexact Hy

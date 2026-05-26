@@ -23,6 +23,7 @@ inductive RuleBuilder where
   | icases
   | ileft
   | iright
+  | isplit
   | custom
   deriving Inhabited, BEq, Hashable, Ord
 
@@ -43,6 +44,7 @@ instance : ToString RuleBuilder where
     | icases => "icases"
     | ileft => "ileft"
     | iright => "iright"
+    | isplit => "isplit"
     | custom => "custom"
 
 end RuleBuilder

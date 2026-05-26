@@ -18,6 +18,7 @@ inductive RuleRunnerDescr where
   | iExist
   | imodIntro
   | imod
+  | isplit
   | custom
   deriving Inhabited, BEq, Hashable, Ord
 
@@ -30,6 +31,7 @@ def ofBuilder : RuleBuilder → RuleRunnerDescr
   | .iExist => .iExist
   | .imodintro => .imodIntro
   | .imod => .imod
+  | .isplit => .isplit
   | _ => .custom
 
 def ofInfo (info : RuleInfo) : RuleRunnerDescr :=
@@ -58,6 +60,8 @@ structure SubGoal where
 
 /- Auxiliary effects produced by a rule application. -/
 inductive RuleEffect where
+  | multipleGoals (fullContextIrisSubgoals: Array IrisGoal)
+    (usedHyp? : Option AppliedHyp)
   | contextManagement (fullContextIrisSubgoals : Array IrisGoal)
     (usedHyp? : Option AppliedHyp)
   | closeGoal (usedHyp? : Option AppliedHyp)
@@ -69,10 +73,12 @@ def fullContextIrisSubgoals : RuleEffect → Array IrisGoal
   | _ => #[]
 
 def usedHyp? : RuleEffect → Option AppliedHyp
+  | multipleGoals _ hyp => hyp
   | contextManagement _ hyp => hyp
   | closeGoal hyp => hyp
 
 def consumedSpatialHyp? : RuleEffect → Option IrisHyp
+  | multipleGoals _ usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
   | contextManagement _ usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
   | closeGoal usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
 

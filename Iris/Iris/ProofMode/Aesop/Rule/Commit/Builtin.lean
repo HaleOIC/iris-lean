@@ -17,6 +17,7 @@ private def RappSpec.obunKind (spec : RappSpec) : ObunKind :=
   match spec.effect with
   | some (.contextManagement ..) => .managed
   | some (.closeGoal ..) | none => .plain
+  | _ => .plain
 
 private def RappSpec.nodeState (spec : RappSpec) : NodeState :=
   if spec.goals.isEmpty then .proven else .unknown

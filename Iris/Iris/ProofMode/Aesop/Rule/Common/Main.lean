@@ -6,6 +6,7 @@ public meta import Iris.ProofMode.Aesop.Rule.Common.Identity
 public meta import Iris.ProofMode.Aesop.Rule.Common.IMod
 public meta import Iris.ProofMode.Aesop.Rule.Common.IPureIntro
 public meta import Iris.ProofMode.Aesop.Rule.Common.iExist
+public meta import Iris.ProofMode.Aesop.Rule.Common.ISplit
 
 public meta section
 
@@ -19,6 +20,7 @@ def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .imod => Rule.IMod.run
   | .ipureIntro => Rule.IPureIntro.run
   | .iExist => Rule.IExist.run
+  | .isplit => Rule.ISplit.run
   | _ => λ _ => return {}
 
 def replay : RuleRunnerDescr → RuleReplayer
@@ -27,6 +29,7 @@ def replay : RuleRunnerDescr → RuleReplayer
   | .imod => Rule.IMod.replay
   | .ipureIntro => Rule.IPureIntro.replay
   | .iExist => Rule.IExist.replay
+  | .isplit => Rule.ISplit.replay
   | _ => λ input => return #[input.goal]
 
 end RuleRunnerDescr
@@ -86,6 +89,17 @@ def commonIModRule : Rule RuleInfo where
   indexingMode := .unindexed
   info := RuleInfo.ofBuilder .imod
 
+def commonISplitRuleId : RuleId where
+  name := `isplit
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def commonISplitRule : Rule RuleInfo where
+  id := commonISplitRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder .isplit
+
 def commonRuleIndex : Index RuleInfo :=
   ({} : Index RuleInfo)
     |>.add commonIdentityRule commonIdentityRule.indexingMode
@@ -93,5 +107,6 @@ def commonRuleIndex : Index RuleInfo :=
     |>.add commonIModRule commonIModRule.indexingMode
     |>.add commonIPureIntroRule commonIPureIntroRule.indexingMode
     |>.add commonIExistRule commonIExistRule.indexingMode
+    |>.add commonISplitRule commonISplitRule.indexingMode
 
 end Iris.ProofMode.Aesop

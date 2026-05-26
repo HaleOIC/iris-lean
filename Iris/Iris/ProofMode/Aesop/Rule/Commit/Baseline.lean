@@ -54,6 +54,7 @@ private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
 private structure PendingContextGoals where
   sourceObunId : ObunId
   sourceObunDepth : Nat
+  sourceObunKind : ObunKind
   leftIrisGoals : Array (CaseId × IrisGoal)
   usedSpatialHyps : Array IrisHyp
   deriving Inhabited
@@ -61,6 +62,7 @@ private structure PendingContextGoals where
 private def PendingContextGoals.empty  : PendingContextGoals := {
   sourceObunId := .zero
   sourceObunDepth := 0
+  sourceObunKind := .plain
   leftIrisGoals := #[]
   usedSpatialHyps := #[]
 }
@@ -112,16 +114,18 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
       | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
     let rapp ← rref.get
     match parentObun.kind with
-    | .inherited source => return ← collectPendingContextGoals rapp.parent (some source)
+    | .inherited source _ => return ← collectPendingContextGoals rapp.parent (some source)
+    | .duplicated => throwError "iaesop(baseline): duplicated obun branch should not be reached when collecting pending goals"
     | .managed => throwError "iaesop(baseline): managed obun branch should not be reached when collecting pending goals"
     | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
 
   /- Otherwise, return current pending info -/
   let (sourceObunId, sourceObunDepth) ← match parentObun.kind with
     | .managed => pure (parentObun.id, parentObun.contextDepth)
-    | .inherited source => pure (source, parentObun.contextDepth)
+    | .duplicated => pure (parentObun.id, parentObun.contextDepth)
+    | .inherited source _ => pure (source, parentObun.contextDepth)
     | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
-  return { sourceObunId, sourceObunDepth, leftIrisGoals, usedSpatialHyps := #[] }
+  return { sourceObunId, sourceObunDepth, sourceObunKind := parentObun.kind, leftIrisGoals, usedSpatialHyps := #[] }
 
 /- Make an initial version ObunRef with its initial subgoals. -/
 private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
@@ -164,6 +168,23 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
   obunRef.modify λ o => o.setGoals goalRefs
   return obunRef
 
+/- Apply multiple goal effect to the given obunRef -/
+private def applyMultipleGoalsEffect (obunRef : ObunRef)
+    (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
+  if irisSubgoals.size == 1 then
+    throwError "iaesop(baseline): multiple subgoal effect must have more than one subgoals"
+
+  let obun ← obunRef.get
+  if obun.goals.size != irisSubgoals.size then
+    throwError s!"iaesop(baseline): multiple subgoal effect has {irisSubgoals.size} templates but {obun.goals.size} goals"
+  let _ ← obun.goals.foldlM (init := 0) λ idx gref => do
+    gref.modify λ g => g.setCaseId (CaseId.ofNat idx)
+    return idx + 1
+  obunRef.modify λ o =>
+    o.setKind .duplicated
+     |>.setContextDepth (o.contextDepth + 1)
+     |>.setFullContextIrisSubgoals irisSubgoals
+
 /- Apply context management effect to the given obunRef -/
 private def applyContextManagementEffect (obunRef : ObunRef)
     (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
@@ -203,7 +224,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   let pending := { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
   if pending.leftIrisGoals.isEmpty then
     obunRef.modify λ o =>
-      o.setKind (.inherited pending.sourceObunId)
+      o.setKind (.inherited pending.sourceObunId true)
         |>.setContextDepth pending.sourceObunDepth
         |>.setFullContextIrisSubgoals #[]
         |>.setState .proven
@@ -213,13 +234,20 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   let parent ← parentRef.get
   let (pendingGoals, postState) ←
       liftM (show MetaM (Array (CaseId × IrisGoal × MVarId × Std.HashSet MVarId) × SavedState) from do
-    restoreState spec.postState
+    spec.postState.restore
     let tag ← parent.preNormGoal.getTag
     let pendingGoals ← pending.leftIrisGoals.mapM λ (caseId, pendingGoal) => do
-      let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal pending.usedSpatialHyps
-      let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
-      let goal := goalExpr.mvarId!
-      return (caseId, irisGoal, goal, ← goal.getMVarDependencies)
+      match pending.sourceObunKind with
+      | .managed | .inherited _ true =>
+        let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal pending.usedSpatialHyps
+        let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
+        let goal := goalExpr.mvarId!
+        return (caseId, irisGoal, goal, ← goal.getMVarDependencies)
+      | .duplicated | .inherited _ false =>
+        let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr pendingGoal) tag
+        let goal := goalExpr.mvarId!
+        return (caseId, pendingGoal, goal, ← goal.getMVarDependencies)
+      | _ => throwError "iaesop(baseline): this branch should not be reached during construction of pending goals"
     return (pendingGoals, ← saveState))
   let irisSubgoals := pendingGoals.map λ (_, irisGoal, _, _) => irisGoal
   let goalRefs ← pendingGoals.mapIdxM λ idx (caseId, _, goal, unassignedMvars) => do
@@ -245,8 +273,12 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
       caseId? := some caseId
     }
   /- Inherited obun also preserve the irisSubgoals template -/
+  let newKind := match pending.sourceObunKind with
+    | .managed => .inherited pending.sourceObunId true
+    | .duplicated => .inherited pending.sourceObunId false
+    | _ => pending.sourceObunKind
   obunRef.modify λ o =>
-    o.setKind (.inherited pending.sourceObunId)
+    o.setKind newKind
       |>.setContextDepth pending.sourceObunDepth
       |>.setFullContextIrisSubgoals irisSubgoals
       |>.setGoals goalRefs
@@ -256,6 +288,8 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
     (spec : RappSpec) : SearchM Q (RappRef × Array GoalRef) := do
   let obunRef ← mkInitialObunRef parentRef spec
   match spec.effect with
+  | some (.multipleGoals irisSubgoals ..) =>
+    applyMultipleGoalsEffect obunRef irisSubgoals
   | some (.contextManagement irisSubgoals ..) =>
     applyContextManagementEffect obunRef irisSubgoals
   | some (.closeGoal usedHyp?) =>

@@ -14,30 +14,17 @@ private def indent (n : Nat) : String :=
 private def boolMark (b : Bool) : String :=
   if b then "true" else "false"
 
-private def irisHypToString (hyp : IrisHyp) : String :=
-  toString hyp.name
-
 private def irisHypsToString (hyps : Array IrisHyp) : String :=
-  "[" ++ String.intercalate ", " (hyps.map irisHypToString).toList ++ "]"
+  "[" ++ String.intercalate ", " (hyps.map (λ hyp => toString hyp)).toList ++ "]"
 
 private def finalizedSpatialSplitsToString
     (splits : Array (Array IrisHyp)) : String :=
   "[" ++ String.intercalate ", "
-    (splits.mapIdx λ idx hyps => s!"{idx}={irisHypsToString hyps}").toList ++ "]"
-
-private def appliedHypToString : AppliedHyp → String
-  | .spatial hyp => s!"spatial {irisHypToString hyp}"
-  | .intuitionistic hyp => s!"intuitionistic {irisHypToString hyp}"
-  | .lean userName _ => s!"lean {userName}"
+    (splits.mapIdx (fun idx hyps => s!"{idx}={irisHypsToString hyps}")).toList ++ "]"
 
 private def usedHypToString : Option AppliedHyp → String
   | none => "none"
-  | some hyp => appliedHypToString hyp
-
-private def obunKindToString : ObunKind → String
-  | .plain => "plain"
-  | .managed => "managed"
-  | .inherited source => s!"inherited from {source}"
+  | some hyp => toString hyp
 
 private def normalizationStateToString : NormalizationState → String
   | .notNormal => "notNormal"
@@ -59,7 +46,7 @@ private partial def renderObun (depth : Nat) (oref : ObunRef) :
   let o ← oref.get
   let header :=
     s!"{indent depth}obun #{o.id} " ++
-    s!"kind={obunKindToString o.kind} " ++
+    s!"kind={o.kind} " ++
     s!"state={o.state} " ++
     s!"irrelevant={boolMark o.isIrrelevant} " ++
     s!"goals={o.goals.size} " ++

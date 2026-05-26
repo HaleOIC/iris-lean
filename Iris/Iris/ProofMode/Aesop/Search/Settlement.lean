@@ -115,13 +115,13 @@ private meta partial def settleObun (obunRef : ObunRef)
   /- Save the used hypothesis or finalize the split case -/
   match obun.kind with
   | .plain => settleRapp rappRef usedHyps
-  | .inherited source =>
+  | .inherited source _ =>
     let some caseId := caseId?
       | throwError "iaesop(baseline): inherited obun proven by goal without case id"
     let (cur, usedHyps) := usedHyps.collect obun.contextDepth
     let usedHyps := usedHyps.insertCase source caseId cur
     settleRapp rappRef usedHyps
-  | .managed =>
+  | .managed | .duplicated =>
     let some caseId := caseId?
       | throwError "iaesop(baseline): managed obun proven by goal without case id"
     let (cur, usedHyps) := usedHyps.collect obun.contextDepth

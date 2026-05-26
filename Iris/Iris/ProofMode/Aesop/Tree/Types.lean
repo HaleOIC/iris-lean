@@ -18,6 +18,13 @@ structure IrisHyp where
   ivar : IVarId
   deriving Inhabited, BEq
 
+namespace IrisHyp
+
+instance : ToString IrisHyp where
+  toString := (·.name.toString)
+
+end IrisHyp
+
 /- Record the concrete hypothesis used by a rule application. -/
 inductive AppliedHyp where
   | spatial (hyp : IrisHyp)
@@ -25,6 +32,12 @@ inductive AppliedHyp where
   | lean (userName : Name) (fvarId : FVarId)
 
 namespace AppliedHyp
+
+instance : ToString AppliedHyp where
+  toString
+    | spatial hyp => s!"spatial {hyp}"
+    | intuitionistic hyp => s!"intuitionistic {hyp}"
+    | lean userName _ => s!"lean {userName}"
 
 def consumedSpatialHyp? : AppliedHyp → Option IrisHyp
   | .spatial hyp => some hyp
@@ -261,10 +274,19 @@ end GoalOrigin
 inductive ObunKind
   | plain
   | managed
-  | inherited (source : ObunId)
+  | duplicated
+  | inherited (source : ObunId) (diff? : Bool)
   deriving Inhabited, BEq
 
 namespace ObunKind
+
+instance : ToString ObunKind where
+  toString
+    | plain => "plain"
+    | managed => "managed"
+    | duplicated => "duplicated"
+    | inherited source diff? => s!"inherited from {source}" ++
+      if diff? then "(managed)" else "(duplicated)"
 
 def isPlain : ObunKind → Bool
   | plain => true
@@ -272,6 +294,10 @@ def isPlain : ObunKind → Bool
 
 def isManaged : ObunKind → Bool
   | managed => true
+  | _ => false
+
+def isDuplicated : ObunKind → Bool
+  | duplicated => true
   | _ => false
 
 def isInherited : ObunKind → Bool

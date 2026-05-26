@@ -29,5 +29,4 @@ structure SearchConfig where
   /- whether enable unfold during normalization stage (default: false) -/
   enableUnfold? : Bool := false
   /- whether select the baseline version (default: false) -/
-  -- [TODO]: return to false if baseline version finished
-  baseline? : Bool := true
+  baseline? : Bool := false
