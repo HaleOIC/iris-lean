@@ -15,6 +15,7 @@ inductive RuleRunnerDescr where
   | identity
   | applyHyps
   | ipureIntro
+  | iExist
   | imodIntro
   | imod
   | custom
@@ -26,6 +27,7 @@ def ofBuilder : RuleBuilder → RuleRunnerDescr
   | .identity => .identity
   | .applyHyps => .applyHyps
   | .ipureIntro => .ipureIntro
+  | .iExist => .iExist
   | .imodintro => .imodIntro
   | .imod => .imod
   | _ => .custom

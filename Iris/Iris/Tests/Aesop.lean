@@ -113,3 +113,6 @@ example [BI PROP] (P Q : α → PROP) (R : PROP) :
 /-- Tests `iexists` with anonymous metavariable -/
 example [BI PROP] : ⊢@{PROP} ∃ x, ⌜x = 42⌝ := by
   iaesop baseline
+
+example [BI PROP] (P : α → PROP) : P a ⊢ ∃ x, P x := by
+  iaesop baseline

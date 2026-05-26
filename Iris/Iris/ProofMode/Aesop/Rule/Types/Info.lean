@@ -13,6 +13,7 @@ inductive RuleBuilder where
   | identity
   | applyHyps
   | ipureIntro
+  | iExist
   | imodintro
   | imod
   | tactic
@@ -32,6 +33,7 @@ instance : ToString RuleBuilder where
     | identity => "identity"
     | applyHyps => "applyHyps"
     | ipureIntro => "ipure_intro"
+    | iExist => "iexist"
     | imodintro => "imodintro"
     | imod => "imod"
     | tactic => "tactic"

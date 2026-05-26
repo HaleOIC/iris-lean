@@ -5,6 +5,7 @@ public meta import Iris.ProofMode.Aesop.Rule.Common.ApplyHyps
 public meta import Iris.ProofMode.Aesop.Rule.Common.Identity
 public meta import Iris.ProofMode.Aesop.Rule.Common.IMod
 public meta import Iris.ProofMode.Aesop.Rule.Common.IPureIntro
+public meta import Iris.ProofMode.Aesop.Rule.Common.iExist
 
 public meta section
 
@@ -17,6 +18,7 @@ def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .applyHyps => Rule.ApplyHyps.run
   | .imod => Rule.IMod.run
   | .ipureIntro => Rule.IPureIntro.run
+  | .iExist => Rule.IExist.run
   | _ => λ _ => return {}
 
 def replay : RuleRunnerDescr → RuleReplayer
@@ -24,6 +26,7 @@ def replay : RuleRunnerDescr → RuleReplayer
   | .applyHyps => Rule.ApplyHyps.replay
   | .imod => Rule.IMod.replay
   | .ipureIntro => Rule.IPureIntro.replay
+  | .iExist => Rule.IExist.replay
   | _ => λ input => return #[input.goal]
 
 end RuleRunnerDescr
@@ -61,6 +64,17 @@ def commonIPureIntroRule : Rule RuleInfo where
   indexingMode := .unindexed
   info := RuleInfo.ofBuilder .ipureIntro
 
+def commonIExistRuleId : RuleId where
+  name := `iExist
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def commonIExistRule : Rule RuleInfo where
+  id := commonIExistRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder .iExist
+
 def commonIModRuleId : RuleId where
   name := `imod
   kind := .apply
@@ -78,5 +92,6 @@ def commonRuleIndex : Index RuleInfo :=
     |>.add commonApplyHypsRule commonApplyHypsRule.indexingMode
     |>.add commonIModRule commonIModRule.indexingMode
     |>.add commonIPureIntroRule commonIPureIntroRule.indexingMode
+    |>.add commonIExistRule commonIExistRule.indexingMode
 
 end Iris.ProofMode.Aesop
