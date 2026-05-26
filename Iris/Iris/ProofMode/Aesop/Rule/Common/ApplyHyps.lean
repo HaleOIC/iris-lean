@@ -22,6 +22,34 @@ private structure ApplyHypExpansion where
   fullContextIrisSubgoals : Array IrisGoal
   postState : SavedState
 
+/- Try to solve the prop version of MVar by looking up Lean context -/
+private def solvePropTelescopeMVars (args : Array Expr) : MetaM Bool := do
+  let mut solved := true
+  for arg in args do
+    if !arg.isMVar then
+      continue
+    let mvarId := arg.mvarId!
+    if ← mvarId.isAssigned then
+      continue
+    let target ← instantiateMVars (← mvarId.getType)
+    if ← Meta.isProp target then
+      let assigned ← mvarId.withContext do
+        let target ← instantiateMVars (← mvarId.getType)
+        let preState ← saveState
+        for decl in ← getLCtx do
+          if decl.isImplementationDetail then
+            continue
+          preState.restore
+          let hypType ← instantiateMVars decl.type
+          if ← isDefEq hypType target then
+            mvarId.assign (mkFVar decl.fvarId)
+            return true
+        preState.restore
+        return false
+      unless assigned do
+        solved := false
+  return solved
+
 /- Make a close-goal expansion when the selected hypothesis directly proves the target. -/
 private def mkCloseGoalExpansion?
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
@@ -139,7 +167,10 @@ private def collectFromLean (irisGoal : IrisGoal) (tag : Name)
     baseState.restore
 
     /- Peel explicit and implicit forall binders to expose the proposition being proved. -/
-    let ⟨_, _, ty⟩ ← forallMetaTelescope (← instantiateMVars decl.type)
+    let ⟨args, _, ty⟩ ← forallMetaTelescope (← instantiateMVars decl.type)
+    unless ← solvePropTelescopeMVars args do
+      continue
+    let ty ← instantiateMVars ty
     if ! (← Meta.isProp ty) then continue
     have ty : Q(Prop) := ty
 
@@ -235,6 +266,9 @@ private def mkLeanHypProof
   let ⟨newMVars, _, ty⟩ ← forallMetaTelescope (← instantiateMVars decl.type)
   if ! (← Meta.isProp ty) then
     throwError s!"iaesop(baseline): applyHyps replay Lean hypothesis {userName} is not a proposition"
+  unless ← solvePropTelescopeMVars newMVars do
+    throwError s!"iaesop(baseline): applyHyps replay could not solve a Prop argument of Lean hypothesis {userName}"
+  let ty ← instantiateMVars ty
   have ty : Q(Prop) := ty
   have val : Q($ty) := mkAppN val newMVars
   let hyp ← mkFreshExprMVarQ prop
