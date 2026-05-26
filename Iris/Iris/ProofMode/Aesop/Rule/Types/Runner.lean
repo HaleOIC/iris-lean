@@ -14,6 +14,7 @@ open Lean Meta Std
 inductive RuleRunnerDescr where
   | identity
   | applyHyps
+  | icases
   | ipureIntro
   | iExist
   | imodIntro
@@ -27,6 +28,7 @@ namespace RuleRunnerDescr
 def ofBuilder : RuleBuilder → RuleRunnerDescr
   | .identity => .identity
   | .applyHyps => .applyHyps
+  | .icases => .icases
   | .ipureIntro => .ipureIntro
   | .iExist => .iExist
   | .imodintro => .imodIntro

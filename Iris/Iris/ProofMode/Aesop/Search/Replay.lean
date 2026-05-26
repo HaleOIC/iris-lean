@@ -74,7 +74,7 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
 
   /- Find the proven child goal that replay should follow next. -/
   let sourceObunId := match obun.kind with
-    | .inherited sourceId => sourceId
+    | .inherited sourceId _ => sourceId
     | _ => obun.id
   let some nextGoalRef ← obun.goals.findM? λ gref => do
     let goal ← gref.get

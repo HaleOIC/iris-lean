@@ -101,10 +101,7 @@ example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> |==> P ⊢ |==> P := by
 
 example [BI PROP] [BIAffine PROP] (P Q R S : PROP) :
     S -∗ (P ∨ Q) -∗ (P -∗ R) -∗ (Q -∗ S -∗ R) -∗ (Q -∗ R) -∗ (R ∗ S) := by
-  iintro HS HPQ Hwand1 Hwand2 Hwand3
-  icases HPQ with ⟨HP | HQ⟩
-  · iaesop baseline
-  · iaesop baseline
+  iaesop baseline
 
 example [BI PROP] (P Q : α → PROP) (R : PROP) :
     P a -∗ □ (∀ x, (P x -∗ Q x) ∧ R) -∗ Q a := by
