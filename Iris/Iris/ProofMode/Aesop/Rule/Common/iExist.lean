@@ -27,7 +27,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       let v ← mkFreshLevelMVar
       let α ← mkFreshExprMVarQ q(Sort v)
       let Φ ← mkFreshExprMVarQ q($α → $prop)
-      let .some (_, _) ← ProofMode.trySynthInstanceQ q(FromExists $target $Φ)
+      let .some (_, _) ← trySynthInstanceProbeQ q(FromExists $target $Φ)
         | return none
 
       -- Keep the same Iris context; only the target changes from `∃ x, Φ x` to `Φ ?x`.

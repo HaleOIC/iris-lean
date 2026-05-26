@@ -24,12 +24,12 @@ public meta def collectIrisHypNames (goal : MVarId) : MetaM (Array Name) := do
       | return #[]
     return hypNameArray irisGoal.hyps
 
-public meta def nameDepth? (name : Name) : Option Nat :=
+public meta def nameDepthWithPrefix? (pref : String) (name : Name) : Option Nat :=
   match name.eraseMacroScopes with
   | .str _ str =>
     match str.splitOn "_" with
     | depthPart :: indexPart :: [] =>
-      match depthPart.dropPrefix? "H" with
+      match depthPart.dropPrefix? pref with
       | some depthPart =>
         match depthPart.toNat?, indexPart.toNat? with
         | some depth, some _ => some depth
@@ -38,14 +38,30 @@ public meta def nameDepth? (name : Name) : Option Nat :=
     | _ => none
   | _ => none
 
-/- Generate an unique binder name for search process -/
-public meta def mkFreshBinderFromNames (names : Array Name) (depth : Nat)
+public meta def nameDepth? (name : Name) : Option Nat :=
+  nameDepthWithPrefix? "H" name
+
+/- Generate a unique binder name for search process. -/
+public meta def mkFreshBinderFromNamesWithPrefix
+    (pref : String) (names : Array Name) (depth : Nat)
     (offset : Nat := 1) :
     ProofModeM (TSyntax ``binderIdent) := do
   let index := names.foldl (init := 0) λ count name =>
-    if nameDepth? name == some depth then count + 1 else count
-  let ident := mkIdent $ (`H).appendAfter s!"{depth}_{index + offset}"
+    if nameDepthWithPrefix? pref name == some depth then count + 1 else count
+  let ident := mkIdent $ (Name.mkSimple pref).appendAfter s!"{depth}_{index + offset}"
   `(binderIdent| $ident:ident)
+
+/- Generate an unique Iris hypothesis binder name for search process. -/
+public meta def mkFreshBinderFromNames (names : Array Name) (depth : Nat)
+    (offset : Nat := 1) :
+    ProofModeM (TSyntax ``binderIdent) :=
+  mkFreshBinderFromNamesWithPrefix "H" names depth offset
+
+/- Generate a Lean local binder name for pure introductions during normalization. -/
+public meta def mkFreshLeanBinderFromNames (names : Array Name) (depth : Nat)
+    (offset : Nat := 1) :
+    ProofModeM (TSyntax ``binderIdent) :=
+  mkFreshBinderFromNamesWithPrefix "h" names depth offset
 
 public meta def mkBinderFromName (name : Name) :
     ProofModeM (TSyntax ``binderIdent) := do

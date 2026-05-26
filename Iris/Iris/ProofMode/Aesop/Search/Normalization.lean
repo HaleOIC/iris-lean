@@ -167,7 +167,7 @@ private def introNormStep : NormStep where
     let pureName ←
       match pureName? with
       | some name => mkBinderFromName name
-      | none => mkFreshBinderFromNames names input.depth
+      | none => mkFreshLeanBinderFromNames names input.depth
     if let some newGoal ← runIntroPat input.goal (.intro (.pure pureName)) then
       return .changed newGoal
     let name ← mkFreshBinderFromNames names input.depth

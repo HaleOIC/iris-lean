@@ -21,7 +21,7 @@ private def mkSplitChildren (goal : MVarId) :
     let target : Q($prop) ← instantiateMVars target
     let lhs : Q($prop) ← mkFreshExprMVarQ prop
     let rhs : Q($prop) ← mkFreshExprMVarQ prop
-    match ← ProofMode.trySynthInstanceQ q(FromSep $target $lhs $rhs) with
+    match ← trySynthInstanceProbeQ q(FromSep $target $lhs $rhs) with
     | .none | .undef => return none
     | .some _ =>
       let lhs : Q($prop) ← instantiateMVars lhs

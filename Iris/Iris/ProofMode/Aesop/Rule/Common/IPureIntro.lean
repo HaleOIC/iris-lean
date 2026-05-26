@@ -34,9 +34,7 @@ private def tryCloseByLocalAssumptionOrSimp (goal : MVarId) : MetaM Bool := do
         (simplifyTarget := true) (fvarIdsToSimp := #[])
     match result? with
     | none => return true
-    | some _ =>
-      restoreState preState
-      return false
+    | some _ => preState.restore; return false
 
 /- Keep enough failure detail for replay diagnostics while letting search treat every
 unsuccessful probe as "this rule does not apply here". -/
@@ -57,7 +55,7 @@ private def tryAssignPureIntro (goal : MVarId) : MetaM PureIntroResult := do
       | return .notIrisGoal
     let b : Q(Bool) ← mkFreshExprMVarQ q(Bool)
     let φ : Q(Prop) ← mkFreshExprMVarQ q(Prop)
-    let .some (h, _) ← ProofMode.trySynthInstanceQ q(FromPure $b $target .out $φ)
+    let .some (h, _) ← trySynthInstanceProbeQ q(FromPure $b $target .out $φ)
       | return .notPure
     let proof : Q($φ) ← mkFreshExprMVar (← instantiateMVars φ)
     unless ← tryCloseByLocalAssumptionOrSimp proof.mvarId! do

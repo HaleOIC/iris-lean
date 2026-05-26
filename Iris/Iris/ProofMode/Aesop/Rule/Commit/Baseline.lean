@@ -55,7 +55,7 @@ private structure PendingContextGoals where
   sourceObunId : ObunId
   sourceObunDepth : Nat
   sourceObunKind : ObunKind
-  leftIrisGoals : Array (CaseId × IrisGoal)
+  leftIrisGoals : Array (CaseId × IrisGoal × GoalRef)
   usedSpatialHyps : Array IrisHyp
   deriving Inhabited
 
@@ -80,7 +80,7 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
     let some rref := parentObun.parent?
       | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
     let rapp ← rref.get
-    if parentObun.kind.isManaged && parentObun.id == source then
+    if (parentObun.kind.isManaged || parentObun.kind.isDuplicated) && parentObun.id == source then
       return ← collectPendingContextGoals rapp.parent none
     else
       return ← collectPendingContextGoals rapp.parent skip?
@@ -105,7 +105,7 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
     let some caseId := other.caseId?
       | throwError s!"iaesop(baseline): copied sibling does not have caseId"
     -- [TODO]: Not sure whether we should check the sibling's state is irrelevant or proven
-    let acc := if other.id != g.id then acc.push (caseId, irisGoal) else acc
+    let acc := if other.id != g.id then acc.push (caseId, irisGoal, otherRef) else acc
     return (idx + 1, acc)
 
   /- Start to skip the already managed obun covering range -/
@@ -236,23 +236,26 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
       liftM (show MetaM (Array (CaseId × IrisGoal × MVarId × Std.HashSet MVarId) × SavedState) from do
     spec.postState.restore
     let tag ← parent.preNormGoal.getTag
-    let pendingGoals ← pending.leftIrisGoals.mapM λ (caseId, pendingGoal) => do
+    let pendingGoals ← pending.leftIrisGoals.mapM λ (caseId, pendingGoal, sourceRef) => do
+      let source ← sourceRef.get
       match pending.sourceObunKind with
       | .managed | .inherited _ true =>
         let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal pending.usedSpatialHyps
-        let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
-        let goal := goalExpr.mvarId!
+        let goal ← source.preNormGoal.withContext do
+          let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
+          return goalExpr.mvarId!
         return (caseId, irisGoal, goal, ← goal.getMVarDependencies)
       | .duplicated | .inherited _ false =>
-        let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr pendingGoal) tag
-        let goal := goalExpr.mvarId!
-        return (caseId, pendingGoal, goal, ← goal.getMVarDependencies)
+        return (caseId, pendingGoal, source.preNormGoal, ← source.preNormGoal.getMVarDependencies)
       | _ => throwError "iaesop(baseline): this branch should not be reached during construction of pending goals"
     return (pendingGoals, ← saveState))
   let irisSubgoals := pendingGoals.map λ (_, irisGoal, _, _) => irisGoal
   let goalRefs ← pendingGoals.mapIdxM λ idx (caseId, _, goal, unassignedMvars) => do
+    let newGoalId ← getAndIncrementNextGoalId
+    dbg_trace s!"iaesop.commit.copy: source obun {pending.sourceObunId}, \
+      case {caseId.toNat}, generated goal {newGoalId}"
     IO.mkRef $ Goal.mk {
-      id := ← getAndIncrementNextGoalId
+      id := newGoalId
       mask := (ProgressMask.empty pendingGoals.size).mark idx
       parent := obunRef
       children := #[]

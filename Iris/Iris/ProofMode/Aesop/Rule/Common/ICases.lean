@@ -19,18 +19,6 @@ private structure ICasesExpansion where
   fullContextIrisSubgoals : Array IrisGoal
   postState : SavedState
 
-/- `icases` is a speculative search rule: a hypothesis that is not an
-`IntoOr` should simply be ignored, even if typeclass search gives up while
-probing the view.  Replay remains strict once a concrete hypothesis was chosen. -/
-private def trySynthInstanceProbeQ {u : Level} (α : Q(Sort u)) :
-    MetaM (LOption (Q($α) × Std.HashSet MVarId)) := do
-  let preState ← saveState
-  try
-    ProofMode.trySynthInstanceQ α
-  catch _ =>
-    preState.restore
-    return .none
-
 private def mkHypExpansion?
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (irisGoal : IrisGoal) (tag : Name)

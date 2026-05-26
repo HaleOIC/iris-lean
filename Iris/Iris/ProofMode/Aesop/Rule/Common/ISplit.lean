@@ -22,7 +22,7 @@ private def mkAndChildren (goal : MVarId) :
     let { prop, goal := target, .. } := irisGoal
     let lhs ← mkFreshExprMVarQ prop
     let rhs ← mkFreshExprMVarQ prop
-    let .some _ ← ProofMode.trySynthInstanceQ q(FromAnd $target $lhs $rhs)
+    let .some _ ← trySynthInstanceProbeQ q(FromAnd $target $lhs $rhs)
       | return none
     let lhs : Q($prop) ← instantiateMVars lhs
     let rhs : Q($prop) ← instantiateMVars rhs

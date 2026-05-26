@@ -33,9 +33,12 @@ private def mkCloseGoalExpansion?
   let preState ← saveState
   /- Search only checks that the hypothesis matches the target;
   affine/absorbing side conditions are checked when the proof is assigned. -/
-  match ← ProofMode.trySynthInstanceQ q(FromAssumption $p .in $hypType $target) with
+  match ← trySynthInstanceProbeQ q(FromAssumption $p .in $hypType $target) with
   | .none | .undef => preState.restore; return none
-  | .some _ => return some {
+  | .some _ =>
+    let _ := ← instantiateMVars hypType
+    let _ := ← instantiateMVars target
+    return some {
       usedHyp, goals := #[], fullContextIrisSubgoals := #[], postState := ← saveState
     }
 
@@ -50,16 +53,24 @@ private partial def collectApplyPremises?
   let preState ← saveState
 
   /- Base case: one premise is enough to make the hypothesis prove the target. -/
-  match ← ProofMode.trySynthInstanceQ q(IntoWand $p false $hypType .out $premise .in $target) with
-  | .some _ => return some #[premise]
+  match ← trySynthInstanceProbeQ q(IntoWand $p false $hypType .out $premise .in $target) with
+  | .some _ =>
+    let premise : Q($prop) ← instantiateMVars premise
+    return some #[premise]
   | .none | .undef => preState.restore
 
   /- Recursive case: peel one premise, then keep applying the remaining wand. -/
   let restTarget ← mkFreshExprMVarQ prop
-  match ← ProofMode.trySynthInstanceQ q(IntoWand $p false $hypType .out $premise .out $restTarget) with
+  match ← trySynthInstanceProbeQ q(IntoWand $p false $hypType .out $premise .out $restTarget) with
   | .none | .undef => preState.restore; return none
-  | .some _ => match ← collectApplyPremises? (bi := bi) q(false) restTarget target with
-    | some premises => return some (#[premise] ++ premises)
+  | .some _ =>
+    let premise : Q($prop) ← instantiateMVars premise
+    let restTarget : Q($prop) ← instantiateMVars restTarget
+    match ← collectApplyPremises? (bi := bi) q(false) restTarget target with
+    | some premises =>
+      let premises : Array Q(«$prop») ← premises.mapM λ premise => do
+         instantiateMVars premise
+      return some (#[premise] ++ premises)
     | none => preState.restore; return none
 
 /- Turn each collected premise into both a search subgoal and its IrisGoal template. -/
@@ -134,9 +145,11 @@ private def collectFromLean (irisGoal : IrisGoal) (tag : Name)
 
     /- Bridge the Lean proposition into the current Iris BI before probing close/apply paths. -/
     let hyp ← mkFreshExprMVarQ prop
-    match ← ProofMode.trySynthInstanceQ q(AsEmpValid .into $ty .in $prop .in $bi $hyp) with
+    match ← trySynthInstanceProbeQ q(AsEmpValid .into $ty .in $prop .in $bi $hyp) with
     | .none | .undef => continue
     | .some _ =>
+      let hyp : Q($prop) ← instantiateMVars hyp
+      let _ := ← instantiateMVars ty
       let bridgedState ← saveState
       let usedHyp := AppliedHyp.lean decl.userName decl.fvarId
       if let some expansion ←
@@ -179,6 +192,11 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       match expansion.usedHyp with
       | .spatial hyp | .intuitionistic hyp => hyp.name
       | .lean userName .. => userName
+    let successPossibility : Percent :=
+      match expansion.usedHyp with
+      | .lean .. => ⟨0.55⟩
+      | .intuitionistic .. => ⟨0.7⟩
+      | .spatial .. => ⟨0.85⟩
     dbg_trace s!"applyHyps selected {usedHypName} and generated {expansion.goals.size} goals"
     for irisGoal in expansion.fullContextIrisSubgoals do
       let targetFmt ← liftM <| ppExpr irisGoal.goal
@@ -186,7 +204,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     return {
       goals := expansion.goals
       postState := expansion.postState
-      successPossibility := .hundred
+      successPossibility
       effect :=
         if expansion.goals.isEmpty then some (.closeGoal (some expansion.usedHyp))
         else some (.contextManagement
@@ -223,6 +241,9 @@ private def mkLeanHypProof
   let some inst ← ProofModeM.trySynthInstanceQ
       q(AsEmpValid .into $ty .in $prop .in $bi $hyp)
     | throwError s!"iaesop(baseline): applyHyps replay cannot bridge Lean hypothesis {userName} into Iris"
+  let hyp : Q($prop) ← instantiateMVars hyp
+  let ty : Q(Prop) ← instantiateMVars ty
+  let val : Q($ty) ← instantiateMVars val
   let inst : Q(AsEmpValid .into $ty .in $prop .in $bi $hyp) := inst
   return ⟨hyp, q(have_asEmpValid (P := $hyp) (Q := $e) (h1 := $inst) $val)⟩
 

@@ -3,12 +3,10 @@ module
 public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
-public meta import Iris.ProofMode.Aesop.Search.Tracing
 public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Settlement
 public meta import Iris.ProofMode.Aesop.Search.Finalization
 public meta import Iris.ProofMode.Aesop.Search.Replay
-public meta import Iris.ProofMode.Aesop.Tree.Print
 public meta import Iris.ProofMode.Aesop.Rule.Common.Main
 -- Temporarily disabled while the common rule set is the only active backend.
 -- public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
