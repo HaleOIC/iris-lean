@@ -75,7 +75,7 @@ private meta def collectRemainingGoals : SearchM Q (Array MVarId) := do
 private meta def checkRootProven : SearchM Q Bool := do
   let rootRef := ← getRootGoal
   if (← rootRef.get).state.isProven then
-    printSearchTreeBeforeFinalization
+    traceTreeBeforeReplay
     if (← readThe SearchM.Context).config.baseline? then
       Baseline.replayProof
     else

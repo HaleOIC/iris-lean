@@ -4,6 +4,7 @@ public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
 public meta import Iris.ProofMode.Aesop.Rule.Common.Main
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
+public meta import Iris.ProofMode.Aesop.Search.Tracing
 
 public meta section
 
@@ -34,9 +35,13 @@ private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult :=
 
 def expandGoal (gref : GoalRef) : SearchM Q RuleResult := do
   if !(← (← gref.get).isNormalized) then
+    trace[iaesop.search.expand] "--- Before the normalization --- "
+    Search.traceSelectedGoal gref
     normalizeGoal gref
   if (← gref.get).normalizationState.isProvenByNorm then
     return .proved #[]
+  trace[iaesop.search.expand] " **** Start to search rule **** "
+  Search.traceSelectedGoal gref
   runFirstRule gref
 
 end Iris.ProofMode.Aesop

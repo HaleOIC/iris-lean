@@ -87,11 +87,10 @@ private partial def renderRapp (depth : Nat) (rref : RappRef) :
 
 end
 
-public meta def printSearchTreeBeforeFinalization : TreeM Unit := do
+public meta def printSearchTree : TreeM String := do
   let root ← getRootObun
   let iteration := (← readThe TreeM.Context).currentIteration
   let tree ← renderObun 0 root
-  dbg_trace
-    s!"\n[iaesop tree before finalization]\niteration={iteration}\n{tree}"
+  return s!"\n[iaesop tree before finalization]\niteration={iteration}\n{tree}"
 
 end Iris.ProofMode.Aesop
