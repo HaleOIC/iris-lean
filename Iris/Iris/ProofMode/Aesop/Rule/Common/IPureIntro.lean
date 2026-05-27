@@ -82,7 +82,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     tryAssignPureIntro goal)
     -- During search, a failed pure-intro attempt simply means "try another rule".
     | return {}
-  return RuleOutput.ofEffect postState (.closeGoal none)
+  return RuleOutput.ofEffect postState { action := some .closeGoal }
 
 /- [Note] Make sure you are in the correct context -/
 def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do

@@ -236,10 +236,13 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       goals := expansion.goals
       postState := expansion.postState
       successPossibility
-      effect :=
-        if expansion.goals.isEmpty then some (.closeGoal (some expansion.usedHyp))
-        else some (.contextManagement
-          expansion.fullContextIrisSubgoals (some expansion.usedHyp))
+      effect := {
+        usedHyp? := some expansion.usedHyp
+        action :=
+          if expansion.goals.isEmpty then some .closeGoal
+          else if expansion.goals.size == 1 then none
+          else some (.manageContext expansion.fullContextIrisSubgoals)
+      }
     }
   return RuleOutput.ofRappSpecs specs
 

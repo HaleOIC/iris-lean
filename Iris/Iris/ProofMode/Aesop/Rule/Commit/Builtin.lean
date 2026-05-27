@@ -14,9 +14,10 @@ open Iris.ProofMode.Aesop
 variable {Q : Type} [Queue Q]
 
 private def RappSpec.obunKind (spec : RappSpec) : ObunKind :=
-  match spec.effect with
-  | some (.contextManagement ..) => .managed
-  | some (.closeGoal ..) | none => .plain
+  match spec.effect.action with
+  | some (.splitGoals ..) => .duplicated
+  | some (.manageContext .. ) => .managed
+  | some .closeGoal => .plain
   | _ => .plain
 
 private def RappSpec.nodeState (spec : RappSpec) : NodeState :=
@@ -48,9 +49,10 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     kind := obunKind
     contextDepth
     fullContextIrisSubgoals :=
-      match spec.effect with
-      | some effect => effect.fullContextIrisSubgoals
-      | none => #[]
+      match spec.effect.action with
+      | some (.splitGoals subGoals ..) => subGoals
+      | some (.manageContext templates ..) => templates
+      | _ => #[]
     finalizedSpatialSplits := #[]
   }
   let rappRef ← IO.mkRef $ Rapp.mk {
@@ -62,10 +64,8 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     appliedRule := usedRule
     successProbability
     scriptSteps? := none
-    usedHyp? :=
-      match spec.effect with
-      | some effect => effect.usedHyp?
-      | none => none
+    usedHyp? := spec.effect.usedHyp?
+    generatedSpatialHyp? := spec.effect.generatedSpatialHyp?
     metaState := spec.postState
     introducedMVars := {}
     assignedMVars := {}

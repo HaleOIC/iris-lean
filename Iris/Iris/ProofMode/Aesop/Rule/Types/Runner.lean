@@ -60,29 +60,26 @@ structure SubGoal where
   removedFVars : Std.HashSet FVarId
   deriving Inhabited
 
-/- Auxiliary effects produced by a rule application. -/
-inductive RuleEffect where
-  | multipleGoals (fullContextIrisSubgoals: Array IrisGoal)
-    (usedHyp? : Option AppliedHyp)
-  | contextManagement (fullContextIrisSubgoals : Array IrisGoal)
-    (usedHyp? : Option AppliedHyp)
-  | closeGoal (usedHyp? : Option AppliedHyp)
+/- Concrete effects produced by a rule application -/
+inductive RuleAction where
+  | splitGoals (subGoals : Array IrisGoal)
+  | manageContext (templates : Array IrisGoal)
+  | closeGoal
+  deriving Inhabited
+
+/- Information produced by a rule application -/
+structure RuleEffect where
+  generatedSpatialHyp? : Option IrisHyp := none
+  usedHyp? : Option AppliedHyp := none
+  action : Option RuleAction := none
+  deriving Inhabited
 
 namespace RuleEffect
 
-def fullContextIrisSubgoals : RuleEffect → Array IrisGoal
-  | contextManagement irisSubgoals ..  => irisSubgoals
-  | _ => #[]
-
-def usedHyp? : RuleEffect → Option AppliedHyp
-  | multipleGoals _ hyp => hyp
-  | contextManagement _ hyp => hyp
-  | closeGoal hyp => hyp
-
-def consumedSpatialHyp? : RuleEffect → Option IrisHyp
-  | multipleGoals _ usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
-  | contextManagement _ usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
-  | closeGoal usedHyp? => usedHyp?.bind AppliedHyp.consumedSpatialHyp?
+def consumedSpatialHyp? (effect : RuleEffect) : Option IrisHyp :=
+  match effect.usedHyp? with
+  | none => none
+  | some usedHyp => usedHyp.consumedSpatialHyp?
 
 end RuleEffect
 
@@ -91,7 +88,7 @@ structure RappSpec where
   goals : Array SubGoal
   postState : SavedState
   successPossibility : Percent
-  effect : Option RuleEffect
+  effect : RuleEffect
   -- [TODO] Add script here
 
 structure RuleOutput where
@@ -112,7 +109,7 @@ def ofRappSpecs (rappSpecs : Array RappSpec) : RuleOutput :=
 def ofEffect (postState : SavedState) (effect : RuleEffect)
     (goals : Array SubGoal := #[])
     (successPossibility : Percent := Percent.hundred) : RuleOutput :=
-  ofRappSpec { goals, postState, successPossibility, effect := some effect }
+  ofRappSpec { goals, postState, successPossibility, effect := effect }
 
 end RuleOutput
 

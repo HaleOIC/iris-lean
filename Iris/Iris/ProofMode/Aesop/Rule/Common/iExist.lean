@@ -43,7 +43,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     goals := #[child]
     postState
     successPossibility := .hundred
-    effect := none
+    effect := default
   }
 
 /- Replay rebuilds the same existential view and then assigns the parent goal

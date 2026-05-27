@@ -61,7 +61,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     goals := #[expansion.goal]
     postState := expansion.postState
     successPossibility := .hundred
-    effect := none
+    effect := default
   }
 
 /- [Note] Make sure you are in the correct context -/

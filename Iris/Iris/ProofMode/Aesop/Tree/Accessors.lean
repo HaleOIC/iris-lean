@@ -408,6 +408,10 @@ def consumedSpatialHyp? (r : Rapp) : Option IrisHyp :=
   r.usedHyp?.bind AppliedHyp.consumedSpatialHyp?
 
 @[inline]
+def generatedSpatialHyp? (r : Rapp) : Option IrisHyp :=
+  r.elim.generatedSpatialHyp?
+
+@[inline]
 def metaState (r : Rapp) : SavedState :=
   r.elim.metaState
 
@@ -455,6 +459,10 @@ def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
 @[inline]
 def setUsedHyp? (usedHyp? : Option AppliedHyp) (r : Rapp) : Rapp :=
   r.modify fun r => { r with usedHyp? }
+
+@[inline]
+def setGeneratedSpatialHyp? (newHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
+  r.modify λ r => { r with generatedSpatialHyp? := newHyp? }
 
 @[inline]
 def setconsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=

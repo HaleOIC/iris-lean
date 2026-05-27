@@ -62,6 +62,11 @@ private partial def collectFromIris
       let hyp := { name, ivar }
       if isTrue p then .intuitionistic hyp else .spatial hyp
     let postState ← liftM (m := MetaM) saveState
+    let generatedHyp? :=
+      match childIrisGoal.hyps.find? pat.raw.getId with
+      | some (ivar, p, _) =>
+        if isTrue p then none else some { name := pat.raw.getId, ivar }
+      | none => none
 
     dbg_trace s!"imod selected {name} and generated 1 goal"
     let targetFmt ← liftM <| child.goal.withContext <| ppExpr childIrisGoal.goal
@@ -70,7 +75,7 @@ private partial def collectFromIris
       goals := #[child],
       postState
       successPossibility := .hundred
-      effect := some (.contextManagement #[childIrisGoal] (some usedHyp))
+      effect := { generatedSpatialHyp? := generatedHyp?, usedHyp? := some usedHyp, action := none }
     }]
 
 /- Search for `imod` applications among current Iris hypotheses. -/

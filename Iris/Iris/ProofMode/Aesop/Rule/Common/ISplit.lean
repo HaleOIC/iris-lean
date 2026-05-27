@@ -55,7 +55,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     goals := children
     postState := postState
     successPossibility := .hundred
-    effect := some (.multipleGoals fullContextIrisSubgoals none)
+    effect := { action := some (.splitGoals fullContextIrisSubgoals)}
   }
 
 /- [Note] Make sure you are in the correct context. -/

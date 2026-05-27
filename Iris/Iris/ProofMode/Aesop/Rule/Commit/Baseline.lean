@@ -45,6 +45,7 @@ private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
 
     /- The following context/script fields are filled by callers/finalization. -/
     usedHyp? := none
+    generatedSpatialHyp? := none
     scriptSteps? := none
     introducedMVars
     assignedMVars := {}
@@ -171,7 +172,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
 /- Apply multiple goal effect to the given obunRef -/
 private def applyMultipleGoalsEffect (obunRef : ObunRef)
     (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
-  if irisSubgoals.size == 1 then
+  if irisSubgoals.size <= 1 then
     throwError "iaesop(baseline): multiple subgoal effect must have more than one subgoals"
 
   let obun ← obunRef.get
@@ -189,7 +190,8 @@ private def applyMultipleGoalsEffect (obunRef : ObunRef)
 private def applyContextManagementEffect (obunRef : ObunRef)
     (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
   -- Single subgoal does not need context management
-  if irisSubgoals.size == 1 then return
+  if irisSubgoals.size <= 1 then
+    throwError "iaesop(baseline): context management must have more than one templates"
 
   let obun ← obunRef.get
   if obun.goals.size != irisSubgoals.size then
@@ -290,23 +292,23 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
 def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
     (spec : RappSpec) : SearchM Q (RappRef × Array GoalRef) := do
   let obunRef ← mkInitialObunRef parentRef spec
-  match spec.effect with
-  | some (.multipleGoals irisSubgoals ..) =>
-    applyMultipleGoalsEffect obunRef irisSubgoals
-  | some (.contextManagement irisSubgoals ..) =>
-    applyContextManagementEffect obunRef irisSubgoals
-  | some (.closeGoal usedHyp?) =>
-    applyCloseGoalEffect parentRef obunRef spec usedHyp?
+  match spec.effect.action with
+  | some (.splitGoals subgoals ..) =>
+    applyMultipleGoalsEffect obunRef subgoals
+  | some (.manageContext templates ..) =>
+    applyContextManagementEffect obunRef templates
+  | some (.closeGoal) =>
+    applyCloseGoalEffect parentRef obunRef spec spec.effect.usedHyp?
   | none => pure ()
   let rappRef ← mkInitialRappRef parentRef obunRef usedRule spec.postState
 
-  /- Record the used hypothesis in the rapp node -/
+  /- Record context-related info in the rapp node -/
   rappRef.modify λ r =>
-    r.setUsedHyp? <| spec.effect.bind RuleEffect.usedHyp?
+    r.setUsedHyp? spec.effect.usedHyp?
+    |>.setGeneratedSpatialHyp? spec.effect.generatedSpatialHyp?
   obunRef.modify λ o => o.setParent rappRef
   if (← obunRef.get).state.isProven then
     rappRef.modify λ r => r.setState .proven
-  let goalRefs := (← obunRef.get).goals
-  return (rappRef, goalRefs)
+  return (rappRef, (← obunRef.get).goals)
 
 end Iris.ProofMode.Aesop.Baseline

@@ -15,6 +15,7 @@ variable {Q : Type} [Queue Q]
 
 private structure ICasesExpansion where
   usedHyp : AppliedHyp
+  generatedHyp : Array IrisHyp
   goals : Array SubGoal
   fullContextIrisSubgoals : Array IrisGoal
   postState : SavedState
@@ -28,6 +29,8 @@ private def mkHypExpansion?
   let right ← mkFreshExprMVarQ prop
   let .some _ ← trySynthInstanceProbeQ q(IntoOr $hypType $left $right)
     | return none
+  let left : Q($prop) ← instantiateMVars left
+  let right : Q($prop) ← instantiateMVars right
 
   /- Mirror ISplit.mkAndChildren: each branch records the full IrisGoal after splitting the consumed hypothesis. -/
   let some ⟨_, _, remainingHyps, out, removedHypType, removedP, _, _⟩ ←
@@ -37,8 +40,10 @@ private def mkHypExpansion?
     | throwError "iaesop: icases candidate disappeared from Hyps"
   have : $out =Q iprop(□?$removedP $removedHypType) := ⟨⟩
   let leftIvar ← mkFreshIVarId
+  let leftHyp : IrisHyp := { name, ivar := leftIvar }
   let leftHyps := Hyps.add irisGoal.bi name leftIvar removedP left remainingHyps
   let rightIvar ← mkFreshIVarId
+  let rightHyp : IrisHyp := { name, ivar := rightIvar }
   let rightHyps := Hyps.add irisGoal.bi name rightIvar removedP right remainingHyps
   let leftIrisGoal := { irisGoal with e := _, hyps := leftHyps }
   let leftExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr leftIrisGoal) tag
@@ -48,6 +53,8 @@ private def mkHypExpansion?
   let rightGoal := { goal := rightExpr.mvarId!, addedFVars := {}, removedFVars := {} }
   return some {
     usedHyp := if isTrue p then .intuitionistic { name, ivar } else .spatial { name, ivar }
+    generatedHyp := #[leftHyp, rightHyp]
+    /- [Note] left and right goal share the same name but different ivar -/
     goals := #[leftGoal, rightGoal]
     fullContextIrisSubgoals := #[leftIrisGoal, rightIrisGoal]
     postState := ← saveState
@@ -84,8 +91,11 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       goals := expansion.goals
       postState := expansion.postState
       successPossibility := .hundred
-      effect := some (.multipleGoals
-        expansion.fullContextIrisSubgoals (some expansion.usedHyp))
+      effect := {
+        usedHyp? := some expansion.usedHyp
+        generatedSpatialHyp? := expansion.generatedHyp[0]?
+        action := some (.splitGoals expansion.fullContextIrisSubgoals)
+      }
     }
   return RuleOutput.ofRappSpecs specs
 

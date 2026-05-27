@@ -55,7 +55,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
     goals := children
     postState := postState
     successPossibility := .hundred
-    effect := some (.contextManagement fullContextIrisSubgoals none)
+    effect := { action := some (.manageContext fullContextIrisSubgoals) }
   }
 
 /- Replay one identity split and return the immediate left and right subgoals. -/
