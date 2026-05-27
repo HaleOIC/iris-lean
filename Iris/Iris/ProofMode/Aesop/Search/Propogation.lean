@@ -173,8 +173,8 @@ private def appendCopiedGoalInfos
 private def Goal.currentSavedState (g : Goal) : Meta.SavedState :=
   match g.normalizationState with
   | .notNormal => g.preNormState
-  | .normal _ postState _ => postState
-  | .provenByNorm postState _ => postState
+  | .normal _ postState .. => postState
+  | .provenByNorm postState .. => postState
 
 private def appendCopiedGoalsFromProvenGoal (gref : GoalRef) : SearchM Q Unit := do
   let g ← gref.get

@@ -222,8 +222,10 @@ end GoalState
 inductive NormalizationState
   | notNormal
   | normal (postGoal : MVarId) (postState : Meta.SavedState)
+      (generatedSpatialHyps : Array IrisHyp) (usedSpatialHyps : Array IrisHyp)
       (script : Array (DisplayRuleId × Option (Array Script.LazyStep)))
   | provenByNorm (postState : Meta.SavedState)
+      (generatedSpatialHyps : Array IrisHyp) (usedSpatialHyps : Array IrisHyp)
       (script : Array (DisplayRuleId × Option (Array Script.LazyStep)))
   deriving Inhabited
 
@@ -242,6 +244,16 @@ def isProvenByNorm : NormalizationState → Bool
 def normalizedGoal? : NormalizationState → Option MVarId
   | notNormal .. | provenByNorm .. => none
   | normal (postGoal := g) .. => g
+
+def generatedSpatialHyps : NormalizationState → Array IrisHyp
+  | notNormal => #[]
+  | normal (generatedSpatialHyps := hyps) .. => hyps
+  | provenByNorm (generatedSpatialHyps := hyps) .. => hyps
+
+def usedSpatialHyps : NormalizationState → Array IrisHyp
+  | notNormal => #[]
+  | normal (usedSpatialHyps := hyps) .. => hyps
+  | provenByNorm (usedSpatialHyps := hyps) .. => hyps
 
 end NormalizationState
 

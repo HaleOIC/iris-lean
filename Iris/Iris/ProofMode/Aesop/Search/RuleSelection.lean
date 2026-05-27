@@ -18,8 +18,8 @@ def selectRulesFromIndex (index : Index RuleInfo) (parentRef : GoalRef) :
   let state :=
     match parent.normalizationState with
     | .notNormal => parent.preNormState
-    | .normal _ postState _ => postState
-    | .provenByNorm postState _ => postState
+    | .normal _ postState .. => postState
+    | .provenByNorm postState .. => postState
   return RuleQueue.ofArray (← liftM do
     state.restore
     Index.queryMVar index goal)

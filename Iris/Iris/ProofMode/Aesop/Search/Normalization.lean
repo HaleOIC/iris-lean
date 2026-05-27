@@ -51,6 +51,14 @@ private partial def collectHypInfos {u prop bi} :
   | _, .sep _ _ _ _ lhs rhs =>
     collectHypInfos lhs ++ collectHypInfos rhs
 
+private partial def collectSpatialHyps {u prop bi} :
+    ∀ {e}, @Hyps u prop bi e → Array IrisHyp
+  | _, .emp _ => #[]
+  | _, .hyp _ name ivar p _ _ =>
+    if isTrue p then #[] else #[{ name, ivar }]
+  | _, .sep _ _ _ _ lhs rhs =>
+    collectSpatialHyps lhs ++ collectSpatialHyps rhs
+
 private def runIntroPat (goal : MVarId) (pat : IntroPat) :
     ProofModeM (Option MVarId) := do
   let preState ← liftM (show MetaM SavedState from saveState)
@@ -274,23 +282,46 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
   | .notNormal =>
     let preGoalMVarId := goal.preNormGoal
     let config := (← readThe SearchM.Context).config
-    let (result, postState) ← liftM (m := ProofModeM) do
+    let (result, postState, generatedSpatialHyps, usedSpatialHyps) ← liftM (m := ProofModeM) do
       goal.preNormState.restore
-      let result ← normalizeGoalMVar preGoalMVarId goal.depth config.maxNormIterations config.enableSimp? goal.unassignedMvars
+
+      /- Collect spatial hypotheses before normalization. -/
+      let preHyps : Array IrisHyp ← preGoalMVarId.withContext do
+        let goalType ← instantiateMVars (← preGoalMVarId.getType)
+        let some irisGoal := parseIrisGoal? goalType
+          | throwError "iaesop: normalization stage should be done in iris proof-mode"
+        return collectSpatialHyps irisGoal.hyps
+
+      let result ← normalizeGoalMVar preGoalMVarId goal.depth
+          config.maxNormIterations config.enableSimp? goal.unassignedMvars
+
+      /- Collect spatial hypotheses after normalization. -/
+      let postHyps : Array IrisHyp ← match result with
+        | .proved => pure #[]
+        | .unchanged => pure preHyps
+        | .changed postGoal => liftM (m := MetaM) <| postGoal.withContext do
+          let goalType ← instantiateMVars (← postGoal.getType)
+          let some irisGoal := parseIrisGoal? goalType
+            | throwError "iaesop: normalization stage should be done in iris proof-mode"
+          return collectSpatialHyps irisGoal.hyps
+
       let postState ← liftM (m := MetaM) saveState
-      return (result, postState)
+      let generated := postHyps.filter λ hyp => !preHyps.contains hyp
+      let consumed := preHyps.filter λ hyp => !postHyps.contains hyp
+      return (result, postState, generated, consumed)
 
     /- According to the result, set goal-related feilds -/
     match result with
     | .proved => gref.modify λ g =>
-        g.setNormalizationState (.provenByNorm postState #[])
-          |>.setState .provenByNormalization
+      g.setNormalizationState (.provenByNorm postState generatedSpatialHyps usedSpatialHyps #[])
+      |>.setState .provenByNormalization
     | .changed postGoal =>
       let mvars ← liftM <| postGoal.getMVarDependencies
       gref.modify λ g =>
-        g.setNormalizationState (.normal postGoal postState #[])
-          |>.setUnassignedMvars mvars
-    | .unchanged => gref.modify λ g =>
-        g.setNormalizationState (.normal preGoalMVarId postState #[])
+        g.setNormalizationState (.normal postGoal postState generatedSpatialHyps usedSpatialHyps #[])
+        |>.setUnassignedMvars mvars
+    | .unchanged =>
+      gref.modify λ g =>
+        g.setNormalizationState (.normal preGoalMVarId postState #[] #[] #[])
 
 end Aesop
