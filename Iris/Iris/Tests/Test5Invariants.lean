@@ -185,6 +185,7 @@ theorem own_inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : �
     · ipure_intro; assumption
     · iexact HI
   iintro HP ⟨Hw, HE⟩
+
   icases ownI_close $$ [HP Hw HD] with ⟨Hwsat, HE1⟩
   · isplitl [Hw]; iassumption
     isplitl [HI]; iassumption
@@ -200,8 +201,9 @@ theorem own_inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : �
   · isplitl [HE1]; iassumption
     iassumption
   rw [HEEQ]
-  isplitl [HE]; iassumption
-  apply true_intro
+  iaesop baseline
+  -- isplitl [HE]; iassumption
+  -- apply true_intro
 
 @[rocq_alias own_inv_to_inv]
 theorem own_inv_to_inv (M : Namespace) (P : IProp GF) :
@@ -352,8 +354,9 @@ theorem inv_combine (N1 N2 N : Namespace) (P Q : IProp GF) (Hdisj : N1 ## N2)
   imod Hcl
   imod H2 $$ HQ with _
   imod H1 $$ HP with _
-  imodintro
-  iassumption
+  iaesop baseline
+  -- imodintro
+  -- iassumption
 
 @[rocq_alias inv_combine_dup_l]
 theorem inv_combine_dup_l (N : Namespace) (P Q : IProp GF) :
@@ -384,22 +387,26 @@ theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P := by
   iintro H
   iapply inv_alter $$ H
-  inext; imodintro
-  iintro ⟨HP, HQ⟩
-  isplitl [HP]; iassumption
-  iintro HP
-  isplitl [HP] <;> iassumption
+  inext;
+  iaesop baseline
+  -- imodintro
+  -- iintro ⟨HP, HQ⟩
+  -- isplitl [HP]; iassumption
+  -- iintro HP
+  -- isplitl [HP] <;> iassumption
 
 @[rocq_alias inv_split_r]
 theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N Q := by
   iintro H
   iapply inv_alter $$ H
-  inext; imodintro
-  iintro ⟨HP, HQ⟩
-  isplitl [HQ]; iassumption
-  iintro HQ
-  isplitl [HP] <;> iassumption
+  inext;
+  iaesop baseline
+  -- imodintro
+  -- iintro ⟨HP, HQ⟩
+  -- isplitl [HQ]; iassumption
+  -- iintro HQ
+  -- isplitl [HP] <;> iassumption
 
 @[rocq_alias inv_split]
 theorem inv_split (N : Namespace) (P Q : IProp GF) :
