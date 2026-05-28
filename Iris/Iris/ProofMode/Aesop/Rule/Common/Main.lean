@@ -7,6 +7,7 @@ public meta import Iris.ProofMode.Aesop.Rule.Common.Identity
 public meta import Iris.ProofMode.Aesop.Rule.Common.IMod
 public meta import Iris.ProofMode.Aesop.Rule.Common.IModIntro
 public meta import Iris.ProofMode.Aesop.Rule.Common.IPureIntro
+public meta import Iris.ProofMode.Aesop.Rule.Common.ILeftRight
 public meta import Iris.ProofMode.Aesop.Rule.Common.iExist
 public meta import Iris.ProofMode.Aesop.Rule.Common.ISplit
 
@@ -23,6 +24,8 @@ def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .imod => Rule.IMod.run
   | .imodIntro => Rule.IModIntro.run
   | .ipureIntro => Rule.IPureIntro.run
+  | .ileft => Rule.ILeftRight.runLeft
+  | .iright => Rule.ILeftRight.runRight
   | .iExist => Rule.IExist.run
   | .isplit => Rule.ISplit.run
   | _ => λ _ => return {}
@@ -34,6 +37,8 @@ def replay : RuleRunnerDescr → RuleReplayer
   | .imod => Rule.IMod.replay
   | .imodIntro => Rule.IModIntro.replay
   | .ipureIntro => Rule.IPureIntro.replay
+  | .ileft => Rule.ILeftRight.replayLeft
+  | .iright => Rule.ILeftRight.replayRight
   | .iExist => Rule.IExist.replay
   | .isplit => Rule.ISplit.replay
   | _ => λ input => return #[input.goal]
@@ -95,6 +100,28 @@ def commonIExistRule : Rule RuleInfo where
   indexingMode := .unindexed
   info := RuleInfo.ofBuilder .iExist
 
+def commonILeftRuleId : RuleId where
+  name := `ileft
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def commonILeftRule : Rule RuleInfo where
+  id := commonILeftRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder .ileft
+
+def commonIRightRuleId : RuleId where
+  name := `iright
+  kind := .apply
+  phase := .safe
+  scope := .global
+
+def commonIRightRule : Rule RuleInfo where
+  id := commonIRightRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder .iright
+
 def commonIModIntroRuleId : RuleId where
   name := `imodintro
   kind := .apply
@@ -136,6 +163,8 @@ def commonRuleIndex : Index RuleInfo :=
     |>.add commonIModRule commonIModRule.indexingMode
     |>.add commonIPureIntroRule commonIPureIntroRule.indexingMode
     |>.add commonIExistRule commonIExistRule.indexingMode
+    |>.add commonILeftRule commonILeftRule.indexingMode
+    |>.add commonIRightRule commonIRightRule.indexingMode
     |>.add commonIModIntroRule commonIModIntroRule.indexingMode
     |>.add commonISplitRule commonISplitRule.indexingMode
 

@@ -16,6 +16,8 @@ inductive RuleRunnerDescr where
   | applyHyps
   | icases
   | ipureIntro
+  | ileft
+  | iright
   | iExist
   | imodIntro
   | imod
@@ -30,6 +32,8 @@ def ofBuilder : RuleBuilder → RuleRunnerDescr
   | .applyHyps => .applyHyps
   | .icases => .icases
   | .ipureIntro => .ipureIntro
+  | .ileft => .ileft
+  | .iright => .iright
   | .iExist => .iExist
   | .imodintro => .imodIntro
   | .imod => .imod
