@@ -130,6 +130,17 @@ private def firstSuccessfulCasesStep (goal : MVarId)
       return none
     runCasesPatOnHyp goal info pat
 
+private def canExists {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
+    (info : IrisHypInfo) : MetaM Bool := do
+  let ty ← instantiateMVars info.ty
+  let some irisTy ← checkTypeQ ty prop | return false
+  let v ← mkFreshLevelMVar
+  let α : Q(Sort v) ← mkFreshExprMVarQ q(Sort v)
+  let Φ : Q($α → $prop) ← mkFreshExprMVarQ q($α → $prop)
+  match ← ProofMode.trySynthInstanceQ q(IntoExists $irisTy $Φ) with
+  | .some _ => return true
+  | _ => return false
+
 private def canSplitSep (info : IrisHypInfo) : MetaM Bool := do
   let ty ← instantiateMVars info.ty
   let target := ty.consumeMData
@@ -138,6 +149,18 @@ private def canSplitSep (info : IrisHypInfo) : MetaM Bool := do
     | _ :: _ :: _ => return true
     | _ => return false
   return false
+
+private def canSplitConjLike {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
+    (info : IrisHypInfo) : MetaM Bool := do
+  let ty : Q($prop) ← instantiateMVars info.ty
+  let some p ← checkTypeQ info.p q(Bool) | return false
+  let lhs ← mkFreshExprMVarQ prop
+  let rhs ← mkFreshExprMVarQ prop
+  match matchBool p with
+  | .inl _ => match ← ProofMode.trySynthInstanceQ q(IntoAnd $p $ty $lhs $rhs) with
+    | .some _ => return true
+    | _ => return false
+  | .inr _ => return false
 
 private def canPure {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (info : IrisHypInfo) : MetaM Bool := do
@@ -193,18 +216,41 @@ private def casesNormStep : NormStep where
         | return .unchanged
       let infos := collectHypInfos irisGoal.hyps
       let names := infos.map (·.name)
+
+      /- Split Spatial separating conjunctions first -/
       let h₁ ← mkFreshBinderFromNames names input.depth
       let h₂ ← mkFreshBinderFromNames names input.depth 2
       if let some newGoal ←
           firstSuccessfulCasesStep input.goal infos
             (.conjunction [.one h₁, .one h₂]) canSplitSep then
         return .changed newGoal
+
+       /- Destruct existentials: `icases H with ⟨%x, Hx⟩`. -/
+      let x ← mkFreshLeanBinderFromNames names input.depth
+      let h ← mkFreshBinderFromNames names input.depth
+      if let some newGoal ←
+          firstSuccessfulCasesStep input.goal infos
+            (.conjunction [.pure x, .one h])
+            (canExists (prop := irisGoal.prop) (bi := irisGoal.bi)) then
+        return .changed newGoal
+
+      /- Split conjunction-like hypotheses, including iff -/
+      let h₁ ← mkFreshBinderFromNames names input.depth
+      let h₂ ← mkFreshBinderFromNames names input.depth 2
+      if let some newGoal ←
+          firstSuccessfulCasesStep input.goal infos
+            (.conjunction [.one h₁, .one h₂])
+            (canSplitConjLike (prop := irisGoal.prop) (bi := irisGoal.bi)) then
+        return .changed newGoal
+
+      /- Extract pure hypotheses. -/
       let h ← mkFreshBinderFromNames names input.depth
       if let some newGoal ←
           firstSuccessfulCasesStep input.goal infos
             (.pure h)
             (canPure (prop := irisGoal.prop) (bi := irisGoal.bi)) then
         return .changed newGoal
+      /- Move persistent hypotheses into the intuitionistic context -/
       let h ← mkFreshBinderFromNames names input.depth
       match ←
           firstSuccessfulCasesStep input.goal infos

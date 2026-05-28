@@ -18,8 +18,8 @@ theorem proof_example_1 [BI PROP] (P Q R : PROP) (Φ : α → PROP) :
 := by
   iintro ⟨HP, HQ, #HR⟩ #HRΦ
   ihave HΦ := HRΦ $$ HR
-  icases HΦ with ⟨%x, _HΦ⟩
   iaesop baseline
+  -- icases HΦ with ⟨%x, _HΦ⟩
   -- iexists x
   -- isplitr
   -- · iassumption

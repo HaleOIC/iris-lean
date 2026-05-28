@@ -90,21 +90,21 @@ nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
   isplit; (· ipure_intro; assumption)
   iapply inv_iff $$ HI
   inext; imodintro
-  isplit
-  · iintro (⟨HP, Ho⟩ | Htok)
-    · ileft
-      isplitr [Ho]
-      · icases HPQ with ⟨HPQm, _⟩
-        iapply HPQm $$ HP
-      · iassumption
-    · iright; iassumption
-  · iintro (⟨HQ, Ho⟩ | Htok)
-    · ileft
-      isplitr [Ho]
-      · icases HPQ with ⟨_, HQPm⟩
-        iapply HQPm $$ HQ
-      · iassumption
-    · iright; iassumption
+  isplit <;> iaesop baseline
+  -- · iintro (⟨HP, Ho⟩ | Htok)
+    -- · ileft
+    --   isplitr [Ho]
+    --   · icases HPQ with ⟨HPQm, _⟩
+    --     iapply HPQm $$ HP
+    --   · iassumption
+    -- · iright; iassumption
+  -- · iintro (⟨HQ, Ho⟩ | Htok)
+    -- · ileft
+    --   isplitr [Ho]
+    --   · icases HPQ with ⟨_, HQPm⟩
+    --     iapply HQPm $$ HQ
+    --   · iassumption
+    -- · iright; iassumption
 
 @[rocq_alias na_alloc]
 theorem alloc : ⊢@{IProp GF} |==> ∃ p : NaInvPoolName, own p ⊤ :=
@@ -159,12 +159,14 @@ nonrec theorem inv_alloc {p : NaInvPoolName} {E : CoPset} {N : Namespace} {P : I
   unfold inv
   imod inv_alloc N E iprop( P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [HP Hown]
     with HI
-  · inext; ileft; isplitl [HP] <;> iassumption
-  imodintro
-  iexists i
-  isplit
-  · ipure_intro; assumption
-  · iassumption
+  · inext; iaesop baseline
+    -- ileft; isplitl [HP] <;> iassumption
+  imodintro -- [FixMe]: context mismatch
+  iaesop baseline
+  -- iexists i
+  -- isplit
+  -- · ipure_intro; assumption
+  -- · iassumption
 
 @[rocq_alias na_inv_acc]
 nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : IProp GF}

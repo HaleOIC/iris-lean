@@ -130,9 +130,10 @@ instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen fa
     iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
     ihave #>HP : ◇ ■ P $$ [H Hx Hwsat HE]
     · imod H $$ Hx [$] with ⟨_, _, $⟩
-    imodintro
-    iframe
-    iassumption
+    iaesop baseline
+    -- imodintro
+    -- iframe
+    -- iassumption
   fupd_plainly_later _ P := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro H ⟨Hwsat, HE⟩
@@ -141,16 +142,21 @@ instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen fa
       imod H $$ [$] with ⟨_, _, $⟩
     imodintro
     iframe
-    imodintro; inext; imod HP; imodintro; iassumption
+    imodintro; inext;
+    iaesop baseline
+    -- imod HP; imodintro; iassumption
   fupd_plainly_sForall_2 E P := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro H ⟨Hwsat, HE⟩
     ihave #HP : ◇ ■ sForall P $$ [H Hwsat HE]
     · imod H $$ [$] with ⟨_, _, $⟩
-    imodintro; imod HP; imodintro
-    iframe
-    iclear H
-    iexact HP
+    imodintro;
+    imod HP -- [Fix]
+    iaesop baseline
+    -- imodintro
+    -- iframe
+    -- iclear H
+    -- iexact HP
 
 end Instances
 
@@ -165,10 +171,12 @@ theorem lc_fupd_elim_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (▷ P) -
   iintro ⟨Hwsat, HE⟩
   simp only [le_upd_if, ↓reduceIte]
   iapply le_upd_later $$ Hcr
-  inext; imodintro
-  isplitl [Hwsat]; iassumption
-  isplitl [HE]; iassumption
-  iassumption
+  inext;
+  iaesop baseline
+  -- imodintro
+  -- isplitl [Hwsat]; iassumption
+  -- isplitl [HE]; iassumption
+  -- iassumption
 
 @[rocq_alias lc_fupd_add_later]
 theorem lc_fupd_add_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (|={E}=> ▷ P) -∗ |={E}=> P := by
@@ -180,10 +188,11 @@ theorem lc_fupd_add_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (|={E}=> �
   ihave > > ⟨H1, H2, H3⟩ := HP $$ [Hwsat HE]
   · isplitl [Hwsat] <;> iassumption
   imod le_upd_later $$ Hcr H3 with H3
-  imodintro; imodintro
-  isplitl [H1]; iassumption
-  isplitl [H2]; iassumption
-  iassumption
+  iaesop baseline
+  -- imodintro; imodintro
+  -- isplitl [H1]; iassumption
+  -- isplitl [H2]; iassumption
+  -- iassumption
 
 @[rocq_alias lc_fupd_add_laterN]
 theorem lc_fupd_add_laterN (n : Nat) {E : CoPset} {P : IProp GF} :
@@ -197,8 +206,9 @@ theorem lc_fupd_add_laterN (n : Nat) {E : CoPset} {P : IProp GF} :
     iintro ⟨Hcr, Hcrs⟩ >HP
     ihave HP := (laterN_later n).mp $$ HP
     iapply lc_fupd_add_later $$ Hcr
-    iapply IH $$ Hcrs [HP]
-    imodintro; iexact HP
+    iaesop baseline
+    -- iapply IH $$ Hcrs [HP]
+    -- imodintro; iexact HP
 
 end LaterCreditLemmas
 
