@@ -43,6 +43,11 @@ instance asEmpValid_forall {α} [bi : BI PROP] (Φ : α → Prop) (P : α → PR
   as_emp_valid := ⟨λ hd h => forall_intro λ x => (hP x).1.1 hd (h x),
                    λ hd h x => (hP x).1.2 hd $ h.trans (forall_elim x)⟩
 
+instance (priority := default + 10) asEmpValid_forall_prop [bi : BI PROP] (Φ : Prop) P (Q : PROP) [Absorbing Q]
+    [hP : AsEmpValid d Φ io1 PROP io2 bi Q] : AsEmpValid d (P → Φ) io1 PROP io2 bi iprop(⌜P⌝ -∗ Q) where
+  as_emp_valid := ⟨λ hd h => entails_wand <| pure_elim' λ hp => sep_emp.2.trans ((sep_mono_r <| hP.1.1 hd (h hp)).trans absorbing),
+                   λ hd h hp => hP.1.2 hd <| (pure_intro hp).trans (wand_entails h)⟩
+
 -- FromImp
 @[rocq_alias from_impl_impl]
 instance fromImp_imp [BI PROP] (P1 P2 : PROP) : FromImp iprop(P1 → P2) P1 P2 := ⟨.rfl⟩
