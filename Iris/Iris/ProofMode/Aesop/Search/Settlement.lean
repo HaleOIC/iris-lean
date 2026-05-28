@@ -9,41 +9,48 @@ namespace Iris.ProofMode.Aesop.Baseline
 
 variable {Q : Type} [Queue Q]
 
-/- Core data structure, track used spatial Iris Hypotheses -/
-private structure UsedHypLog where
-  path : MarkedLog IrisHyp
-  byCase : Std.HashMap ObunId (Array (CaseId × Array IrisHyp))
+inductive Hyp where
+  | generated (hyp : IrisHyp)
+  | consumed (hyp : IrisHyp)
   deriving Inhabited
 
-namespace UsedHypLog
+/- Core data structure tracking generated and consumed spatial Iris hypotheses. -/
+private structure HypLog where
+  path : MarkedLog Hyp := default
+  byCase : Std.HashMap ObunId (Array (CaseId × Array IrisHyp)) := {}
+  deriving Inhabited
 
-private def empty : UsedHypLog where
-  path := MarkedLog.empty
-  byCase := {}
+namespace HypLog
 
-private def pushMany (state : UsedHypLog) (hyps : Array IrisHyp) : UsedHypLog :=
+private def pushMany (state : HypLog) (hyps : Array Hyp) : HypLog :=
   { state with path := state.path.pushMany hyps }
 
-private def collect (state : UsedHypLog) (depth : Nat) :
-    Array IrisHyp × UsedHypLog :=
-  let (hyps, path) := state.path.collect depth
-  (hyps, { state with path })
+private def collect (state : HypLog) (depth : Nat) :
+    Array IrisHyp × HypLog :=
+  let (events, path) := state.path.collect depth
+  let netHyps := events.toList.foldl (init := #[]) λ acc event =>
+    match event with
+    | .generated hyp =>
+      acc.filter λ used => used.name != hyp.name
+    | .consumed hyp =>
+      acc.push hyp
+  (netHyps, { state with path })
 
 private def insertCase
-    (state : UsedHypLog) (obunId : ObunId) (caseId : CaseId)
-    (hyps : Array IrisHyp) : UsedHypLog :=
+    (state : HypLog) (obunId : ObunId) (caseId : CaseId)
+    (hyps : Array IrisHyp) : HypLog :=
   let old := match state.byCase.get? obunId with
     | some entries => entries
     | none => #[]
   { state with byCase := state.byCase.insert obunId (old ++ [(caseId, hyps)]) }
 
-private def finalizedSplit (state : UsedHypLog) (obunId : ObunId) : Array (Array IrisHyp) :=
+private def finalizedSplit (state : HypLog) (obunId : ObunId) : Array (Array IrisHyp) :=
   let entries := match state.byCase.get? obunId with
     | some entries => entries
     | none => #[]
   (entries.qsort λ x y => decide (x.1.toNat < y.1.toNat)).map λ entry => entry.2
 
-end UsedHypLog
+end HypLog
 
 mutual
 
@@ -81,7 +88,7 @@ private def markOtherGoalsIrrelevant
 mutual
 
 private meta partial def settleGoal (gref : GoalRef)
-    (usedHyps : UsedHypLog) : SearchM Q Unit := do
+    (hypLog : HypLog) : SearchM Q Unit := do
   let goal ← gref.get
   if !goal.state.isProven then
     throwError "iaesop(baseline): unproved goal should not be propagated"
@@ -94,10 +101,12 @@ private meta partial def settleGoal (gref : GoalRef)
 
   /- Bring current caseId up to Obun -/
   obunRef.modify λ o => o.setState .proven
-  settleObun obunRef goal.caseId? usedHyps
+  let consumedHyps := goal.normalizationState.usedSpatialHyps.map λ hyp => .consumed hyp
+  let generatedHyps := goal.normalizationState.generatedSpatialHyps.map λ hyp => .generated hyp
+  settleObun obunRef goal.caseId? $ hypLog.pushMany generatedHyps |>.pushMany consumedHyps
 
 private meta partial def settleObun (obunRef : ObunRef)
-    (caseId? : Option CaseId) (usedHyps : UsedHypLog) :
+    (caseId? : Option CaseId) (usedHyps : HypLog) :
     SearchM Q Unit := do
   let obun ← obunRef.get
   if !obun.state.isProven then
@@ -129,8 +138,7 @@ private meta partial def settleObun (obunRef : ObunRef)
     obunRef.modify λ o => o.setFinalizedSpatialSplits $ usedHyps.finalizedSplit obun.id
     settleRapp rappRef usedHyps
 
-private meta partial def settleRapp (rappRef : RappRef)
-    (usedHyps : UsedHypLog) : SearchM Q Unit := do
+private meta partial def settleRapp (rappRef : RappRef) (hypLog : HypLog) : SearchM Q Unit := do
   let rapp ← rappRef.get
   if !rapp.state.isProven then
     throwError "iaesop(baseline): unproved rapp should not be propagated"
@@ -142,13 +150,14 @@ private meta partial def settleRapp (rappRef : RappRef)
       markRappIrrelevant rref
 
   /- Collect used Hypothesis for this rapp -/
-  let usedHyps := usedHyps.pushMany rapp.consumedSpatialHyp?.toArray
+  let consumedHyps : Array Hyp := rapp.consumedSpatialHyp?.map Hyp.consumed |>.toArray
+  let generatedHyps : Array Hyp := rapp.generatedSpatialHyp?.map Hyp.generated |>.toArray
   goalRef.modify λ g => g.setState .provenByRuleApplication
-  settleGoal goalRef usedHyps
+  settleGoal goalRef $ hypLog.pushMany generatedHyps |>.pushMany consumedHyps
 
 end
 
 /- (Baseline) settlement entry point for a proven rule application. -/
-public meta partial def settleFromRapp
+partial def settleFromRapp
     (rref : RappRef) : SearchM Q Unit :=
-  settleRapp rref UsedHypLog.empty
+  settleRapp rref default

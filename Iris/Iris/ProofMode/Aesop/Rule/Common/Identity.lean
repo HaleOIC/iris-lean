@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
+public meta import Iris.ProofMode.Aesop.Search.Names
 public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
@@ -63,7 +64,7 @@ private def replaySplit (goalMVarId : MVarId)
     (contexts : Array (Array IrisHyp)) : ProofModeM (Array MVarId) := do
   if contexts.size != 2 then
     throwError s!"iaesop(baseline): identity replay expected two split contexts, got {contexts.size}"
-  let some _ := contexts[0]?
+  let some lhsContext := contexts[0]?
     | throwError "iaesop(baseline): identity replay is missing the left split context"
   let some rhsContext := contexts[1]?
     | throwError "iaesop(baseline): identity replay is missing the right split context"
@@ -76,7 +77,13 @@ private def replaySplit (goalMVarId : MVarId)
     let some inst ← ProofModeM.trySynthInstanceQ q(FromSep $target $Q1 $Q2)
       | throwError "iaesop(baseline): identity replay cannot split target"
     let _ : Q(FromSep $target $Q1 $Q2) := inst
+    let leftNames := lhsContext.map (·.name)
     let rightNames := rhsContext.map (·.name)
+    let currentNames := hypNameArray hyps
+    let missingNames := (leftNames ++ rightNames).filter λ name => !currentNames.contains name
+    if !missingNames.isEmpty then
+      let missing := String.intercalate ", " <| missingNames.toList.map (toString ·)
+      throwError s!"iaesop(baseline): identity replay split references missing hypothesis names: {missing}"
     let ⟨_, _, lhsHyps, rhsHyps, pf⟩ :=
       hyps.split bi λ name _ => rightNames.contains name
     let lhsGoal ← mkBIGoal lhsHyps Q1 (← goalMVarId.getTag)
