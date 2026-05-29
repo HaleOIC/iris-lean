@@ -42,7 +42,6 @@ jobs:
           lake-package-directory: IrisITree
 
   build-math:
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
