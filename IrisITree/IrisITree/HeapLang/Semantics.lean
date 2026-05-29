@@ -2,6 +2,7 @@ module
 
 public import ITree
 public import Iris.HeapLang
+public import Iris.Std.BitOp
 
 @[expose] public section
 namespace Iris.HeapLang
@@ -82,12 +83,11 @@ def BinOp.evalInt (op : BinOp) (n₁ n₂ : Int) : Option BaseLit :=
   | .mult => some $ .int (n₁ * n₂)
   | .tdiv => some $ .int (Int.tdiv n₁ n₂)
   | .tmod => some $ .int (Int.tmod n₁ n₂)
-/- TODO: get rid of the toNat and define the operations directly on Int -/
-  | .and => some $ .int (Nat.land n₁.toNat n₂.toNat : Nat)
-  | .or => some $ .int (Nat.lor n₁.toNat n₂.toNat : Nat)
-  | .xor => some $ .int (Nat.xor n₁.toNat n₂.toNat : Nat)
-  | .shiftl => some $ .int (n₁ <<< n₂.toNat)
-  | .shiftr => some $ .int (n₁ >>> n₂.toNat)
+  | .and => some $ .int (n₁ &&& n₂)
+  | .or => some $ .int (n₁ ||| n₂)
+  | .xor => some $ .int (n₁ ^^^ n₂)
+  | .shiftl => some $ .int (n₁ <<< n₂)
+  | .shiftr => some $ .int (n₁ >>> n₂)
   | .le => some $ .bool (decide (n₁ ≤ n₂))
   | .lt => some $ .bool (decide (n₁ < n₂))
   | .eq => some $ .bool (decide (n₁ = n₂))
