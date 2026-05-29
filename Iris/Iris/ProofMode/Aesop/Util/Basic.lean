@@ -16,7 +16,7 @@ def trySynthInstanceProbeQ {u : Level} (α : Q(Sort u)) :
     MetaM (LOption (Q($α) × Std.HashSet MVarId)) := do
   let preState ← saveState
   try
-    ProofMode.trySynthInstanceQ α
+    ProofMode.trySynthInstance α
   catch _ =>
     preState.restore
     return .none

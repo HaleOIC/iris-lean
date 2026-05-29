@@ -72,4 +72,16 @@ meta def traceSelectedGoal (gref : GoalRef) : SearchM Q Unit := do
 meta def traceTreeBeforeReplay : SearchM Q Unit := do
   trace[iaesop.search.replay] ← printSearchTree
 
+/- Trace one replay step: render the focused goal's current Iris context -/
+meta def traceReplayStep (goal : MVarId) (ruleName : String) : ProofModeM Unit := do
+  unless (← isTracingEnabledFor `iaesop.search.replay) do return
+  let goalText ← goal.withContext do
+    let goalType ← instantiateMVars (← goal.getType)
+    let goalFmt ←
+      match parseIrisGoal? goalType with
+      | some irisGoal => ppExpr (IrisGoal.toExpr irisGoal)
+      | none => ppExpr goalType
+    return goalFmt.pretty
+  trace[iaesop.search.replay] s!"iaesop.replay: rule={ruleName}, focus mvar={goal.name}\n{goalText}"
+
 end Iris.ProofMode.Aesop.Search

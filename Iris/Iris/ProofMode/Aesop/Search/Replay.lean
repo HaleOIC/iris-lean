@@ -2,6 +2,7 @@ module
 
 public meta import Iris.ProofMode.Aesop.Rule.Common.Main
 public meta import Iris.ProofMode.Aesop.Search.Normalization
+public meta import Iris.ProofMode.Aesop.Search.Tracing
 
 public meta section
 
@@ -49,6 +50,7 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
   /- Call the proven rules' corresponding replay function -/
   let rapp ← rref.get
   let obun ← rapp.children.get
+  liftM <| Search.traceReplayStep goalMVarId (toString rapp.appliedRule.info.builder)
   let goalMVarIds ← liftM <| RuleRunnerDescr.ofInfo rapp.appliedRule.info |>.replay
     { goal := goalMVarId, rapp }
 

@@ -140,7 +140,8 @@ theorem own_acc {E2 E1 : CoPset} {tid : NaInvPoolName} (Hsub : E2 ⊆ E1) :
   isplitl [H1]; iassumption
   iintro H1
   iapply (own_union disjoint_diff_right).mpr
-  isplitl [H1] <;> iassumption
+  iaesop baseline
+  -- isplitl [H1] <;> iassumption
 
 @[rocq_alias na_own_empty]
 theorem own_empty (p : NaInvPoolName) : ⊢@{IProp GF} |==> own p ∅ := iOwn_unit (E := W.inv)
@@ -157,14 +158,13 @@ nonrec theorem inv_alloc {p : NaInvPoolName} {E : CoPset} {N : Namespace} {P : I
   imod iOwn_updateP Hupd $$ Hempty with ⟨%y, %Hy, Hown⟩
   obtain ⟨i, rfl, Hi⟩ := Hy
   unfold inv
-  imod inv_alloc N E iprop( P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [HP Hown]
-    with HI
-  · inext; iaesop baseline
-    -- ileft; isplitl [HP] <;> iassumption
-  imodintro -- [FixMe]: context mismatch
-  iaesop baseline
+  imod inv_alloc N E iprop( P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [HP Hown] with HI
+  all_goals
+    try inext
+    iaesop baseline
+  -- · inext; ileft; isplitl [HP] <;> iassumption
   -- iexists i
-  -- isplit
+  -- isplitr
   -- · ipure_intro; assumption
   -- · iassumption
 
