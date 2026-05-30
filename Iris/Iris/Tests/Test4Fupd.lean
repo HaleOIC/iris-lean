@@ -84,16 +84,18 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     iintro H ⟨Hwsat, HE⟩
     ihave H := H $$ [$]
     iapply le_upd_if_mono $$ H
-    iintro >⟨$, $, H3⟩ !>
-    iapply H $$ H3
+    iaesop baseline
+    -- iintro >⟨$, $, H3⟩ !>
+    -- iapply H $$ H3
   trans {_ _ _ _} := by
     simp only [uPred_fupd]
     iintro H ⟨Hwsat, HE⟩
     iapply le_upd_if_trans
     ihave H := H $$ [$]
     iapply le_upd_if_mono $$ H
-    iintro >⟨H1, H2, H3⟩
-    iapply H3 $$ [$]
+    iaesop baseline
+    -- iintro >⟨H1, H2, H3⟩
+    -- iapply H3 $$ [$]
   mask_frame_r' {_ _ _ _} Hdisj := by
     simp only [uPred_fupd]
     iintro H ⟨Hwsat, HE⟩
@@ -102,16 +104,18 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     imodintro
     imod H with ⟨$, H2, H3⟩; imodintro
     ihave ⟨%Hdisj, $⟩ := ownE_op_iff.mpr $$ [H2 HE2]
-    · iframe
-    iapply H3
-    ipure_intro; assumption
+      <;> iaesop baseline
+    -- · iframe
+    -- iapply H3
+    -- ipure_intro; assumption
   frame_r {_ _ _ _} := by
     simp only [uPred_fupd]
     iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
     ispecialize H $$ [$]
     ihave H := le_upd_if_frame_r $$ [$H $Hx]
-    imod H with ⟨>⟨$, $, $⟩, $⟩; imodintro
-    ipure_intro; trivial
+    iaesop baseline
+    -- imod H with ⟨>⟨$, $, $⟩, $⟩; imodintro
+    -- ipure_intro; trivial
 
 @[rocq_alias uPred_bi_bupd_fupd]
 instance {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIUpdateFUpdate (IProp GF) where
@@ -119,8 +123,9 @@ instance {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIUpdateFUpdate (IProp GF)
     iintro H
     simp only [fupd, uPred_fupd]
     iintro ⟨$, $⟩
-    imod H; imodintro; imodintro
-    iassumption
+    iaesop baseline
+    -- imod H; imodintro; imodintro
+    -- iassumption
 
 @[rocq_alias uPred_bi_fupd_sbi_no_lc]
 instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen false GF] :
@@ -284,7 +289,8 @@ theorem step_fupdN_soundness_no_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Pla
   iapply later_plainly.mp
   imod H with #H
   inext
-  imodintro; iassumption
+  iaesop baseline
+  -- imodintro; iassumption
 
 @[rocq_alias step_fupdN_soundness_lc]
 theorem step_fupdN_soundness_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain P]
@@ -300,15 +306,17 @@ theorem step_fupdN_soundness_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain 
   induction n with
   | zero =>
     simp only [Nat.repeat]
-    iintro ⟨_, HP⟩
-    imodintro
-    iassumption
+    iaesop baseline
+    -- iintro ⟨_, HP⟩
+    -- imodintro
+    -- iassumption
   | succ n IH =>
     simp only [Nat.repeat]
     iintro ⟨⟨Hcr, Hcrs⟩, >H⟩
     imod lc_fupd_elim_later $$ Hcr H with >H
-    iapply IH
-    iframe
+    iaesop baseline
+    -- iapply IH
+    -- iframe
 
 @[rocq_alias step_fupdN_soundness_gen]
 theorem step_fupdN_soundness_gen [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain P] hlc :
@@ -346,8 +354,9 @@ theorem step_fupdN_soundness_no_lc' [InvGpreS GF] (n m : Nat) {P : IProp GF} [Pl
       simp only [Nat.repeat]
       iintro >H
       imodintro; imodintro; inext
-      imod H
-      apply IH
+      iaesop baseline
+      -- imod H
+      -- apply IH
 
 @[rocq_alias step_fupdN_soundness_lc']
 theorem step_fupdN_soundness_lc' [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain P]
@@ -363,15 +372,17 @@ theorem step_fupdN_soundness_lc' [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain
   induction n with
   | zero =>
     simp only [Nat.repeat]
-    iintro ⟨_, HP⟩
-    imodintro
-    iassumption
+    iaesop baseline
+    -- iintro ⟨_, HP⟩
+    -- imodintro
+    -- iassumption
   | succ n IH =>
     simp only [Nat.repeat]
     iintro ⟨⟨Hcr, Hcrs⟩, >H⟩
     imod lc_fupd_elim_later $$ Hcr H with >H
-    iapply IH
-    iframe
+    iaesop baseline
+    -- iapply IH
+    -- iframe
 
 end StepIndexed
 

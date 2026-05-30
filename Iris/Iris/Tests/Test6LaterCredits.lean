@@ -211,10 +211,11 @@ instance : NonExpansive (le_upd (GF := GF)) where
 theorem bupd_le_upd {P : IProp GF} : (|==> P) ⊢ (|==£> P) := by
   iintro H
   iapply le_upd_unfold
-  iintro %n Hsupp
-  imod H; imodintro
-  ileft
-  isplitl [Hsupp] <;> iassumption
+  iaesop baseline
+  -- iintro %n Hsupp
+  -- imod H; imodintro
+  -- ileft
+  -- isplitl [Hsupp] <;> iassumption
 
 @[rocq_alias le_upd.le_upd_intro]
 theorem le_upd_intro {P : IProp GF} : P ⊢ |==£> P := by
@@ -232,15 +233,16 @@ theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -�
   imod le_upd_unfold $$ G Hsupp with (⟨Hsupp, G⟩|⟨%m, %Hlt, Hsupp, G⟩)
   · ihave G := H $$ G
     imod le_upd_unfold $$ G Hsupp with (⟨Hsupp, G⟩|⟨%m, %Hlt, Hsupp, G⟩)
-    · imodintro
-      ileft
-      isplitl [Hsupp] <;> iassumption
-    · imodintro
-      iright
-      iexists m
-      isplit
-      · ipure_intro; assumption
-      isplitl [Hsupp] <;> iassumption
+      <;> iaesop baseline
+    -- · imodintro
+    --   ileft
+    --   isplitl [Hsupp] <;> iassumption
+    -- · imodintro
+    --   iright
+    --   iexists m
+    --   isplit
+    --   · ipure_intro; assumption
+    --   isplitl [Hsupp] <;> iassumption
   · imodintro
     iright
     iexists m
@@ -248,7 +250,8 @@ theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -�
     · ipure_intro; assumption
     isplitl [Hsupp]; iassumption
     inext
-    iapply HLöb $$ H G
+    iaesop baseline
+    -- iapply HLöb $$ H G
   ipure_intro; simp
 
 @[rocq_alias le_upd.le_upd_later_elim]
@@ -262,12 +265,13 @@ theorem le_upd_later_elim {P : IProp GF} : ⊢ £ 1 -∗ (▷ |==£> P) -∗ |==
   | succ n =>
     rw [show n.succ = 1 + n by omega]
     imod lc_decrease_supply $$ Hsupp Hcr with Hsupp
-    imodintro
-    iright
-    iexists n
-    isplit
-    · ipure_intro; simp
-    isplitr [H] <;> iassumption
+    iaesop baseline
+    -- imodintro
+    -- iright
+    -- iexists n
+    -- isplit
+    -- · ipure_intro; simp
+    -- isplitr [H] <;> iassumption
 
 @[rocq_alias le_upd.le_upd_mono]
 theorem le_upd_mono {P Q : IProp GF} (Hent : P ⊢ Q) : (|==£> P) ⊢ (|==£> Q) := by
@@ -337,23 +341,25 @@ theorem le_upd_elim n (P : IProp GF) :
   | zero =>
     simp only [Nat.le_zero_eq, Nat.repeat]
     imod Hupd with (⟨Ha, HP⟩|⟨%m, %Hlt, _⟩)
-    · imodintro; imodintro
-      iexists 0
-      isplit
-      · ipure_intro; rfl
-      isplitl [Ha] <;> iassumption
+    · iaesop baseline
+      -- imodintro; imodintro
+      -- iexists 0
+      -- isplit
+      -- · ipure_intro; rfl
+      -- isplitl [Ha] <;> iassumption
     · exfalso; exact m.not_lt_zero Hlt
   | succ n =>
     simp only [Nat.repeat]
     imod Hupd with (⟨Hc, HP⟩|Hupd)
     · imodintro; inext
       iapply iter_modal_intro $$ [Hc HP]
-      · intro Q; iintro H; imodintro; inext; iexact H
-      imodintro; imodintro
-      iexists n.succ
-      isplit
-      · ipure_intro; exact Nat.le_refl _
-      isplitl [Hc] <;> iassumption
+        <;> iaesop baseline
+      -- · intro Q; iintro H; imodintro; inext; iexact H
+      -- imodintro; imodintro
+      -- iexists n.succ
+      -- isplit
+      -- · ipure_intro; exact Nat.le_refl _
+      -- isplitl [Hc] <;> iassumption
     · imodintro
       icases Hupd with ⟨%m, ⟨%Hstep, ⟨Hown, LaterHupd⟩⟩⟩
       obtain ⟨k, Heq⟩ := Nat.exists_eq_add_of_lt Hstep
@@ -365,6 +371,7 @@ theorem le_upd_elim n (P : IProp GF) :
       iintro IH
       iapply iter_modal_intro $$ [IH]
       · iintro %Q H; imodintro; inext; iexact H
+      -- iaesop baseline
       imod IH; imodintro
       imod IH with ⟨%m', %Hlt, H1, H2⟩; imodintro
       iexists m'
@@ -387,8 +394,9 @@ theorem le_upd_elim_complete n (P : IProp GF) :
   iintro Hupd
   imod Hupd; imodintro
   imod Hupd; inext
-  icases Hupd with ⟨%m, ⟨_, ⟨_, HP⟩⟩⟩
-  iexact HP
+  iaesop baseline
+  -- icases Hupd with ⟨%m, ⟨_, ⟨_, HP⟩⟩⟩
+  -- iexact HP
 
 @[rocq_alias le_upd.elim_bupd_le_upd]
 instance {P : IProp GF} : ElimModal True p false (bupd P) P (le_upd Q) (le_upd Q) where
@@ -456,7 +464,8 @@ theorem lc_alloc [H : LcGpreS GF] n : ⊢@{IProp GF} |==> ∃ _ : LcGS GF, lc_su
   iexists LC
   imodintro
   simp only [lc_supply, lc]
-  isplitl [HAuth] <;> iassumption
+  iaesop baseline
+  -- isplitl [HAuth] <;> iassumption
 
 @[rocq_alias le_upd.lc_soundness]
 theorem lc_soundness [LcGpreS GF] m (P : IProp GF) [Plain P]  (H : ∀ {_: LcGS GF}, ⊢ £ m -∗ |==£> P) :
@@ -515,9 +524,10 @@ theorem le_upd_if_intro {b} {P : IProp GF} : P ⊢ le_upd_if b P := by
 theorem le_upd_if_bind {b} {P Q : IProp GF} :
     ⊢ (P -∗ le_upd_if b Q) -∗ (le_upd_if b P) -∗ (le_upd_if b Q) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · iintro H G
-    imod G
-    iapply H $$ G
+  · iaesop baseline
+    -- iintro H G
+    -- imod G
+    -- iapply H $$ G
   · apply le_upd_bind
 
 @[rocq_alias le_upd_if.le_upd_if_trans]
