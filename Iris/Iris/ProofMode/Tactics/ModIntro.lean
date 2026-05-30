@@ -159,7 +159,7 @@ def iModIntroCore {e} (hyps : @Hyps u prop bi e) (goal : Q($prop)) (sel : TSynta
     let M ← mkFreshExprMVarQ q(Modality $prop' $prop)
     let sel ← elabTermEnsuringTypeQ (← `(term | iprop($sel))) prop'
     let Q ← mkFreshExprMVarQ q($prop')
-    let .some (_, _) ← ProofMode.trySynthInstanceQ q(@FromModal $prop' $prop $bi' $bi $Φ $M $sel $goal $Q)
+    let .some _ ← ProofModeM.trySynthInstanceQ q(@FromModal $prop' $prop $bi' $bi $Φ $M $sel $goal $Q)
       | throwError "imodintro: {goal} is not a modality{if sel.isMVar then m!"" else m!" matching {sel}"}"
     -- show the side condition
     let hΦ ← mkFreshExprMVarQ q($Φ)

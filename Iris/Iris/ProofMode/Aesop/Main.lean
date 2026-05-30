@@ -6,16 +6,22 @@ public meta import Iris.ProofMode.Aesop.Search.Main
 public section
 namespace Iris.ProofMode.Aesop
 
-open Lean Lean.Elab.Tactic
+open Lean Elab Tactic
 open Iris.ProofMode.Aesop.Search
 
 private meta def evalIAesopCore (stx : Syntax) : TacticM Unit := do
   withRef stx do
   let config ← parse stx
   -- TODO: add [getRuleSet] here
-  ProofModeM.runTactic λ mvar irisGoal => do
-    let goals ← search mvar irisGoal config
-    goals.forM Iris.ProofMode.addMVarGoal
+  let (subgoal, _) ← Iris.ProofMode.startProofMode (← getMainGoal)
+  subgoal.withContext do
+    let (remaining, _) ← StateRefT'.run (search subgoal config) {}
+    -- make sure to synthesize everything postponed
+    Term.synthesizeSyntheticMVarsNoPostponing (ignoreStuckTC := true)
+    -- put the goals that depend on other goals last
+    let dependees ← remaining.foldlM (λ m g => do return m ∪ (← g.getMVarDependencies)) ∅
+    let (dep, nonDep) := remaining.partition dependees.contains
+    replaceMainGoal (nonDep ++ dep).toList
 
 @[tactic iaesopTactic, tactic iaesopTactic?]
 meta def evalIAesop : Tactic := λ stx =>

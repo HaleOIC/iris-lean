@@ -118,7 +118,7 @@ private meta partial def searchLoop : SearchM Q (Array MVarId) :=
       else
         collectRemainingGoals
 
-meta def search (goal : MVarId) (_irisGoal : IrisGoal) (config : SearchConfig := {}) :
+meta def search (goal : MVarId) (config : SearchConfig := {}) :
     ProofModeM (Array MVarId) := do
   goal.checkNotAssigned `iaesop
   -- TODO: parse ruleset before run search loop

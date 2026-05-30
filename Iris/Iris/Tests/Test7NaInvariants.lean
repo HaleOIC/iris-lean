@@ -207,14 +207,16 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
       ihave HtokN_new : own p ((↑N : CoPset)) $$ [Htoki_back HtokNdi]
       · conv => rhs; rw [HNminusi]
         iapply (own_union disjoint_diff_right).mpr
-        isplitl [Htoki_back]
-        · iexact Htoki_back
-        · iexact HtokNdi
+        iaesop baseline
+        -- isplitl [Htoki_back]
+        -- · iexact Htoki_back
+        -- · iexact HtokNdi
       conv => rhs; rw [← subset_union_diff HNF]
       iapply (own_union disjoint_diff_right).mpr
-      isplitl [HtokN_new]
-      · iexact HtokN_new
-      · iexact HtokFret
+      iaesop baseline
+      -- isplitl [HtokN_new]
+      -- · iexact HtokN_new
+      -- · iexact HtokFret
   · iexfalso
     ihave Hbad : ⌜({i} : CoPset) ## {i}⌝ $$ [Htoki Htoki2]
     · iapply own_disjoint $$ Htoki Htoki2
