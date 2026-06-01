@@ -7,7 +7,7 @@ public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Settlement
 public meta import Iris.ProofMode.Aesop.Search.Finalization
 public meta import Iris.ProofMode.Aesop.Search.Replay
-public meta import Iris.ProofMode.Aesop.Rule.Common.Main
+public meta import Iris.ProofMode.Aesop.Rule.Backward.Main
 -- Temporarily disabled while the common rule set is the only active backend.
 -- public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
 
@@ -104,27 +104,24 @@ private meta def checkNonfatalError? : SearchM Q (Option MessageData) := do
 private meta def handleNonfatalError (_err : MessageData) : SearchM Q (Array MVarId) := do
   return #[]
 
--- Main Search loop
-private meta partial def searchLoop : SearchM Q (Array MVarId) :=
-  withIncRecDepth do
-    checkSystem "iaesop"
-    if ← checkRootProven then return #[]
-    if let some err ← checkNonfatalError? then
-      handleNonfatalError err
+/- [Note] Release the restriction from depth factor -/
+private meta partial def searchLoop : SearchM Q (Array MVarId) := do
+  checkSystem "iaesop"
+  if ← checkRootProven then return #[]
+  if let some err ← checkNonfatalError? then
+    handleNonfatalError err
+  else
+    if ← expandNextGoal then
+      incrementIteration
+      searchLoop
     else
-      if ← expandNextGoal then
-        incrementIteration
-        searchLoop
-      else
-        collectRemainingGoals
+      collectRemainingGoals
 
 meta def search (goal : MVarId) (config : SearchConfig := {}) :
     ProofModeM (Array MVarId) := do
   goal.checkNotAssigned `iaesop
-  -- TODO: parse ruleset before run search loop
-  -- Currently, we only work on the hypothesis in the Hyps
+  let ruleIndex := commonRuleIndex.merge (← backwardRuleIndex)
   Queue.withStrategy config.strategy λ Q => do
-    let ruleIndex := commonRuleIndex
     let (remaining, _, _) ← SearchM.run (Q := Q) config ruleIndex goal do
       searchLoop
     return remaining

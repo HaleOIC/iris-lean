@@ -58,7 +58,8 @@ nonrec def inv (p : NaInvPoolName) (N : Namespace) (P : IProp GF) : IProp GF :=
 
 @[rocq_alias na_own_timeless]
 instance instTimeless_own (p : NaInvPoolName) (E : CoPset) : Timeless (own (GF := GF) p E) := by
-  unfold own; infer_instance
+  unfold own
+  infer_instance
 
 @[rocq_alias na_inv_contractive]
 instance instContractive_inv (p : NaInvPoolName) (N : Namespace) :
@@ -75,11 +76,13 @@ instance instNonExpansive_inv (p : NaInvPoolName) (N : Namespace) : NonExpansive
 @[rocq_alias na_inv_persistent]
 instance instPersistentInv (p : NaInvPoolName) (N : Namespace) (P : IProp GF) :
     Persistent (inv p N P) := by
-  unfold inv; infer_instance
+  unfold inv
+  infer_instance
 
 @[rocq_alias na_own_empty_persistent]
 instance instPersistent_own (p : NaInvPoolName) : Persistent (own (GF := GF) p ∅) := by
-  unfold own; infer_instance
+  unfold own
+  infer_instance
 
 @[rocq_alias na_inv_iff]
 nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
@@ -89,8 +92,9 @@ nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
   iexists i
   isplit; (· ipure_intro; assumption)
   iapply inv_iff $$ HI
-  inext; imodintro
-  isplit <;> iaesop baseline
+  inext
+  iaesop baseline
+  -- imodintro; isplit
   -- · iintro (⟨HP, Ho⟩ | Htok)
     -- · ileft
     --   isplitr [Ho]

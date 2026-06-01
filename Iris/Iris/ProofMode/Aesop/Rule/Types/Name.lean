@@ -42,6 +42,7 @@ end RuleScope
 -- All only work in Iris-proofmode
 inductive RuleBuilderKind
   | apply
+  | backward
   | forward
   | simp
   | unfold
@@ -52,6 +53,7 @@ namespace RuleBuilderKind
 instance : ToString RuleBuilderKind where
   toString
     | apply => "apply"
+    | backward => "backward"
     | forward => "forward"
     | simp => "simp"
     | unfold => "unfold"
