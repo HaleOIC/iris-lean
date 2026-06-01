@@ -63,23 +63,23 @@ instance inv_ne (N : Namespace) : NonExpansive (inv (GF := GF) N) := ne_of_contr
 
 @[rocq_alias inv_persistent]
 instance inv_persistent (N : Namespace) (P : IProp GF) : Persistent (inv N P) := by
-  simp only [inv]
+  unfold inv
   infer_instance
 
 instance own_inv_persistent (N : Namespace) (P : IProp GF) : Persistent (own_inv N P) := by
-  simp only [own_inv]
+  unfold own_inv
   infer_instance
 
 @[rocq_alias except_0_inv]
 theorem except_0_inv (N : Namespace) (P : IProp GF) : ⊢ ◇ inv N P -∗ inv N P := by
-  simp only [inv]
-  iintro #H
-  imodintro
-  iintro %E %Hsub
-  -- iaesop baseline
-  imod H
-  iapply H
-  ipure_intro; assumption
+  unfold inv
+  iaesop baseline
+  -- iintro #H
+  -- imodintro
+  -- iintro %E %Hsub
+  -- imod H
+  -- iapply H
+  -- ipure_intro; assumption
 
 @[rocq_alias is_except_0_inv]
 instance is_except_0_inv (N : Namespace) (P : IProp GF) : IsExcept0 (inv N P) where
@@ -323,13 +323,15 @@ theorem inv_iff (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N P -∗ ▷ □ (P ↔ Q) -∗ inv N Q := by
   iintro #HI #HPQ
   iapply inv_alter $$ HI
-  inext; imodintro; iintro HP
-  isplitl [HP]
-  · simp only [iff]
-    iapply HPQ $$ HP
-  · iintro HQ
-    simp only [iff]
-    iapply HPQ $$ HQ
+  inext;
+  iaesop baseline
+  -- imodintro; iintro HP
+  -- isplitl [HP]
+  -- · simp only [iff]
+  --   iapply HPQ $$ HP
+  -- · iintro HQ
+  --   simp only [iff]
+  --   iapply HPQ $$ HQ
 
 end Modification
 

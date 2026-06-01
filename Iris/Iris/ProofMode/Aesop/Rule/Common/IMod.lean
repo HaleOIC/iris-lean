@@ -25,9 +25,14 @@ private partial def collectFromIris
   | _, .hyp _ name ivar _ _ _ => do
     baseState.restore
 
-    /- Remove the candidate hypothesis from the Iris context before probing `imod`. -/
+    /- Remove the candidate hypothesis from the Iris context before probing `imod`.
+       We pass `rp := true` so that an intuitionistic hypothesis is *consumed* rather than
+       duplicated: `imod` transforms `□?p A` into the eliminated `□?p' A'`, exactly as the
+       interactive `imod` tactic does (`Hyps.remove (!keep)`). Keeping the original copy would
+       leave e.g. `◇ □ P` in context after eliminating its `◇`, making `imod` reapplicable
+       forever and sending the search into an infinite loop. -/
     let some ⟨_, e', hyps', out, ty, p, _, _⟩ ←
-        irisGoal.hyps.removeG false λ _ ivar' _ _ => do
+        irisGoal.hyps.removeG true λ _ ivar' _ _ => do
           if ivar == ivar' then return some ()
           else return none
       | return #[]
@@ -101,7 +106,7 @@ def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
     let some irisGoal := parseIrisGoal? goalType
       | throwError "iaesop(baseline): imod replay expected an Iris goal"
     let some ⟨_, e', hyps', out, ty, p, _, removePf⟩ ←
-        irisGoal.hyps.removeG false fun name _ p _ => do
+        irisGoal.hyps.removeG true fun name _ p _ => do
           match usedHyp with
           | .spatial hyp =>
             if hyp.name == name && !isTrue p then return some () else return none
