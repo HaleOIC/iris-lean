@@ -35,6 +35,7 @@ private partial def collectFromIris
 
     /- Generate a fresh binder name for the hypothesis produced by modal elimination. -/
     let pat ← mkFreshBinderFromNames (hypNameArray irisGoal.hyps) depth
+    let (patName, _) ← getFreshName pat
     let childRef ← IO.mkRef (none : Option (SubGoal × IrisGoal))
     try let _ ←
       iModCore irisGoal.bi e' irisGoal.goal p ty λ p' ty' goal' =>
@@ -63,9 +64,9 @@ private partial def collectFromIris
       if isTrue p then .intuitionistic hyp else .spatial hyp
     let postState ← liftM (m := MetaM) saveState
     let generatedHyp? :=
-      match childIrisGoal.hyps.find? pat.raw.getId with
+      match childIrisGoal.hyps.find? patName with
       | some (ivar, p, _) =>
-        if isTrue p then none else some { name := pat.raw.getId, ivar }
+        if isTrue p then none else some { name := patName, ivar }
       | none => none
 
     dbg_trace s!"imod selected {name} and generated 1 goal"

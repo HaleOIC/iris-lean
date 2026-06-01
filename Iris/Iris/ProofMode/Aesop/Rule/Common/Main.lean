@@ -8,16 +8,16 @@ public meta import Iris.ProofMode.Aesop.Rule.Common.IMod
 public meta import Iris.ProofMode.Aesop.Rule.Common.IModIntro
 public meta import Iris.ProofMode.Aesop.Rule.Common.IPureIntro
 public meta import Iris.ProofMode.Aesop.Rule.Common.ILeftRight
-public meta import Iris.ProofMode.Aesop.Rule.Common.iExist
+public meta import Iris.ProofMode.Aesop.Rule.Common.IExist
 public meta import Iris.ProofMode.Aesop.Rule.Common.ISplit
 
 public meta section
 
 namespace Iris.ProofMode.Aesop
 
-namespace RuleRunnerDescr
+namespace TacticDescr
 
-def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
+def run {Q : Type} [Queue Q] : TacticDescr → RuleRunner Q
   | .identity => Rule.Identity.run
   | .applyHyps => Rule.ApplyHyps.run
   | .icases => Rule.ICases.run
@@ -26,11 +26,11 @@ def run {Q : Type} [Queue Q] : RuleRunnerDescr → RuleRunner Q
   | .ipureIntro => Rule.IPureIntro.run
   | .ileft => Rule.ILeftRight.runLeft
   | .iright => Rule.ILeftRight.runRight
-  | .iExist => Rule.IExist.run
+  | .iexist => Rule.IExist.run
   | .isplit => Rule.ISplit.run
   | _ => λ _ => return {}
 
-def replay : RuleRunnerDescr → RuleReplayer
+def replay : TacticDescr → RuleReplayer
   | .identity => Rule.Identity.replay
   | .applyHyps => Rule.ApplyHyps.replay
   | .icases => Rule.ICases.replay
@@ -39,11 +39,23 @@ def replay : RuleRunnerDescr → RuleReplayer
   | .ipureIntro => Rule.IPureIntro.replay
   | .ileft => Rule.ILeftRight.replayLeft
   | .iright => Rule.ILeftRight.replayRight
-  | .iExist => Rule.IExist.replay
+  | .iexist => Rule.IExist.replay
   | .isplit => Rule.ISplit.replay
   | _ => λ input => return #[input.goal]
 
-end RuleRunnerDescr
+end TacticDescr
+
+namespace RuleBuilder
+
+def run {Q : Type} [Queue Q] : RuleBuilder → RuleRunner Q
+  | .tactic descr => descr.run
+  | _ => λ _ => return {}
+
+def replay : RuleBuilder → RuleReplayer
+  | .tactic descr => descr.replay
+  | _ => λ input => return #[input.goal]
+
+end RuleBuilder
 
 def commonIdentityRuleId : RuleId where
   name := `identity
@@ -54,7 +66,7 @@ def commonIdentityRuleId : RuleId where
 def commonIdentityRule : Rule RuleInfo where
   id := commonIdentityRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .identity
+  info := RuleInfo.ofBuilder (.tactic .identity)
 
 def commonApplyHypsRuleId : RuleId where
   name := `applyHyps
@@ -65,7 +77,7 @@ def commonApplyHypsRuleId : RuleId where
 def commonApplyHypsRule : Rule RuleInfo where
   id := commonApplyHypsRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .applyHyps
+  info := RuleInfo.ofBuilder (.tactic .applyHyps)
 
 def commonICasesRuleId : RuleId where
   name := `icases
@@ -76,7 +88,7 @@ def commonICasesRuleId : RuleId where
 def commonICasesRule : Rule RuleInfo where
   id := commonICasesRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .icases
+  info := RuleInfo.ofBuilder (.tactic .icases)
 
 def commonIPureIntroRuleId : RuleId where
   name := `ipureIntro
@@ -87,7 +99,7 @@ def commonIPureIntroRuleId : RuleId where
 def commonIPureIntroRule : Rule RuleInfo where
   id := commonIPureIntroRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .ipureIntro
+  info := RuleInfo.ofBuilder (.tactic .ipureIntro)
 
 def commonIExistRuleId : RuleId where
   name := `iExist
@@ -98,7 +110,7 @@ def commonIExistRuleId : RuleId where
 def commonIExistRule : Rule RuleInfo where
   id := commonIExistRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .iExist
+  info := RuleInfo.ofBuilder (.tactic .iexist)
 
 def commonILeftRuleId : RuleId where
   name := `ileft
@@ -109,7 +121,7 @@ def commonILeftRuleId : RuleId where
 def commonILeftRule : Rule RuleInfo where
   id := commonILeftRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .ileft
+  info := RuleInfo.ofBuilder (.tactic .ileft)
 
 def commonIRightRuleId : RuleId where
   name := `iright
@@ -120,7 +132,7 @@ def commonIRightRuleId : RuleId where
 def commonIRightRule : Rule RuleInfo where
   id := commonIRightRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .iright
+  info := RuleInfo.ofBuilder (.tactic .iright)
 
 def commonIModIntroRuleId : RuleId where
   name := `imodintro
@@ -131,7 +143,7 @@ def commonIModIntroRuleId : RuleId where
 def commonIModIntroRule : Rule RuleInfo where
   id := commonIModIntroRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .imodintro
+  info := RuleInfo.ofBuilder (.tactic .imodIntro)
 
 def commonIModRuleId : RuleId where
   name := `imod
@@ -142,7 +154,7 @@ def commonIModRuleId : RuleId where
 def commonIModRule : Rule RuleInfo where
   id := commonIModRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .imod
+  info := RuleInfo.ofBuilder (.tactic .imod)
 
 def commonISplitRuleId : RuleId where
   name := `isplit
@@ -153,7 +165,7 @@ def commonISplitRuleId : RuleId where
 def commonISplitRule : Rule RuleInfo where
   id := commonISplitRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder .isplit
+  info := RuleInfo.ofBuilder (.tactic .isplit)
 
 def commonRuleIndex : Index RuleInfo :=
   ({} : Index RuleInfo)

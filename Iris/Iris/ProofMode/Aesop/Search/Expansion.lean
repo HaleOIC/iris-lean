@@ -16,7 +16,7 @@ private def runRule (parentRef : GoalRef) (matchResult : RuleMatch) :
     SearchM Q RuleResult := do
   let some input ← mkRuleInput (toString matchResult.rule.id) parentRef matchResult
     | return .failed
-  let output ← RuleRunnerDescr.ofInfo input.matchResult.rule.info |>.run input
+  let output ← input.matchResult.rule.info.builder.run input
   commitRuleOutput parentRef input.matchResult.rule output
 
 private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult := do

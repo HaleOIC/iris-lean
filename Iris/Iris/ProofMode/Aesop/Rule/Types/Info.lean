@@ -9,43 +9,53 @@ open Lean
 
 namespace Iris.ProofMode.Aesop
 
-inductive RuleBuilder where
+/- Tactic descriptor -/
+inductive TacticDescr where
   | identity
-  | applyHyps
-  | ipureIntro
-  | iExist
-  | imodintro
-  | imod
-  | tactic
-  | iapply
-  | iintro
-  | iassumption
   | icases
+  | ipureIntro
   | ileft
   | iright
+  | iexist
+  | imodIntro
+  | imod
   | isplit
+  | applyHyps
   | custom
+  deriving Inhabited, BEq, Hashable, Ord
+
+namespace TacticDescr
+
+instance : ToString TacticDescr where
+  toString
+    | .identity => "identity"
+    | .icases => "icases"
+    | .ipureIntro => "ipureIntro"
+    | .ileft => "ileft"
+    | .iright => "iright"
+    | .iexist => "iexist"
+    | .imodIntro => "imodIntro"
+    | .imod => "imod"
+    | .isplit => "isplit"
+    | .applyHyps => "applyHyps"
+    | .custom => "custom"
+
+end TacticDescr
+
+/- Rule Builder kind -/
+inductive RuleBuilder where
+  | «forward»
+  | «backward»
+  | «tactic» (descr : TacticDescr)
   deriving Inhabited, BEq, Hashable, Ord
 
 namespace RuleBuilder
 
 instance : ToString RuleBuilder where
   toString
-    | identity => "identity"
-    | applyHyps => "applyHyps"
-    | ipureIntro => "ipure_intro"
-    | iExist => "iexist"
-    | imodintro => "imodintro"
-    | imod => "imod"
-    | tactic => "tactic"
-    | iapply => "iapply"
-    | iintro => "iintro"
-    | iassumption => "iassumption"
-    | icases => "icases"
-    | ileft => "ileft"
-    | iright => "iright"
-    | isplit => "isplit"
-    | custom => "custom"
+    | «forward» => "forward"
+    | «backward» => "backward"
+    | «tactic» descr => s!"tactic {descr}"
 
 end RuleBuilder
 

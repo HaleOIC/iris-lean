@@ -11,40 +11,6 @@ namespace Iris.ProofMode.Aesop
 
 open Lean Meta Std
 
-inductive RuleRunnerDescr where
-  | identity
-  | applyHyps
-  | icases
-  | ipureIntro
-  | ileft
-  | iright
-  | iExist
-  | imodIntro
-  | imod
-  | isplit
-  | custom
-  deriving Inhabited, BEq, Hashable, Ord
-
-namespace RuleRunnerDescr
-
-def ofBuilder : RuleBuilder → RuleRunnerDescr
-  | .identity => .identity
-  | .applyHyps => .applyHyps
-  | .icases => .icases
-  | .ipureIntro => .ipureIntro
-  | .ileft => .ileft
-  | .iright => .iright
-  | .iExist => .iExist
-  | .imodintro => .imodIntro
-  | .imod => .imod
-  | .isplit => .isplit
-  | _ => .custom
-
-def ofInfo (info : RuleInfo) : RuleRunnerDescr :=
-  ofBuilder info.builder
-
-end RuleRunnerDescr
-
 structure RuleInput where
   goal : MVarId
   depth : Nat
