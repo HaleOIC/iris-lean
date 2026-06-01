@@ -43,7 +43,7 @@ private def mkCloseGoalExpansion?
     }
 
 /- Collect premises produced by applying a hypothesis to the target. -/
-private partial def collectApplyPremises?
+partial def collectApplyPremises?
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (p : Q(Bool)) (hypType target : Q($prop)) :
     MetaM (Option (Array Q($prop))) := do
@@ -74,7 +74,7 @@ private partial def collectApplyPremises?
     | none => preState.restore; return none
 
 /- Turn each collected premise into both a search subgoal and its IrisGoal template. -/
-private def mkChildren (irisGoal : IrisGoal) (tag : Name)
+def mkChildren (irisGoal : IrisGoal) (tag : Name)
     {e' : Q($irisGoal.prop)} (hyps' : Hyps irisGoal.bi e')
     (premises : Array Q($irisGoal.prop)) :
     MetaM (Array SubGoal × Array IrisGoal) := do
@@ -247,7 +247,7 @@ private def mkLeanHypProof
   return ⟨hyp, q(have_asEmpValid (P := $hyp) (Q := $e) (h1 := $inst) $val)⟩
 
 /- Construct a close proof by using given hypothesis -/
-private def mkCloseCoreProof
+def mkCloseCoreProof
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
     (p : Q(Bool)) (hypType target : Q($prop)) :
     ProofModeM Q($e ∗ □?$p $hypType ⊢ $target) := do
@@ -261,7 +261,7 @@ private def mkCloseCoreProof
   return q(Iris.ProofMode.assumption (Q := $target) $rfl)
 
 /- Construct an apply proof by using given hypothesis -/
-private partial def replayApplyCore
+partial def replayApplyCore
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
     (hyps : Hyps bi e) (p : Q(Bool)) (hypType target : Q($prop))
     (contexts : Array (Array IrisHyp)) (tag : Name) :

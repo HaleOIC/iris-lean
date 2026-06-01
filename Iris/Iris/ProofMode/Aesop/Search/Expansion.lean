@@ -1,7 +1,6 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
-public meta import Iris.ProofMode.Aesop.Rule.Common.Main
+public meta import Iris.ProofMode.Aesop.Rule.Dispatch
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
 public meta import Iris.ProofMode.Aesop.Search.Tracing

@@ -45,18 +45,6 @@ def replay : TacticDescr → RuleReplayer
 
 end TacticDescr
 
-namespace RuleBuilder
-
-def run {Q : Type} [Queue Q] : RuleBuilder → RuleRunner Q
-  | .tactic descr => descr.run
-  | _ => λ _ => return {}
-
-def replay : RuleBuilder → RuleReplayer
-  | .tactic descr => descr.replay
-  | _ => λ input => return #[input.goal]
-
-end RuleBuilder
-
 def commonIdentityRuleId : RuleId where
   name := `identity
   kind := .forward

@@ -7,9 +7,7 @@ public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Settlement
 public meta import Iris.ProofMode.Aesop.Search.Finalization
 public meta import Iris.ProofMode.Aesop.Search.Replay
-public meta import Iris.ProofMode.Aesop.Rule.Backward.Main
--- Temporarily disabled while the common rule set is the only active backend.
--- public meta import Iris.ProofMode.Aesop.Rule.Builtin.Main
+public meta import Iris.ProofMode.Aesop.Rule.Backward.Index
 
 public meta section
 

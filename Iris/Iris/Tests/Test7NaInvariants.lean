@@ -92,8 +92,8 @@ nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
   iexists i
   isplit; (· ipure_intro; assumption)
   iapply inv_iff $$ HI
-  inext
   iaesop baseline
+  -- inext
   -- imodintro; isplit
   -- · iintro (⟨HP, Ho⟩ | Htok)
     -- · ileft
@@ -126,7 +126,7 @@ theorem own_disjoint {p : NaInvPoolName} {E1 E2 : CoPset} :
   ipure_intro
   exact valid_op_iff_disj.mp H.1
 
-@[rocq_alias na_own_union]
+@[rocq_alias na_own_union, iaesop backward]
 theorem own_union {p : NaInvPoolName} {E1 E2 : CoPset} (Hdisj : E1 ## E2) :
     own (GF := GF) p (E1 ∪ E2) ⊣⊢ own p E1 ∗ own p E2 := by
   refine .trans ?_ iOwn_op

@@ -99,6 +99,7 @@ theorem ownE_op {E1 E2} (Hdisj : E1 ## E2) : ownE (E1 ∪ E2) ⊣⊢@{IProp GF} 
   rw [disj_op_union Hdisj]
   rfl
 
+@[iaesop backward]
 theorem ownE_disjoint {E1 E2} : ownE E1 ∗ ownE E2 ⊢@{IProp GF} ⌜E1 ## E2⌝ := by
   iintro ⟨H1, H2⟩
   icases iOwn_op $$ [H1 H2] with H
@@ -115,8 +116,9 @@ theorem ownE_op_iff {E1 E2} : ⌜E1 ## E2⌝ ∧ ownE (E1 ∪ E2) ⊣⊢@{IProp 
     iapply (ownE_op Hdisj).mp $$ H
   · iintro ⟨H1, H2⟩
     ihave %Hdisj : ⌜E1 ## E2⌝ $$ [H1 H2]
-    · iapply ownE_disjoint $$ [H1 H2]
-      isplitl [H1] <;> iassumption
+    · iaesop baseline
+      -- iapply ownE_disjoint $$ [H1 H2]
+      -- isplitl [H1] <;> iassumption
     isplit
     · ipure_intro; assumption
     · iapply (ownE_op Hdisj).mpr $$ [H1 H2]

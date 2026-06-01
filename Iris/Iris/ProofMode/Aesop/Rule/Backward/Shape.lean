@@ -1,7 +1,6 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Frontend.Attribute
-public meta import Iris.ProofMode.Aesop.Rule.Common.Main
+public meta import Iris.ProofMode.Aesop.Index.Types
 
 public meta section
 
@@ -11,7 +10,7 @@ open Lean Meta Iris BI
 
 namespace Rule.Backward
 
-/- Peel Iris-level implications until the remaining expression is the theorem conclusion -/
+/- Peel Iris-level implications until the remaining expression is the theorem conclusion. -/
 private partial def peelIrisConclusion? (e : Expr) : MetaM (Option Expr) := do
   let e ← instantiateMVars e
   let e := e.consumeMData
@@ -26,7 +25,7 @@ private partial def peelIrisConclusion? (e : Expr) : MetaM (Option Expr) := do
   else
     return some e
 
-/- Extract the Iris proposition proved by a theorem type, if it has a supported shape -/
+/- Extract the Iris proposition proved by a theorem type, if it has a supported shape. -/
 private partial def matchConclusion? (type : Expr) : MetaM (Option Expr) :=
   match Iris.ProofMode.parseIrisGoal? type with
   | some irisGoal => peelIrisConclusion? irisGoal.goal
@@ -40,13 +39,17 @@ private partial def matchConclusion? (type : Expr) : MetaM (Option Expr) :=
       | none => return none
     | none, none, none => return none
 
-/- Instantiate a backward theorem and index it by the Iris proposition it can prove -/
-private def mkBackwardIndexingMode (decl : Name) : MetaM IndexingMode :=
+/- Instantiate a theorem declaration and all of its forall binders. -/
+def instantiateTheorem (decl : Name) : MetaM (Expr × Expr) := do
+  let value ← mkConstWithFreshMVarLevels decl
+  let type ← instantiateMVars (← inferType value)
+  let ⟨mvars, _, body⟩ ← forallMetaTelescope type
+  return (mkAppN value mvars, ← instantiateMVars body)
+
+/- Instantiate a backward theorem and index it by the Iris proposition it can prove. -/
+def mkBackwardIndexingMode (decl : Name) : MetaM IndexingMode :=
   withoutModifyingState do
-    let value ← mkConstWithFreshMVarLevels decl
-    let type ← instantiateMVars (← inferType value)
-    let ⟨_, _, body⟩ ← forallMetaTelescope type
-    let body ← instantiateMVars body
+    let (_, body) ← instantiateTheorem decl
     let target? ← (show MetaM (Option Expr) from do
       match ← matchConclusion? body with
       | some target => return some target
@@ -56,29 +59,5 @@ private def mkBackwardIndexingMode (decl : Name) : MetaM IndexingMode :=
     IndexingMode.targetMatching target
 
 end Rule.Backward
-
-/- Build the discrimination-tree index for all registered backward rules -/
-def backwardRuleIndex : MetaM (Index RuleInfo) := do
-  let decls ← getIaesopBackwardLemmas
-  let mut idx : Index RuleInfo := {}
-  let mut entries : Array String := #[]
-  for decl in decls do
-    let indexingMode ← Rule.Backward.mkBackwardIndexingMode decl
-    let rule : Rule RuleInfo := {
-      id := {
-        name := decl
-        kind := .backward
-        phase := .unsafe
-        scope := .global
-      }
-      indexingMode
-      info := RuleInfo.ofBuilder .backward
-    }
-    entries := entries.push s!"{decl}: {toString (format indexingMode)}"
-    idx := idx.add rule rule.indexingMode
-  trace[iaesop.ruleIndex] s!"iaesop.backward: generated backward index with {entries.size} rules"
-  entries.forM λ entry => do
-    trace[iaesop.ruleIndex] s!"  {entry}"
-  return idx
 
 end Iris.ProofMode.Aesop
