@@ -12,6 +12,8 @@ namespace Iris.ProofMode.Aesop
 
 open Lean Std
 
+initialize registerTraceClass `iaesop.tactic
+
 namespace SearchM
 
 structure Context where

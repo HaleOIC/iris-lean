@@ -10,6 +10,8 @@ namespace Iris.ProofMode.Aesop.Index
 open Lean Lean.Meta
 open Iris.ProofMode
 
+initialize registerTraceClass `iaesop.ruleIndex
+
 variable {α : Type}
 
 private abbrev HitMap (α : Type) [Ord α] :=

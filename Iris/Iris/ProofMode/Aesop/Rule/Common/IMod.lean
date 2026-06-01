@@ -74,9 +74,9 @@ private partial def collectFromIris
         if isTrue p then none else some { name := patName, ivar }
       | none => none
 
-    dbg_trace s!"imod selected {name} and generated 1 goal"
+    trace[iaesop.tactic] s!"imod selected {name} and generated 1 goal"
     let targetFmt ← liftM <| child.goal.withContext <| ppExpr childIrisGoal.goal
-    dbg_trace s!"  imod child target: {targetFmt.pretty}"
+    trace[iaesop.tactic] s!"  imod child target: {targetFmt.pretty}"
     return #[{
       goals := #[child],
       postState

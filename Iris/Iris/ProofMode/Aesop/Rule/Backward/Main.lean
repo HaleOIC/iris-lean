@@ -9,8 +9,6 @@ namespace Iris.ProofMode.Aesop
 
 open Lean Meta Iris BI
 
-initialize registerTraceClass `iaesop.ruleIndex
-
 namespace Rule.Backward
 
 /- Peel Iris-level implications until the remaining expression is the theorem conclusion -/

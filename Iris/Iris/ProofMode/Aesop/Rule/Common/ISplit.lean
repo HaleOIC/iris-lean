@@ -46,10 +46,10 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       return (children?, postState)
     | return {}
 
-  dbg_trace s!"identity split target into {children.size} goals"
+  trace[iaesop.tactic] s!"identity split target into {children.size} goals"
   for irisGoal in fullContextIrisSubgoals do
     let targetFmt ← liftM <| ppExpr irisGoal.goal
-    dbg_trace s!"  identity child target: {targetFmt.pretty}"
+    trace[iaesop.tactic] s!"  identity child target: {targetFmt.pretty}"
 
   return RuleOutput.ofRappSpec {
     goals := children

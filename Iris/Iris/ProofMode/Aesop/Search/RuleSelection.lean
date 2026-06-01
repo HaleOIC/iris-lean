@@ -20,9 +20,13 @@ def selectRulesFromIndex (index : Index RuleInfo) (parentRef : GoalRef) :
     | .notNormal => parent.preNormState
     | .normal _ postState .. => postState
     | .provenByNorm postState .. => postState
-  return RuleQueue.ofArray (← liftM do
+  let results ← liftM do
     state.restore
-    Index.queryMVar index goal)
+    Index.queryMVar index goal
+  for matchResult in results do
+    if matchResult.rule.id.kind == .backward then
+      trace[iaesop.search.expand] s!"iaesop.search.expand: matched backward decl {matchResult.rule.id.name}"
+  return RuleQueue.ofArray results
 
 def selectRules (parentRef : GoalRef) : SearchM Q RuleQueue := do
   let parent ← parentRef.get

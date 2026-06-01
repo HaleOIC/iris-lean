@@ -55,8 +55,8 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       mkExpansion? goal irisGoal
     | return {}
   let targetFmt ← liftM <| goal.withContext <| ppExpr expansion.childIrisGoal.goal
-  dbg_trace s!"imodintro generated 1 goal"
-  dbg_trace s!"  imodintro child target: {targetFmt.pretty}"
+  trace[iaesop.tactic] s!"imodintro generated 1 goal"
+  trace[iaesop.tactic] s!"  imodintro child target: {targetFmt.pretty}"
   return RuleOutput.ofRappSpec {
     goals := #[expansion.goal]
     postState := expansion.postState

@@ -254,7 +254,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
   let irisSubgoals := pendingGoals.map λ (_, irisGoal, _, _) => irisGoal
   let goalRefs ← pendingGoals.mapIdxM λ idx (caseId, _, goal, unassignedMvars) => do
     let newGoalId ← getAndIncrementNextGoalId
-    dbg_trace s!"iaesop.commit.copy: source obun {pending.sourceObunId}, \
+    trace[iaesop.tactic] s!"iaesop.commit.copy: source obun {pending.sourceObunId}, \
       case {caseId.toNat}, generated goal {newGoalId}"
     IO.mkRef $ Goal.mk {
       id := newGoalId

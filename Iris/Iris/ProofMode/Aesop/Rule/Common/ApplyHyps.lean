@@ -197,10 +197,10 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       | .lean .. => ⟨0.55⟩
       | .intuitionistic .. => ⟨0.7⟩
       | .spatial .. => ⟨0.85⟩
-    dbg_trace s!"applyHyps selected {usedHypName} and generated {expansion.goals.size} goals"
+    trace[iaesop.tactic] s!"applyHyps selected {usedHypName} and generated {expansion.goals.size} goals"
     for irisGoal in expansion.fullContextIrisSubgoals do
       let targetFmt ← liftM <| ppExpr irisGoal.goal
-      dbg_trace s!"  applyHyps child target: {targetFmt.pretty}"
+      trace[iaesop.tactic] s!"  applyHyps child target: {targetFmt.pretty}"
     return {
       goals := expansion.goals
       postState := expansion.postState
