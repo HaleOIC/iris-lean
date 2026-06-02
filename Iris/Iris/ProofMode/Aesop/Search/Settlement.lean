@@ -16,6 +16,14 @@ inductive Hyp where
   | consumed (hyp : IrisHyp)
   deriving Inhabited
 
+def netConsumedHyps (events : Array Hyp) : Array IrisHyp :=
+  events.foldl (init := #[]) λ acc event =>
+    match event with
+    | .generated hyp =>
+      acc.filter λ used => used.name != hyp.name
+    | .consumed hyp =>
+      acc.push hyp
+
 private def formatList (xs : List String) : String :=
   match xs with
   | [] => "[]"
@@ -60,14 +68,8 @@ private def summary (state : HypLog) : String :=
 
 private def collect (state : HypLog) (depth : Nat) :
     Array IrisHyp × HypLog :=
-  let (events, path) := state.path.collect depth
-  let netHyps := events.toList.foldl (init := #[]) λ acc event =>
-    match event with
-    | .generated hyp =>
-      acc.filter λ used => used.name != hyp.name
-    | .consumed hyp =>
-      acc.push hyp
-  (netHyps, { state with path })
+  let (hyps, path) := state.path.collect depth
+  (netConsumedHyps hyps, { state with path })
 
 private def insertCase
     (state : HypLog) (obunId : ObunId) (caseId : CaseId)

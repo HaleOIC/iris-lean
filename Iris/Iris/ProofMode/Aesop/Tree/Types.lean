@@ -316,6 +316,10 @@ def isInherited : ObunKind → Bool
   | inherited .. => true
   | _ => false
 
+def source? : ObunKind → Option ObunId
+  | inherited source _ => some source
+  | _ => none
+
 end ObunKind
 
 structure CaseId where

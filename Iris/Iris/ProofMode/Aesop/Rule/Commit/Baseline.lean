@@ -3,6 +3,7 @@ module
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Types
 public meta import Iris.ProofMode.Aesop.Rule.Types.Runner
+public meta import Iris.ProofMode.Aesop.Search.Settlement
 
 public meta section
 
@@ -57,76 +58,65 @@ private structure PendingContextGoals where
   sourceObunDepth : Nat
   sourceObunKind : ObunKind
   leftIrisGoals : Array (CaseId × IrisGoal × GoalRef)
-  usedSpatialHyps : Array IrisHyp
+  involvedHyps : Array Hyp
   deriving Inhabited
-
-private def PendingContextGoals.empty  : PendingContextGoals := {
-  sourceObunId := .zero
-  sourceObunDepth := 0
-  sourceObunKind := .plain
-  leftIrisGoals := #[]
-  usedSpatialHyps := #[]
-}
 
 /- Recursively collect pending information -/
 private meta partial def collectPendingContextGoals (gref : GoalRef)
     (skip? : Option ObunId) : SearchM Q PendingContextGoals := do
   let g ← gref.get
   let parentObun ← g.parent.get
+
+  /- Hyp comes from two cases: normalization or rule application -/
+  let goalHyps :=
+    g.normalizationState.generatedSpatialHyps.map Hyp.generated ++
+    g.normalizationState.usedSpatialHyps.map Hyp.consumed
+
   /- Reached root, all determined, finished. -/
-  if parentObun.id == .zero then return .empty
+  if parentObun.id == .zero then
+    let pending : PendingContextGoals := default
+    return { pending with involvedHyps := goalHyps }
 
-  /- Skip the solved context manage obun -/
-  if let some source := skip? then
-    let some rref := parentObun.parent?
+  let some rref := parentObun.parent?
       | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
-    let rapp ← rref.get
-    if (parentObun.kind.isManaged || parentObun.kind.isDuplicated) && parentObun.id == source then
-      return ← collectPendingContextGoals rapp.parent none
-    else
-      return ← collectPendingContextGoals rapp.parent skip?
+  let rapp ← rref.get
+  let rappHyps :=
+    rapp.generatedSpatialHyps.map Hyp.generated ++
+    rapp.consumedSpatialHyps.map Hyp.consumed
 
-  /- Plain obun: collect its parent rapp's used spatial hypothesis. -/
-  if parentObun.kind.isPlain then
-    if parentObun.goals.size > 1 then
-      throwError s!"iaesop(baseline): plain obun {parentObun.id} has more than one subgoal; this case is not supported"
-    let some rref := parentObun.parent?
-      | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
-    let rapp ← rref.get
-    let here := rapp.consumedSpatialHyps
-    let parentGoalRef := rapp.parent
-    let pending ← collectPendingContextGoals parentGoalRef skip?
-    return { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
-
-  /- Non-plain obun: collect siblings context and IrisGoal(template) -/
-  let (_, leftIrisGoals) ← parentObun.goals.foldlM (init := (0, #[])) λ (idx, acc) otherRef => do
-    let other ← otherRef.get
-    let some irisGoal := parentObun.fullContextIrisSubgoals[idx]?
-      | throwError s!"iaesop(baseline): missing full-context iris subgoal at index {idx}"
-    let some caseId := other.caseId?
-      | throwError s!"iaesop(baseline): copied sibling does not have caseId"
-    -- [TODO]: Not sure whether we should check the sibling's state is irrelevant or proven
-    let acc := if other.id != g.id then acc.push (caseId, irisGoal, otherRef) else acc
-    return (idx + 1, acc)
-
-  /- Start to skip the already managed obun covering range -/
-  if leftIrisGoals.isEmpty then
-    let some rref := parentObun.parent?
-      | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
-    let rapp ← rref.get
-    match parentObun.kind with
-    | .inherited source _ => return ← collectPendingContextGoals rapp.parent (some source)
-    | .duplicated => throwError "iaesop(baseline): duplicated obun branch should not be reached when collecting pending goals"
-    | .managed => throwError "iaesop(baseline): managed obun branch should not be reached when collecting pending goals"
-    | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
-
-  /- Otherwise, return current pending info -/
-  let (sourceObunId, sourceObunDepth) ← match parentObun.kind with
-    | .managed => pure (parentObun.id, parentObun.contextDepth)
-    | .duplicated => pure (parentObun.id, parentObun.contextDepth)
-    | .inherited source _ => pure (source, parentObun.contextDepth)
-    | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
-  return { sourceObunId, sourceObunDepth, sourceObunKind := parentObun.kind, leftIrisGoals, usedSpatialHyps := #[] }
+  /- Check the skip? -/
+  match skip? with
+  | none => match parentObun.kind with
+    | .managed | .duplicated | .inherited .. =>
+      let (_, leftIrisGoals) ← parentObun.goals.foldlM (init := (0, #[])) λ (idx, acc) otherRef => do
+        let other ← otherRef.get
+        let some irisGoal := parentObun.fullContextIrisSubgoals[idx]?
+          | throwError s!"iaesop(baseline): missing full-context iris subgoal at index {idx}"
+        let some caseId := other.caseId?
+          | throwError s!"iaesop(baseline): copied sibling does not have caseId"
+        -- [TODO]: Not sure whether we should check the sibling's state is irrelevant or proven
+        let acc := if other.id != g.id then acc.push (caseId, irisGoal, otherRef) else acc
+        return (idx + 1, acc)
+      if leftIrisGoals.isEmpty then
+        let nextSkip? := parentObun.kind.source?
+        let pending ← collectPendingContextGoals rapp.parent nextSkip?
+        return { pending with involvedHyps := goalHyps ++ rappHyps ++ pending.involvedHyps }
+      else
+        let (sourceObunId, sourceObunDepth) ← match parentObun.kind with
+          | .managed => pure (parentObun.id, parentObun.contextDepth)
+          | .duplicated => pure (parentObun.id, parentObun.contextDepth)
+          | .inherited source _ => pure (source, parentObun.contextDepth)
+          | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
+        return { sourceObunId, sourceObunDepth, sourceObunKind := parentObun.kind, leftIrisGoals, involvedHyps := goalHyps }
+    | .plain =>
+      if parentObun.goals.size > 1 then
+        throwError s!"iaesop(baseline): plain obun {parentObun.id} has more than one subgoal; this case is not supported"
+      let pending ← collectPendingContextGoals rapp.parent skip?
+      return { pending with involvedHyps := goalHyps ++ rappHyps ++ pending.involvedHyps }
+  | some source =>
+    let doneSkipping := (parentObun.kind.isManaged || parentObun.kind.isDuplicated) && parentObun.id == source
+    let pending ← collectPendingContextGoals rapp.parent <| if doneSkipping then none else skip?
+    return { pending with involvedHyps := goalHyps ++ rappHyps ++ pending.involvedHyps }
 
 /- Make an initial version ObunRef with its initial subgoals. -/
 private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
@@ -216,14 +206,17 @@ private def removeUsedSpatialHypsFromGoal
 
 /- Apply close goal effect to the given obunRef -/
 private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
-    (spec : RappSpec) (usedHyps : Array AppliedHyp) : SearchM Q Unit := do
+    (spec : RappSpec) : SearchM Q Unit := do
   let obun ← obunRef.get
   if !obun.goals.isEmpty then throwError "iaesop(baseline): close-goal obun still has subgoals"
 
   /- Collect pending information from above tree, ready for copying siblings as new subgoals -/
   let pending ← collectPendingContextGoals parentRef none
-  let here := usedHyps.filterMap AppliedHyp.consumedSpatialHyp?
-  let pending := { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
+  let effectHyps :=
+    spec.effect.generatedSpatialHyps.map Hyp.generated ++
+    (spec.effect.usedHyps.filterMap AppliedHyp.consumedSpatialHyp?).map Hyp.consumed
+  let pending := { pending with involvedHyps := effectHyps ++ pending.involvedHyps }
+  let usedSpatialHyps := netConsumedHyps pending.involvedHyps
   if pending.leftIrisGoals.isEmpty then
     obunRef.modify λ o =>
       o.setKind (.inherited pending.sourceObunId true)
@@ -242,7 +235,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
       let source ← sourceRef.get
       match pending.sourceObunKind with
       | .managed | .inherited _ true =>
-        let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal pending.usedSpatialHyps
+        let irisGoal ← removeUsedSpatialHypsFromGoal pendingGoal usedSpatialHyps
         let goal ← source.preNormGoal.withContext do
           let goalExpr ← mkFreshExprSyntheticOpaqueMVar (IrisGoal.toExpr irisGoal) tag
           return goalExpr.mvarId!
@@ -298,7 +291,7 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
   | some (.manageContext templates ..) =>
     applyContextManagementEffect obunRef templates
   | some (.closeGoal) =>
-    applyCloseGoalEffect parentRef obunRef spec spec.effect.usedHyps
+    applyCloseGoalEffect parentRef obunRef spec
   | none => pure ()
   let rappRef ← mkInitialRappRef parentRef obunRef usedRule spec.postState
 
