@@ -388,11 +388,16 @@ theorem inv_combine_dup_l (N : Namespace) (P Q : IProp GF) :
   · iapply later_sep; inext; iapply HPP $$ HP
   imod HI1 $$ HP2 with _
   imod HI2 $$ %E Hsub with ⟨HQ, HI2⟩
-  imodintro
-  isplitl [HP1 HQ]
-  all_goals
-    iaesop baseline
-  -- · inext; isplitl [HP1] <;> iassumption
+  set_option trace.iaesop.search.expand true in
+  set_option trace.iaesop.search.replay true in
+  set_option trace.iaesop.tactic true in
+  iaesop baseline
+  -- imodintro
+  -- isplitl [HP1 HQ]
+  -- · set_option trace.iaesop.search.expand true in
+  --   set_option trace.iaesop.tactic true in
+  --   iaesop baseline
+  --   -- inext; isplitl [HP1] <;> iassumption
   -- iintro ⟨_, HQ⟩
   -- imod HI2 $$ HQ with _
   -- imodintro; iassumption

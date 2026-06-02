@@ -64,8 +64,8 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec
     appliedRule := usedRule
     successProbability
     scriptSteps? := none
-    usedHyp? := spec.effect.usedHyp?
-    generatedSpatialHyp? := spec.effect.generatedSpatialHyp?
+    usedHyps := spec.effect.usedHyps
+    generatedSpatialHyps := spec.effect.generatedSpatialHyps
     metaState := spec.postState
     introducedMVars := {}
     assignedMVars := {}

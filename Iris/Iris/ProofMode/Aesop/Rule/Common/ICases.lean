@@ -92,8 +92,8 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       postState := expansion.postState
       successPossibility := .hundred
       effect := {
-        usedHyp? := some expansion.usedHyp
-        generatedSpatialHyp? := expansion.generatedHyp[0]?
+        usedHyps := #[expansion.usedHyp]
+        generatedSpatialHyps := expansion.generatedHyp[0]?.toArray
         action := some (.splitGoals expansion.fullContextIrisSubgoals)
       }
     }

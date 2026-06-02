@@ -51,14 +51,6 @@ private partial def collectHypInfos {u prop bi} :
   | _, .sep _ _ _ _ lhs rhs =>
     collectHypInfos lhs ++ collectHypInfos rhs
 
-private partial def collectSpatialHyps {u prop bi} :
-    ∀ {e}, @Hyps u prop bi e → Array IrisHyp
-  | _, .emp _ => #[]
-  | _, .hyp _ name ivar p _ _ =>
-    if isTrue p then #[] else #[{ name, ivar }]
-  | _, .sep _ _ _ _ lhs rhs =>
-    collectSpatialHyps lhs ++ collectSpatialHyps rhs
-
 private def runIntroPat (goal : MVarId) (pat : IntroPat) :
     ProofModeM (Option MVarId) := do
   let preState ← liftM (show MetaM SavedState from saveState)
@@ -336,7 +328,7 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
         let goalType ← instantiateMVars (← preGoalMVarId.getType)
         let some irisGoal := parseIrisGoal? goalType
           | throwError "iaesop: normalization stage should be done in iris proof-mode"
-        return collectSpatialHyps irisGoal.hyps
+        return (spatialHypEntries irisGoal.hyps).map λ (name, ivar, _) => { name, ivar }
 
       let result ← normalizeGoalMVar preGoalMVarId goal.depth
           config.maxNormIterations config.enableSimp? goal.unassignedMvars
@@ -349,7 +341,7 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
           let goalType ← instantiateMVars (← postGoal.getType)
           let some irisGoal := parseIrisGoal? goalType
             | throwError "iaesop: normalization stage should be done in iris proof-mode"
-          return collectSpatialHyps irisGoal.hyps
+          return (spatialHypEntries irisGoal.hyps).map λ (name, ivar, _) => { name, ivar }
 
       let postState ← liftM (m := MetaM) saveState
       let generated := postHyps.filter λ hyp => !preHyps.contains hyp

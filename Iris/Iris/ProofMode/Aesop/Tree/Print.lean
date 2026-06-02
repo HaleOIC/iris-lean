@@ -17,6 +17,9 @@ private def boolMark (b : Bool) : String :=
 private def irisHypsToString (hyps : Array IrisHyp) : String :=
   "[" ++ String.intercalate ", " (hyps.map (λ hyp => toString hyp)).toList ++ "]"
 
+private def appliedHypsToString (hyps : Array AppliedHyp) : String :=
+  "[" ++ String.intercalate ", " (hyps.map (λ hyp => toString hyp)).toList ++ "]"
+
 private def finalizedSpatialSplitsToString
     (splits : Array (Array IrisHyp)) : String :=
   "[" ++ String.intercalate ", "
@@ -38,6 +41,10 @@ private def currentGoalName (g : Goal) : String :=
   match g.normalizationState.normalizedGoal? with
   | some goal => toString goal.name
   | none => toString g.preNormGoal.name
+
+private def caseToString : Option CaseId → String
+  | some caseId => toString caseId
+  | none => "none"
 
 mutual
 
@@ -87,10 +94,66 @@ private partial def renderRapp (depth : Nat) (rref : RappRef) :
 
 end
 
+mutual
+
+private partial def renderSuccessfulObunPath (depth : Nat) (oref : ObunRef) :
+    TreeM String := do
+  let o ← oref.get
+  let header :=
+    s!"{indent depth}obun #{o.id} " ++
+    s!"kind={o.kind} " ++
+    s!"state={o.state} " ++
+    s!"splits={finalizedSpatialSplitsToString o.finalizedSpatialSplits}\n"
+  let children ← o.goals.foldlM (init := #[]) λ acc gref => do
+    let g ← gref.get
+    if g.state.isProven && !g.isIrrelevant then
+      return acc.push (← renderSuccessfulGoalPath (depth + 2) gref)
+    else
+      return acc
+  return header ++ String.join children.toList
+
+private partial def renderSuccessfulGoalPath (depth : Nat) (gref : GoalRef) :
+    TreeM String := do
+  let g ← gref.get
+  let header :=
+    s!"{indent depth}goal #{g.id} " ++
+    s!"state={g.state} " ++
+    s!"case={caseToString g.caseId?} " ++
+    s!"origin={g.origin} " ++
+    s!"norm={normalizationStateToString g.normalizationState} " ++
+    s!"mvar={currentGoalName g}\n"
+  let children ← g.children.foldlM (init := #[]) λ acc rref => do
+    let r ← rref.get
+    if r.state.isProven && !r.isIrrelevant then
+      return acc.push (← renderSuccessfulRappPath (depth + 2) rref)
+    else
+      return acc
+  return header ++ String.join children.toList
+
+private partial def renderSuccessfulRappPath (depth : Nat) (rref : RappRef) :
+    TreeM String := do
+  let r ← rref.get
+  let header :=
+    s!"{indent depth}rapp #{r.id} " ++
+    s!"rule={r.appliedRule.info.builder} " ++
+    s!"state={r.state} " ++
+    s!"used={appliedHypsToString r.usedHyps} " ++
+    s!"generated={irisHypsToString r.generatedSpatialHyps}\n"
+  let child ← renderSuccessfulObunPath (depth + 2) r.children
+  return header ++ child
+
+end
+
 public meta def printSearchTree : TreeM String := do
   let root ← getRootObun
   let iteration := (← readThe TreeM.Context).currentIteration
   let tree ← renderObun 0 root
   return s!"\n[iaesop tree before finalization]\niteration={iteration}\n{tree}"
+
+public meta def printSuccessfulSearchPath : TreeM String := do
+  let root ← getRootObun
+  let iteration := (← readThe TreeM.Context).currentIteration
+  let path ← renderSuccessfulObunPath 0 root
+  return s!"\n[iaesop successful tree path before replay]\niteration={iteration}\n{path}"
 
 end Iris.ProofMode.Aesop

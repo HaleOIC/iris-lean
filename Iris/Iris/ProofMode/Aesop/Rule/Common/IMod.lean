@@ -25,12 +25,7 @@ private partial def collectFromIris
   | _, .hyp _ name ivar _ _ _ => do
     baseState.restore
 
-    /- Remove the candidate hypothesis from the Iris context before probing `imod`.
-       We pass `rp := true` so that an intuitionistic hypothesis is *consumed* rather than
-       duplicated: `imod` transforms `□?p A` into the eliminated `□?p' A'`, exactly as the
-       interactive `imod` tactic does (`Hyps.remove (!keep)`). Keeping the original copy would
-       leave e.g. `◇ □ P` in context after eliminating its `◇`, making `imod` reapplicable
-       forever and sending the search into an infinite loop. -/
+    /- Remove the candidate hypothesis from the Iris context before probing `imod` -/
     let some ⟨_, e', hyps', out, ty, p, _, _⟩ ←
         irisGoal.hyps.removeG true λ _ ivar' _ _ => do
           if ivar == ivar' then return some ()
@@ -68,11 +63,9 @@ private partial def collectFromIris
       let hyp := { name, ivar }
       if isTrue p then .intuitionistic hyp else .spatial hyp
     let postState ← liftM (m := MetaM) saveState
-    let generatedHyp? :=
-      match childIrisGoal.hyps.find? patName with
-      | some (ivar, p, _) =>
-        if isTrue p then none else some { name := patName, ivar }
-      | none => none
+    let generatedHyps := match childIrisGoal.hyps.find? patName with
+      | some (ivar, p, _) => if isTrue p then #[] else #[{name := patName, ivar}]
+      | none => #[]
 
     trace[iaesop.tactic] s!"imod selected {name} and generated 1 goal"
     let targetFmt ← liftM <| child.goal.withContext <| ppExpr childIrisGoal.goal
@@ -81,7 +74,7 @@ private partial def collectFromIris
       goals := #[child],
       postState
       successPossibility := .hundred
-      effect := { generatedSpatialHyp? := generatedHyp?, usedHyp? := some usedHyp, action := none }
+      effect := { generatedSpatialHyps := generatedHyps, usedHyps := #[usedHyp], action := none }
     }]
 
 /- Search for `imod` applications among current Iris hypotheses. -/

@@ -206,7 +206,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       postState := expansion.postState
       successPossibility
       effect := {
-        usedHyp? := some expansion.usedHyp
+        usedHyps := #[expansion.usedHyp]
         action :=
           if expansion.goals.isEmpty then some .closeGoal
           else if expansion.goals.size == 1 then none

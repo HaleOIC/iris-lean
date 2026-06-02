@@ -70,7 +70,7 @@ meta def traceSelectedGoal (gref : GoalRef) : SearchM Q Unit := do
     origin={g.origin}, mask={repr g.mask}\n{goalText}"
 
 meta def traceTreeBeforeReplay : SearchM Q Unit := do
-  trace[iaesop.search.replay] ← printSearchTree
+  trace[iaesop.search.replay] ← printSuccessfulSearchPath
 
 /- Trace one replay step: render the focused goal's current Iris context -/
 meta def traceReplayStep (goal : MVarId) (ruleName : String) : ProofModeM Unit := do

@@ -44,8 +44,8 @@ private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
     metaState := postState
 
     /- The following context/script fields are filled by callers/finalization. -/
-    usedHyp? := none
-    generatedSpatialHyp? := none
+    usedHyps := #[]
+    generatedSpatialHyps := #[]
     scriptSteps? := none
     introducedMVars
     assignedMVars := {}
@@ -93,7 +93,7 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
     let some rref := parentObun.parent?
       | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
     let rapp ← rref.get
-    let here := rapp.usedHyp?.bind (·.consumedSpatialHyp?) |>.toArray
+    let here := rapp.consumedSpatialHyps
     let parentGoalRef := rapp.parent
     let pending ← collectPendingContextGoals parentGoalRef skip?
     return { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
@@ -216,13 +216,13 @@ private def removeUsedSpatialHypsFromGoal
 
 /- Apply close goal effect to the given obunRef -/
 private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
-    (spec : RappSpec) (usedHyp? : Option AppliedHyp) : SearchM Q Unit := do
+    (spec : RappSpec) (usedHyps : Array AppliedHyp) : SearchM Q Unit := do
   let obun ← obunRef.get
   if !obun.goals.isEmpty then throwError "iaesop(baseline): close-goal obun still has subgoals"
 
   /- Collect pending information from above tree, ready for copying siblings as new subgoals -/
   let pending ← collectPendingContextGoals parentRef none
-  let here := usedHyp?.bind AppliedHyp.consumedSpatialHyp? |>.toArray
+  let here := usedHyps.filterMap AppliedHyp.consumedSpatialHyp?
   let pending := { pending with usedSpatialHyps := here ++ pending.usedSpatialHyps }
   if pending.leftIrisGoals.isEmpty then
     obunRef.modify λ o =>
@@ -298,14 +298,14 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
   | some (.manageContext templates ..) =>
     applyContextManagementEffect obunRef templates
   | some (.closeGoal) =>
-    applyCloseGoalEffect parentRef obunRef spec spec.effect.usedHyp?
+    applyCloseGoalEffect parentRef obunRef spec spec.effect.usedHyps
   | none => pure ()
   let rappRef ← mkInitialRappRef parentRef obunRef usedRule spec.postState
 
   /- Record context-related info in the rapp node -/
   rappRef.modify λ r =>
-    r.setUsedHyp? spec.effect.usedHyp?
-    |>.setGeneratedSpatialHyp? spec.effect.generatedSpatialHyp?
+    r.setUsedHyps spec.effect.usedHyps
+    |>.setGeneratedSpatialHyps spec.effect.generatedSpatialHyps
   obunRef.modify λ o => o.setParent rappRef
   if (← obunRef.get).state.isProven then
     rappRef.modify λ r => r.setState .proven

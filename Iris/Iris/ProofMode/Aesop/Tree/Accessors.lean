@@ -400,16 +400,22 @@ def scriptSteps? (r : Rapp) : Option (Array Script.LazyStep) :=
   r.elim.scriptSteps?
 
 @[inline]
+def usedHyps (r : Rapp) : Array AppliedHyp :=
+  r.elim.usedHyps
+
+/-- The primary used hypothesis, if any. Select-style rules (`imod`, `applyHyps`, `icases`)
+record exactly one used hypothesis; their replay reads it back through this accessor. -/
+@[inline]
 def usedHyp? (r : Rapp) : Option AppliedHyp :=
-  r.elim.usedHyp?
+  r.elim.usedHyps[0]?
 
 @[inline]
-def consumedSpatialHyp? (r : Rapp) : Option IrisHyp :=
-  r.usedHyp?.bind AppliedHyp.consumedSpatialHyp?
+def consumedSpatialHyps (r : Rapp) : Array IrisHyp :=
+  r.usedHyps.filterMap AppliedHyp.consumedSpatialHyp?
 
 @[inline]
-def generatedSpatialHyp? (r : Rapp) : Option IrisHyp :=
-  r.elim.generatedSpatialHyp?
+def generatedSpatialHyps (r : Rapp) : Array IrisHyp :=
+  r.elim.generatedSpatialHyps
 
 @[inline]
 def metaState (r : Rapp) : SavedState :=
@@ -457,23 +463,12 @@ def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))
   r.modify fun r => { r with scriptSteps? }
 
 @[inline]
-def setUsedHyp? (usedHyp? : Option AppliedHyp) (r : Rapp) : Rapp :=
-  r.modify fun r => { r with usedHyp? }
+def setUsedHyps (usedHyps : Array AppliedHyp) (r : Rapp) : Rapp :=
+  r.modify fun r => { r with usedHyps }
 
 @[inline]
-def setGeneratedSpatialHyp? (newHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
-  r.modify λ r => { r with generatedSpatialHyp? := newHyp? }
-
-@[inline]
-def setconsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
-  r.modify fun r => {
-    r with
-    usedHyp? := consumedSpatialHyp?.map AppliedHyp.spatial
-  }
-
-@[inline]
-def setConsumedSpatialHyp? (consumedSpatialHyp? : Option IrisHyp) (r : Rapp) : Rapp :=
-  r.setconsumedSpatialHyp? consumedSpatialHyp?
+def setGeneratedSpatialHyps (generatedSpatialHyps : Array IrisHyp) (r : Rapp) : Rapp :=
+  r.modify λ r => { r with generatedSpatialHyps }
 
 @[inline]
 def setMetaState (metaState : SavedState) (r : Rapp) : Rapp :=

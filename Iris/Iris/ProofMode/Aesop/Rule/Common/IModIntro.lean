@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
+public meta import Iris.ProofMode.Aesop.Search.Names
 public meta import Iris.ProofMode.Tactics.ModIntro
 
 public meta section
@@ -16,6 +17,26 @@ private structure IModIntroExpansion where
   goal : SubGoal
   childIrisGoal : IrisGoal
   postState : SavedState
+  consumed : Array IrisHyp
+  generated : Array IrisHyp
+
+/- Compare pre/post Iris goals and record changed spatial hypotheses. -/
+private def trackDiff (pre post : IrisGoal) : ProofModeM (Array IrisHyp × Array IrisHyp) := do
+  let preHyps := spatialHypEntries pre.hyps
+  let postHyps := spatialHypEntries post.hyps
+  let mut consumed : Array IrisHyp := #[]
+  let mut generated : Array IrisHyp := #[]
+  for (preName, preIVar, preTy) in preHyps do
+    match postHyps.find? (λ (_, postIVar, _) => preIVar == postIVar) with
+    | none => consumed := consumed.push { name := preName, ivar := preIVar }
+    | some (postName, postIVar, postTy) =>
+      unless ← isDefEq preTy postTy do
+        consumed := consumed.push { name := preName, ivar := preIVar }
+        generated := generated.push { name := postName, ivar := postIVar }
+  for (postName, postIVar, _) in postHyps do
+    if preHyps.all (λ (_, preIVar, _) => preIVar != postIVar) then
+      generated := generated.push { name := postName, ivar := postIVar }
+  return (consumed, generated)
 
 /- Try to make an expansion based on current target -/
 private def mkExpansion? (goal : MVarId) (irisGoal : IrisGoal) :
@@ -34,11 +55,8 @@ private def mkExpansion? (goal : MVarId) (irisGoal : IrisGoal) :
       return newGoal
     let some (child, childIrisGoal) := ← childRef.get
       | throwError "iaesop: imodintro did not generate a child goal"
-    return some {
-      goal := child
-      childIrisGoal
-      postState := ← liftM (m := MetaM) saveState
-    }
+    let (consumed, generated) ← trackDiff irisGoal childIrisGoal
+    return some { goal := child, childIrisGoal, postState := ← liftM (m := MetaM) saveState, consumed, generated }
   catch _ =>
     liftM <| preState.restore
     return none
@@ -57,11 +75,17 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
   let targetFmt ← liftM <| goal.withContext <| ppExpr expansion.childIrisGoal.goal
   trace[iaesop.tactic] s!"imodintro generated 1 goal"
   trace[iaesop.tactic] s!"  imodintro child target: {targetFmt.pretty}"
+  trace[iaesop.tactic] s!"  imodintro consumed hyps: {expansion.consumed.map toString}"
+  trace[iaesop.tactic] s!"  imodintro generated hyps: {expansion.generated.map toString}"
   return RuleOutput.ofRappSpec {
     goals := #[expansion.goal]
     postState := expansion.postState
     successPossibility := .hundred
-    effect := default
+    effect := {
+      usedHyps := expansion.consumed.map (λ hyp => .spatial hyp)
+      generatedSpatialHyps := expansion.generated
+      action := none
+    }
   }
 
 /- [Note] Make sure you are in the correct context -/

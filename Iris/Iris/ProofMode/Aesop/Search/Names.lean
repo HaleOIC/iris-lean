@@ -17,6 +17,16 @@ public meta partial def hypNameArray : ∀ {prop : Q(Type u)} {bi : Q(BI $prop)}
   | _, _, _, .hyp _ name _ _ _ _ => #[name]
   | _, _, _, .sep _ _ _ _ lhs rhs => hypNameArray lhs ++ hypNameArray rhs
 
+/- Collect spatial Iris hypotheses as `(name, ivar, type)` triples. -/
+public meta partial def spatialHypEntries :
+    ∀ {prop : Q(Type u)} {bi : Q(BI $prop)} {e},
+      Hyps bi e → Array (Name × IVarId × Expr)
+  | _, _, _, .emp _ => #[]
+  | _, _, _, .hyp _ name ivar p ty _ =>
+    if isTrue p then #[] else #[(name, ivar, ty)]
+  | _, _, _, .sep _ _ _ _ lhs rhs =>
+    spatialHypEntries lhs ++ spatialHypEntries rhs
+
 public meta def collectIrisHypNames (goal : MVarId) : MetaM (Array Name) := do
   goal.withContext do
     let goalType ← instantiateMVars (← goal.getType)

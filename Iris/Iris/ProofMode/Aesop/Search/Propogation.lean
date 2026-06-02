@@ -29,7 +29,7 @@ private def collectUsedHypsFromRapp (rappRef : RappRef) :
   let rapp ← rappRef.get
   let childObun ← rapp.children.get
   return childObun.finalizedSpatialSplits.foldl
-    (init := rapp.consumedSpatialHyp?.toArray) λ acc hyps => acc ++ hyps
+    (init := rapp.consumedSpatialHyps) λ acc hyps => acc ++ hyps
 
 private def collectUsedHypsFromGoalProof (gref : GoalRef) :
     SearchM Q (Array IrisHyp) := do
