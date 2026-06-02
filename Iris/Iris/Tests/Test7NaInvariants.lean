@@ -7,11 +7,11 @@ module
 
 public import Iris.ProofMode
 public import Iris.Instances.IProp.Instance
-public import Iris.Instances.Lib.FUpd
-public import Iris.Instances.Lib.Invariants
 public import Iris.Algebra.LeibnizSet
 public import Iris.Std.Namespaces
 public import Iris.Std.CoPset
+public import Iris.Tests.Test4Fupd
+public import Iris.Tests.Test5Invariants
 
 @[expose] public section
 
@@ -84,6 +84,7 @@ instance instPersistent_own (p : NaInvPoolName) : Persistent (own (GF := GF) p �
   unfold own
   infer_instance
 
+-- [TODO]: Maybe we can accelerate this process
 @[rocq_alias na_inv_iff]
 nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
     ⊢ inv p N P -∗ ▷ □ (P ↔ Q) -∗ inv p N Q := by
@@ -114,7 +115,7 @@ nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
 theorem alloc : ⊢@{IProp GF} |==> ∃ p : NaInvPoolName, own p ⊤ :=
   iOwn_alloc (E := W.inv) (.valid (⊤ : CoPset), .valid (∅ : PosSet)) ⟨trivial, trivial⟩
 
-@[rocq_alias na_own_disjoint]
+@[rocq_alias na_own_disjoint, iaesop backward]
 theorem own_disjoint {p : NaInvPoolName} {E1 E2 : CoPset} :
     ⊢ own (GF := GF) p E1 -∗ own p E2 -∗ ⌜E1 ## E2⌝ := by
   unfold own
@@ -164,7 +165,6 @@ nonrec theorem inv_alloc {p : NaInvPoolName} {E : CoPset} {N : Namespace} {P : I
   unfold inv
   imod inv_alloc N E iprop( P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [HP Hown] with HI
   all_goals
-    try inext
     iaesop baseline
   -- · inext; ileft; isplitl [HP] <;> iassumption
   -- iexists i
@@ -223,7 +223,8 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
       -- · iexact HtokFret
   · iexfalso
     ihave Hbad : ⌜({i} : CoPset) ## {i}⌝ $$ [Htoki Htoki2]
-    · iapply own_disjoint $$ Htoki Htoki2
+    · iaesop baseline
+      -- iapply own_disjoint $$ Htoki Htoki2
     icases Hbad with %Hbad
     exact Hbad i ⟨mem_singleton.mpr rfl, mem_singleton.mpr rfl⟩ |>.elim
 

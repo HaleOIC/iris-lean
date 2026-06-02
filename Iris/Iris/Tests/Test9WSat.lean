@@ -94,6 +94,7 @@ variable {GF : BundledGFunctors} [W : WsatGS GF]
 
 theorem ownE_empty : ⊢ |==> ownE (W := W) ∅ := iOwn_unit (ε := UCMRA.unit)
 
+@[iaesop backward]
 theorem ownE_op {E1 E2} (Hdisj : E1 ## E2) : ownE (E1 ∪ E2) ⊣⊢@{IProp GF} ownE E1 ∗ ownE E2 := by
   refine .trans (.of_eq ?_) iOwn_op
   rw [disj_op_union Hdisj]
@@ -110,6 +111,7 @@ theorem ownE_disjoint {E1 E2} : ownE E1 ∗ ownE E2 ⊢@{IProp GF} ⌜E1 ## E2�
   ipure_intro
   exact valid_op_iff_disj.mp H
 
+@[iaesop backward]
 theorem ownE_op_iff {E1 E2} : ⌜E1 ## E2⌝ ∧ ownE (E1 ∪ E2) ⊣⊢@{IProp GF} ownE E1 ∗ ownE E2 := by
   constructor
   · iintro ⟨%Hdisj, H⟩
@@ -124,6 +126,7 @@ theorem ownE_op_iff {E1 E2} : ⌜E1 ## E2⌝ ∧ ownE (E1 ∪ E2) ⊣⊢@{IProp 
     · iapply (ownE_op Hdisj).mpr $$ [H1 H2]
       isplitl [H1] <;> iassumption
 
+@[iaesop backward]
 theorem ownE_singleton_singleton {i : Pos} : ownE {i} ∗ ownE {i} ⊢@{IProp GF} False :=
   ownE_disjoint.trans (pure_mono fun h => h i (by simp [mem_singleton]))
 
@@ -133,13 +136,16 @@ section ownD
 
 variable {GF : BundledGFunctors} [W : WsatGS GF]
 
+@[iaesop backward]
 theorem ownD_empty : ⊢@{IProp GF} |==> ownD ∅ := iOwn_unit (ε := UCMRA.unit)
 
+@[iaesop backward]
 theorem ownD_op {E1 E2} (Hdisj : E1 ## E2) : ownD (E1 ∪ E2) ⊣⊢@{IProp GF} ownD E1 ∗ ownD E2 := by
   refine .trans (.of_eq ?_) iOwn_op
   rw [disj_op_union Hdisj]
   rfl
 
+@[iaesop backward]
 theorem ownD_disjoint (E1 E2 : PosSet) :
     ownD E1 ∗ ownD E2 ⊢@{IProp GF}  ⌜E1 ## E2⌝ := by
   unfold ownD
@@ -157,8 +163,9 @@ theorem ownD_op_iff {E1 E2} : ⌜E1 ## E2⌝ ∧ ownD (E1 ∪ E2) ⊣⊢@{IProp 
     iapply (ownD_op Hdisj).mp $$ H
   · iintro ⟨H1, H2⟩
     ihave %Hdisj : ⌜E1 ## E2⌝ $$ [H1 H2]
-    · iapply ownD_disjoint $$ [H1 H2]
-      isplitl [H1] <;> iassumption
+    iaesop baseline
+    -- · iapply ownD_disjoint $$ [H1 H2]
+    --   isplitl [H1] <;> iassumption
     isplit
     · ipure_intro; assumption
     · iapply (ownD_op Hdisj).mpr $$ [H1 H2]
@@ -211,8 +218,9 @@ theorem ownI_open {i : Pos} {P : IProp GF} : wsat ∗ ownI i P ∗ ownE {i} ⊢ 
         iapply internalEq.rewrite (Ψ := fun x => x) (hΨ := OFE.id_ne) $$ H HProp
       · iassumption
   · iexfalso
-    iapply ownE_singleton_singleton $$ [HE HE']
-    isplitl [HE] <;> iassumption
+    iaesop baseline
+    -- iapply ownE_singleton_singleton $$ [HE HE']
+    -- isplitl [HE] <;> iassumption
 
 theorem ownI_close {i : Pos} {P : IProp GF} : wsat ∗ ownI i P ∗ ▷ P ∗ ownD {i} ⊢ wsat ∗ ownE {i} := by
   unfold wsat

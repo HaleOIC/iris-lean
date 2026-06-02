@@ -76,7 +76,7 @@ theorem lc_split {n m} : £ (n + m) ⊣⊢@{IProp GF} £ n ∗ £ m := by
 @[rocq_alias lc_zero]
 theorem lc_zero : ⊢@{IProp GF} |==> £ 0 := iOwn_unit (ε := UCMRA.unit)
 
-@[rocq_alias lc_supply_bound]
+@[rocq_alias lc_supply_bound, iaesop backward]
 theorem lc_supply_bound {n m} : ⊢@{IProp GF} lc_supply m -∗ £ n -∗ ⌜n ≤ m⌝ := by
   iintro Hsupp Hcred
   icases iOwn_op $$ [Hsupp Hcred] with H
@@ -89,7 +89,7 @@ theorem lc_supply_bound {n m} : ⊢@{IProp GF} lc_supply m -∗ £ n -∗ ⌜n �
   obtain ⟨k, rfl⟩ := H
   exact n.le_add_right k
 
-@[rocq_alias lc_decrease_supply]
+@[rocq_alias lc_decrease_supply, iaesop backward]
 theorem lc_decrease_supply {n m} : ⊢@{IProp GF} lc_supply (n + m) -∗ £ n -∗ |==> lc_supply m := by
   iintro H1 H2
   imod iOwn_update_op (E := LC.lc_elem)
@@ -101,12 +101,12 @@ theorem lc_decrease_supply {n m} : ⊢@{IProp GF} lc_supply (n + m) -∗ £ n -�
   imodintro
   unfold lc_supply; iexact H
 
-@[rocq_alias lc_succ]
+@[rocq_alias lc_succ, iaesop backward]
 theorem lc_succ {n} : £ (.succ n) ⊣⊢@{IProp GF} £ 1 ∗ £ n := by
   rw [show .succ n = 1 + n by simp [Nat.succ_eq_add_one, Nat.add_comm]]
   exact lc_split
 
-@[rocq_alias lc_weaken]
+@[rocq_alias lc_weaken, iaesop backward]
 theorem lc_weaken {n} m (h : m ≤ n) : ⊢@{IProp GF} £ n -∗ £ m := by
   obtain ⟨k, rfl⟩ := Nat.exists_eq_add_of_le h
   iintro H
@@ -184,7 +184,7 @@ macro_rules
 delab_rule le_upd
 | `($_ $P) => do ``(iprop(|==£> $(← unpackIprop P)))
 
-@[rocq_alias le_upd.le_upd_unfold]
+@[rocq_alias le_upd.le_upd_unfold, iaesop backward]
 theorem le_upd_unfold {P : IProp GF} :
   (|==£> P) ⊣⊢
   ∀ n, lc_supply n ==∗ (lc_supply n ∗ P) ∨ (∃ m, ⌜m < n⌝ ∗ lc_supply m ∗ ▷ |==£> P) :=
@@ -207,7 +207,7 @@ instance : NonExpansive (le_upd (GF := GF)) where
     refine Contractive.distLater_dist ?_
     exact (fun k Hk => IH k Hk (H.lt Hk))
 
-@[rocq_alias le_upd.bupd_le_upd]
+@[rocq_alias le_upd.bupd_le_upd, iaesop backward]
 theorem bupd_le_upd {P : IProp GF} : (|==> P) ⊢ (|==£> P) := by
   iintro H
   iapply le_upd_unfold
@@ -217,14 +217,15 @@ theorem bupd_le_upd {P : IProp GF} : (|==> P) ⊢ (|==£> P) := by
   -- ileft
   -- isplitl [Hsupp] <;> iassumption
 
-@[rocq_alias le_upd.le_upd_intro]
+@[rocq_alias le_upd.le_upd_intro, iaesop backward]
 theorem le_upd_intro {P : IProp GF} : P ⊢ |==£> P := by
-  iintro H
-  iapply bupd_le_upd
-  imodintro
-  iexact H
+  iaesop baseline
+  -- iintro H
+  -- iapply bupd_le_upd
+  -- imodintro
+  -- iexact H
 
-@[rocq_alias le_upd.le_upd_bind]
+@[rocq_alias le_upd.le_upd_bind, iaesop backward]
 theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -∗ (|==£> Q) := by
   iapply BILoeb.loeb_weak
   iintro HLöb H G
@@ -243,17 +244,18 @@ theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -�
     --   isplit
     --   · ipure_intro; assumption
     --   isplitl [Hsupp] <;> iassumption
-  · imodintro
-    iright
-    iexists m
-    isplit
-    · ipure_intro; assumption
-    isplitl [Hsupp]; iassumption
-    inext
-    iaesop baseline
+  · iaesop baseline
+    -- imodintro
+    -- iright
+    -- iexists m
+    -- isplit
+    -- · ipure_intro; assumption
+    -- isplitl [Hsupp]; iassumption
+    -- inext
     -- iapply HLöb $$ H G
   ipure_intro; simp
 
+-- [Note] Add this theorem into backward rule index will enter loop
 @[rocq_alias le_upd.le_upd_later_elim]
 theorem le_upd_later_elim {P : IProp GF} : ⊢ £ 1 -∗ (▷ |==£> P) -∗ |==£> P := by
   iintro Hcr H
@@ -275,50 +277,58 @@ theorem le_upd_later_elim {P : IProp GF} : ⊢ £ 1 -∗ (▷ |==£> P) -∗ |==
 
 @[rocq_alias le_upd.le_upd_mono]
 theorem le_upd_mono {P Q : IProp GF} (Hent : P ⊢ Q) : (|==£> P) ⊢ (|==£> Q) := by
-  iintro H
-  iapply le_upd_bind $$ [] H
-  iintro H
-  iapply le_upd_intro
-  apply Hent
+  iaesop baseline
+  -- iintro H
+  -- iapply le_upd_bind $$ [] H
+  -- iintro H
+  -- iapply le_upd_intro
+  -- apply Hent
 
-@[rocq_alias le_upd.le_upd_trans]
+@[rocq_alias le_upd.le_upd_trans, iaesop backward]
 theorem le_upd_trans {P : IProp GF} : (|==£> |==£> P) ⊢ |==£> P := by
-  iintro H
-  iapply le_upd_bind $$ [] H
-  iintro H; iexact H
+  iaesop baseline
+  -- iintro H
+  -- iapply le_upd_bind $$ [] H
+  -- iintro H; iexact H
 
-@[rocq_alias le_upd.le_upd_frame_r]
+@[rocq_alias le_upd.le_upd_frame_r, iaesop backward]
 theorem le_upd_frame_r {P R : IProp GF} : (|==£> P) ∗ R ⊢ |==£> (P ∗ R) := by
-  iintro ⟨H, HR⟩
-  iapply le_upd_bind $$ [HR] H
-  iintro HP
-  iapply le_upd_intro
-  isplitl [HP] <;> iassumption
+  iaesop baseline
+  -- iintro ⟨H, HR⟩
+  -- iapply le_upd_bind $$ [HR] H
+  -- iintro HP
+  -- iapply le_upd_intro
+  -- isplitl [HP] <;> iassumption
 
-@[rocq_alias le_upd.le_upd_frame_l]
+@[rocq_alias le_upd.le_upd_frame_l, iaesop backward]
 theorem le_upd_frame_l {P R : IProp GF} : R ∗ (|==£> P) ⊢ |==£> (R ∗ P) := by
-  refine .trans ?_ (le_upd_mono sep_comm.mp)
-  refine (.trans sep_comm.mp ?_)
-  iapply le_upd_frame_r
+  iaesop baseline
+  -- refine .trans ?_ (le_upd_mono sep_comm.mp)
+  -- refine (.trans sep_comm.mp ?_)
+  -- iapply le_upd_frame_r
 
-@[rocq_alias le_upd.le_upd_later]
+@[rocq_alias le_upd.le_upd_later, iaesop backward]
 theorem le_upd_later {P : IProp GF} : ⊢ £ 1 -∗ ▷ P -∗ |==£> P := by
   iintro H1 H2
   iapply le_upd_later_elim $$ H1
-  inext
-  iapply le_upd_intro $$ H2
+  iaesop baseline
+  -- inext
+  -- iapply le_upd_intro $$ H2
 
-@[rocq_alias le_upd.except_0_le_upd]
+-- [TODO] Find the reason why it is so slow
+@[rocq_alias le_upd.except_0_le_upd, iaesop backward]
 theorem except_0_le_upd {P : IProp GF} : ◇ (|==£> P) ⊢ |==£> (◇ P) := by
-  simp only [BIBase.except0]
+  unfold BIBase.except0
   iintro (H|H)
-  · iapply le_upd_intro
-    ileft
-    iexact H
-  · iapply le_upd_mono $$ H
-    iintro H
-    iright
-    iexact H
+    <;> iaesop baseline
+  -- · iapply le_upd_intro
+  --   ileft
+  --   iexact H
+  -- · iaesop baseline
+    -- iapply le_upd_mono $$ H
+    -- iintro H
+    -- iright
+    -- iexact H
 
 end Upd
 
@@ -370,8 +380,8 @@ theorem le_upd_elim n (P : IProp GF) :
       · iintro %P %Q H HP; imod HP; imodintro; inext; iapply H $$ HP
       iintro IH
       iapply iter_modal_intro $$ [IH]
-      · iintro %Q H; imodintro; inext; iexact H
       -- iaesop baseline
+      · iintro %Q H; imodintro; inext; iexact H
       imod IH; imodintro
       imod IH with ⟨%m', %Hlt, H1, H2⟩; imodintro
       iexists m'
@@ -387,14 +397,16 @@ theorem le_upd_elim_complete n (P : IProp GF) :
   ihave Hit := le_upd_elim n P $$ Hlc Hupd
   rw [show Nat.succ n = n + 1 by omega, Nat.repeat_add]
   iapply iter_modal_mono $$ [] Hit
-  · iintro %P %Q Hent HP
-    imod HP; imodintro; inext
-    iapply Hent $$ HP
-  simp only [Nat.repeat]
-  iintro Hupd
-  imod Hupd; imodintro
-  imod Hupd; inext
-  iaesop baseline
+  · iaesop baseline
+  · simp only [Nat.repeat]; iaesop baseline
+  -- · iintro %P %Q Hent HP
+    -- imod HP; imodintro; inext
+    -- iapply Hent $$ HP
+  -- simp only [Nat.repeat]
+  -- iaesop baseline
+  -- iintro Hupd
+  -- imod Hupd; imodintro
+  -- imod Hupd; inext
   -- icases Hupd with ⟨%m, ⟨_, ⟨_, HP⟩⟩⟩
   -- iexact HP
 
@@ -402,18 +414,20 @@ theorem le_upd_elim_complete n (P : IProp GF) :
 instance {P : IProp GF} : ElimModal True p false (bupd P) P (le_upd Q) (le_upd Q) where
   elim_modal := by
     cases p <;> (dsimp; intro _)
-    · iintro ⟨H1, H2⟩
-      iapply le_upd_bind $$ H2
-      iapply bupd_le_upd $$ H1
-    · iintro ⟨#H1, H2⟩
-      iapply le_upd_bind $$ H2
-      iapply bupd_le_upd $$ H1
+    all_goals iaesop baseline
+    -- · iintro ⟨H1, H2⟩
+    --   iapply le_upd_bind $$ H2
+    --   iapply bupd_le_upd $$ H1
+    -- · iintro ⟨#H1, H2⟩
+    --   iapply le_upd_bind $$ H2
+    --   iapply bupd_le_upd $$ H1
 
 @[rocq_alias le_upd.from_assumption_le_upd]
 instance from_assumption_le_upd {p} {P Q : IProp GF} [h : FromAssumption p ioP P Q] :
     FromAssumption p ioP P (le_upd Q) where
   from_assumption := h.1.trans le_upd_intro
 
+-- [TODO] consider about the instance's theorem
 @[rocq_alias le_upd.from_pure_le_upd]
 instance {P : IProp GF} [H : FromPure a P io φ] : FromPure a (le_upd P) io φ where
   from_pure := by
@@ -430,24 +444,27 @@ instance {P : IProp GF} [H : IsExcept0 P] : IsExcept0 (le_upd P) where
   is_except0 := by
     iintro G
     icases except_0_le_upd $$ G with G
-    iapply le_upd_mono $$ G
-    iapply H.is_except0
+    iaesop baseline
+    -- iapply le_upd_mono $$ G
+    -- iapply H.is_except0
 
 @[rocq_alias le_upd.from_modal_le_upd]
 instance {P : IProp GF} : FromModal True modality_id (le_upd P) (le_upd P) P where
   from_modal := by
     simp only [modality_id, id_eq, forall_const]
-    iapply le_upd_intro
+    iaesop baseline
+    -- iapply le_upd_intro
 
 @[rocq_alias le_upd.elim_modal_le_upd]
 instance {P : IProp GF} : ElimModal True p false (le_upd P) P (le_upd Q) (le_upd Q) where
   elim_modal := by
     intro _
     cases p <;> dsimp
-    · iintro ⟨H1, H2⟩
-      iapply le_upd_bind $$ H2 H1
-    · iintro ⟨H1, H2⟩
-      iapply le_upd_bind $$ H2 H1
+    all_goals iaesop baseline
+    -- · iintro ⟨H1, H2⟩
+    --   iapply le_upd_bind $$ H2 H1
+    -- · iintro ⟨H1, H2⟩
+    --   iapply le_upd_bind $$ H2 H1
 
 @[rocq_alias le_upd.frame_le_upd]
 instance {p} {P R Q : IProp GF} [hf : Frame p R P Q] : Frame p R (le_upd P) (le_upd Q) where
@@ -461,9 +478,9 @@ theorem lc_alloc [H : LcGpreS GF] n : ⊢@{IProp GF} |==> ∃ _ : LcGS GF, lc_su
     with ⟨%γLC, HOwn⟩
   icases iOwn_op $$ HOwn with ⟨HAuth, HFrag⟩
   let LC : LcGS GF := { lc_elem := H.lc_elem, lc_name := γLC }
+  simp only [lc_supply, lc]
   iexists LC
   imodintro
-  simp only [lc_supply, lc]
   iaesop baseline
   -- isplitl [HAuth] <;> iassumption
 
@@ -489,9 +506,10 @@ theorem lc_soundness [LcGpreS GF] m (P : IProp GF) [Plain P]  (H : ∀ {_: LcGS 
     simp only [Nat.succ_eq_add_one, Nat.repeat]
     iintro H
     iapply later_laterN
-    iapply bupd_elim
-    imod H; imodintro; inext
-    exact IH
+    iaesop baseline
+    -- iapply bupd_elim
+    -- imod H; imodintro; inext
+    -- exact IH
 
 section If
 
@@ -510,55 +528,62 @@ instance le_upd_if_ne : NonExpansive (le_upd_if b (GF := GF)) := by
 @[rocq_alias le_upd_if.le_upd_if_mono']
 theorem le_upd_if_mono {P Q : IProp GF} : (P ⊢ Q) → (le_upd_if b P) ⊢ (le_upd_if b Q) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · intro H; iintro G
-    imod G; imodintro; iapply H $$ G
-  · apply le_upd_mono
+    <;> iaesop baseline
+  -- · intro H; iintro G
+  --   imod G; imodintro; iapply H $$ G
+  -- · apply le_upd_mono
 
 @[rocq_alias le_upd_if.le_upd_if_intro]
 theorem le_upd_if_intro {b} {P : IProp GF} : P ⊢ le_upd_if b P := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · iintro H; imodintro; iassumption
-  · apply le_upd_intro
+    <;> iaesop baseline
+  -- · iintro H; imodintro; iassumption
+  -- · apply le_upd_intro
 
 @[rocq_alias le_upd_if.le_upd_if_bind]
 theorem le_upd_if_bind {b} {P Q : IProp GF} :
     ⊢ (P -∗ le_upd_if b Q) -∗ (le_upd_if b P) -∗ (le_upd_if b Q) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · iaesop baseline
-    -- iintro H G
-    -- imod G
-    -- iapply H $$ G
-  · apply le_upd_bind
+    <;> iaesop baseline
+  -- · iintro H G
+  --   imod G
+  --   iapply H $$ G
+  -- · apply le_upd_bind
 
 @[rocq_alias le_upd_if.le_upd_if_trans]
 theorem le_upd_if_trans {b} {P : IProp GF} : (le_upd_if b (le_upd_if b P)) ⊢ le_upd_if b P := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · apply bupd_idem.mp
-  · apply le_upd_trans
+    <;> iaesop baseline
+  -- · apply bupd_idem.mp
+  -- · apply le_upd_trans
 
-@[rocq_alias le_upd_if.le_upd_if_frame_r]
+@[rocq_alias le_upd_if.le_upd_if_frame_r, iaesop backward]
 theorem le_upd_if_frame_r {b} {P R : IProp GF} : (le_upd_if b P) ∗ R ⊢ le_upd_if b iprop(P ∗ R) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · apply bupd_frame_r
-  · apply le_upd_frame_r
+    <;> iaesop baseline
+  -- · apply bupd_frame_r
+  -- · apply le_upd_frame_r
 
 @[rocq_alias le_upd_if.bupd_le_upd_if]
 theorem bupd_le_upd_if {b} {P : IProp GF} : (|==> P) ⊢ (le_upd_if b P) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · exact .rfl
-  · apply bupd_le_upd
+    <;> iaesop baseline
+  -- · exact .rfl
+  -- · apply bupd_le_upd
 
 @[rocq_alias le_upd_if.le_upd_if_frame_l]
 theorem le_upd_if_frame_l {b} {R Q : IProp GF} : (R ∗ le_upd_if b Q) ⊢ le_upd_if b iprop(R ∗ Q) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · apply bupd_frame_l
-  · apply le_upd_frame_l
+    <;> iaesop baseline
+  -- · apply bupd_frame_l
+  -- · apply le_upd_frame_l
 
 @[rocq_alias le_upd_if.except_0_le_upd_if]
 theorem except_0_le_upd_if {b} {P : IProp GF} : ◇ (le_upd_if b P) ⊢ le_upd_if b iprop(◇ P) := by
   cases b <;> (simp only [le_upd_if, Bool.false_eq_true, ↓reduceIte])
-  · apply bupd_except0
-  · apply except_0_le_upd
+    <;> iaesop baseline
+  -- · apply bupd_except0
+  -- · apply except_0_le_upd
 
 @[rocq_alias le_upd_if.elim_bupd_le_upd_if]
 instance {b} {p} {P Q : IProp GF} : ElimModal True p false (bupd P) P (le_upd_if b Q) (le_upd_if b Q) := by

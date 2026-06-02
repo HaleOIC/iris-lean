@@ -10,8 +10,8 @@ public import Iris.Algebra.Numbers
 public import Iris.ProofMode
 public import Iris.BI.Algebra
 public import Iris.Instances.IProp
-public import Iris.Instances.Lib.WSat
-public import Iris.Instances.Lib.LaterCredits
+public import Iris.Tests.Test9WSat
+public import Iris.Tests.Test6LaterCredits
 public import Iris.BI.Plainly
 
 @[expose] public section
@@ -77,14 +77,15 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     iintro ⟨$, HE⟩ !> !>
     ihave $ := (ownE_op (disjoint_symm disjoint_diff_right)).mpr $$ [$]
   except0 {E1 E2 P} := by
-    simp only [uPred_fupd]
-    iintro >H; iexact H
+    unfold uPred_fupd
+    iaesop baseline
+    -- iintro >H; iexact H
   mono H := by
     simp only [uPred_fupd]
     iintro H ⟨Hwsat, HE⟩
     ihave H := H $$ [$]
-    iapply le_upd_if_mono $$ H
     iaesop baseline
+    -- iapply le_upd_if_mono $$ H
     -- iintro >⟨$, $, H3⟩ !>
     -- iapply H $$ H3
   trans {_ _ _ _} := by
@@ -92,8 +93,8 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     iintro H ⟨Hwsat, HE⟩
     iapply le_upd_if_trans
     ihave H := H $$ [$]
-    iapply le_upd_if_mono $$ H
     iaesop baseline
+    -- iapply le_upd_if_mono $$ H
     -- iintro >⟨H1, H2, H3⟩
     -- iapply H3 $$ [$]
   mask_frame_r' {_ _ _ _} Hdisj := by
@@ -112,18 +113,18 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     simp only [uPred_fupd]
     iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
     ispecialize H $$ [$]
-    ihave H := le_upd_if_frame_r $$ [$H $Hx]
     iaesop baseline
+    -- ihave H := le_upd_if_frame_r $$ [$H $Hx]
     -- imod H with ⟨>⟨$, $, $⟩, $⟩; imodintro
     -- ipure_intro; trivial
 
 @[rocq_alias uPred_bi_bupd_fupd]
 instance {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIUpdateFUpdate (IProp GF) where
   fupd_of_bupd {_ _} := by
-    iintro H
     simp only [fupd, uPred_fupd]
-    iintro ⟨$, $⟩
     iaesop baseline
+    -- iintro H
+    -- iintro ⟨$, $⟩
     -- imod H; imodintro; imodintro
     -- iassumption
 
@@ -145,19 +146,19 @@ instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen fa
     ihave #HP : ▷ ◇ ■ P $$ [H Hwsat HE]
     · inext
       imod H $$ [$] with ⟨_, _, $⟩
-    imodintro
-    iframe
-    imodintro; inext;
     iaesop baseline
+    -- imodintro
+    -- iframe
+    -- imodintro; inext;
     -- imod HP; imodintro; iassumption
   fupd_plainly_sForall_2 E P := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro H ⟨Hwsat, HE⟩
     ihave #HP : ◇ ■ sForall P $$ [H Hwsat HE]
     · imod H $$ [$] with ⟨_, _, $⟩
-    imodintro;
-    imod HP -- [Fix]
     iaesop baseline
+    -- imodintro;
+    -- imod HP
     -- imodintro
     -- iframe
     -- iclear H
@@ -171,13 +172,12 @@ variable {GF : BundledGFunctors} [InvGS GF]
 
 @[rocq_alias lc_fupd_elim_later]
 theorem lc_fupd_elim_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (▷ P) -∗ |={E}=> P := by
-  iintro Hcr HP
-  simp only [fupd, uPred_fupd]
-  iintro ⟨Hwsat, HE⟩
-  simp only [le_upd_if, ↓reduceIte]
-  iapply le_upd_later $$ Hcr
-  inext;
+  simp only [fupd, uPred_fupd, le_upd_if, ↓reduceIte]
   iaesop baseline
+  -- iintro Hcr HP
+  -- iintro ⟨Hwsat, HE⟩
+  -- iapply le_upd_later $$ Hcr
+  -- inext;
   -- imodintro
   -- isplitl [Hwsat]; iassumption
   -- isplitl [HE]; iassumption
@@ -191,14 +191,15 @@ theorem lc_fupd_add_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (|={E}=> �
   simp only [le_upd_if, ↓reduceIte]
   -- FIXME: Is it possible to make >> work instead of adding the spaces between them?
   ihave > > ⟨H1, H2, H3⟩ := HP $$ [Hwsat HE]
-  · isplitl [Hwsat] <;> iassumption
-  imod le_upd_later $$ Hcr H3 with H3
-  iaesop baseline
+  all_goals iaesop baseline
+  -- · isplitl [Hwsat] <;> iassumption
+  -- imod le_upd_later $$ Hcr H3 with H3
   -- imodintro; imodintro
   -- isplitl [H1]; iassumption
   -- isplitl [H2]; iassumption
   -- iassumption
 
+-- [TODO]: Find the reason why failed
 @[rocq_alias lc_fupd_add_laterN]
 theorem lc_fupd_add_laterN (n : Nat) {E : CoPset} {P : IProp GF} :
     ⊢ £ n -∗ (|={E}=> ▷^[n] P) -∗ |={E}=> P := by
@@ -211,9 +212,9 @@ theorem lc_fupd_add_laterN (n : Nat) {E : CoPset} {P : IProp GF} :
     iintro ⟨Hcr, Hcrs⟩ >HP
     ihave HP := (laterN_later n).mp $$ HP
     iapply lc_fupd_add_later $$ Hcr
-    iaesop baseline
-    -- iapply IH $$ Hcrs [HP]
-    -- imodintro; iexact HP
+    -- iaesop baseline
+    iapply IH $$ Hcrs [HP]
+    imodintro; iexact HP
 
 end LaterCreditLemmas
 
@@ -223,6 +224,7 @@ open Std.LawfulSet
 
 variable {GF : BundledGFunctors}
 
+-- [TODO]: Find reason why failed (missing some metavariables)
 @[rocq_alias fupd_soundness_lc]
 theorem fupd_soundness_lc [InvGpreS GF] {E1 E2 : CoPset} {P : IProp GF} [Plain P]
      (H : ∀ (_ : InvGS GF), ⊢ £ m -∗ |={E1,E2}=> P) : ⊢ P := by
@@ -235,10 +237,12 @@ theorem fupd_soundness_lc [InvGpreS GF] {E1 E2 : CoPset} {P : IProp GF} [Plain P
   rw [diff_subset_decomp (s₂ := ⊤) ((fun _ _ => CoPset.mem_full) : E1 ⊆ ⊤)]
   ihave ⟨HE1, HE2⟩ := (ownE_op (disjoint_symm disjoint_diff_right)).mp $$ HE
   imod H $$ Hcrs [Hwsat HE2] with ⟨_, _, H⟩
+    -- <;> iaesop baseline
   · isplitl [Hwsat] <;> iassumption
   iapply le_upd_later $$ Hcr [H]
   iapply except0_into_later $$ H
 
+-- [TODO]: Find reason why failed (missing some metavariables)
 @[rocq_alias fupd_soundness_no_lc]
 theorem fupd_soundness_no_lc [InvGpreS GF] {E1 E2 : CoPset} {P : IProp GF} [Plain P]
     (H : ∀ (_ : InvGS_gen false GF), ⊢ £ m -∗ |={E1,E2}=> P) : ⊢ P := by
@@ -251,14 +255,17 @@ theorem fupd_soundness_no_lc [InvGpreS GF] {E1 E2 : CoPset} {P : IProp GF} [Plai
   rw [diff_subset_decomp (s₂ := ⊤) ((fun _ _ => CoPset.mem_full) : E1 ⊆ ⊤)]
   ihave ⟨HE1, HE2⟩ := (ownE_op (disjoint_symm disjoint_diff_right)).mp $$ HE
   imod H $$ Hcrs [Hwsat HE2] with ⟨_, _, H⟩
+    -- <;> iaesop baseline
   · isplitl [Hwsat] <;> iassumption
   iapply le_upd_later $$ Hcr [H]
   iapply except0_into_later $$ H
 
+-- [TODO]: Find reason why failed (missing some metavariables)
 @[rocq_alias fupd_soundness_gen]
 theorem fupd_soundness_gen (hlc : Bool) [InvGpreS GF] (m : Nat) {E1 E2 : CoPset} {P : IProp GF} [Plain P] :
   (∀ (_ : InvGS_gen hlc GF), ⊢ £ m -∗ |={E1,E2}=> P) → ⊢ P := by
   cases hlc
+    -- <;> iaesop baseline
   · apply fupd_soundness_no_lc
   · apply fupd_soundness_lc
 
@@ -284,14 +291,15 @@ theorem step_fupdN_soundness_no_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Pla
   imod step_fupdN_plain $$ H with H
   imodintro
   iapply plainly_mono (laterN_later _).mpr
-  iapply laterN_plainly
-  inext
-  iapply later_plainly.mp
-  imod H with #H
-  inext
   iaesop baseline
+  -- iapply laterN_plainly
+  -- inext
+  -- iapply later_plainly.mp
+  -- imod H with #H
+  -- inext
   -- imodintro; iassumption
 
+-- [TODO]: Find the reason why timeout (real loop or unfinished)?
 @[rocq_alias step_fupdN_soundness_lc]
 theorem step_fupdN_soundness_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain P]
     (H : ∀ (_ : InvGS GF), ⊢ £ m -∗ |={⊤,∅}=> |={∅}▷=>^[n] P) : ⊢ P := by
@@ -314,14 +322,16 @@ theorem step_fupdN_soundness_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain 
     simp only [Nat.repeat]
     iintro ⟨⟨Hcr, Hcrs⟩, >H⟩
     imod lc_fupd_elim_later $$ Hcr H with >H
-    iaesop baseline
-    -- iapply IH
-    -- iframe
+    -- iaesop baseline
+    iapply IH
+    iframe
 
+-- [TODO]: Find the reason why failed
 @[rocq_alias step_fupdN_soundness_gen]
 theorem step_fupdN_soundness_gen [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain P] hlc :
     (∀ (_ : InvGS_gen hlc GF), ⊢ £ m -∗ |={⊤,∅}=> |={∅}▷=>^[n] P) → ⊢ P := by
   cases hlc
+    -- <;> iaesop baseline
   · apply step_fupdN_soundness_no_lc
   · apply step_fupdN_soundness_lc
 
@@ -352,9 +362,9 @@ theorem step_fupdN_soundness_no_lc' [InvGpreS GF] (n m : Nat) {P : IProp GF} [Pl
       iassumption
     | succ n IH =>
       simp only [Nat.repeat]
-      iintro >H
-      imodintro; imodintro; inext
       iaesop baseline
+      -- iintro >H
+      -- imodintro; imodintro; inext
       -- imod H
       -- apply IH
 
