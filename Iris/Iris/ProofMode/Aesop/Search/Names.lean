@@ -34,7 +34,9 @@ public meta def collectIrisHypNames (goal : MVarId) : MetaM (Array Name) := do
       | return #[]
     return hypNameArray irisGoal.hyps
 
-public meta def nameDepthWithPrefix? (pref : String) (name : Name) : Option Nat :=
+/- Parse a generated name of the shape into its `(depth, index)` components-/
+public meta def nameDepthIndexWithPrefix? (pref : String) (name : Name) :
+    Option (Nat × Nat) :=
   match name.eraseMacroScopes with
   | .str _ str =>
     match str.splitOn "_" with
@@ -42,23 +44,22 @@ public meta def nameDepthWithPrefix? (pref : String) (name : Name) : Option Nat 
       match depthPart.dropPrefix? pref with
       | some depthPart =>
         match depthPart.toNat?, indexPart.toNat? with
-        | some depth, some _ => some depth
+        | some depth, some index => some (depth, index)
         | _, _ => none
       | none => none
     | _ => none
   | _ => none
-
-public meta def nameDepth? (name : Name) : Option Nat :=
-  nameDepthWithPrefix? "H" name
 
 /- Generate a unique binder name for search process. -/
 public meta def mkFreshBinderFromNamesWithPrefix
     (pref : String) (names : Array Name) (depth : Nat)
     (offset : Nat := 1) :
     ProofModeM (TSyntax ``binderIdent) := do
-  let index := names.foldl (init := 0) λ count name =>
-    if nameDepthWithPrefix? pref name == some depth then count + 1 else count
-  let ident := mkIdent $ (Name.mkSimple pref).appendAfter s!"{depth}_{index + offset}"
+  let maxIndex := names.foldl (init := 0) λ acc name =>
+    match nameDepthIndexWithPrefix? pref name with
+    | some (d, index) => if d == depth then max acc index else acc
+    | none => acc
+  let ident := mkIdent $ (Name.mkSimple pref).appendAfter s!"{depth}_{maxIndex + offset}"
   `(binderIdent| $ident:ident)
 
 /- Generate an unique Iris hypothesis binder name for search process. -/

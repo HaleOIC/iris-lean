@@ -219,7 +219,8 @@ theorem own_inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : �
 @[rocq_alias own_inv_to_inv, iaesop backward]
 theorem own_inv_to_inv (M : Namespace) (P : IProp GF) :
     ⊢ own_inv M P -∗ inv M P := by
-  simp only [inv]
+  unfold inv
+  -- iaesop baseline
   iintro #I
   imodintro
   iintro %E %Hsub
@@ -261,7 +262,7 @@ variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 @[rocq_alias inv_acc, iaesop backward]
 theorem inv_acc (E : CoPset) (N : Namespace) (P : IProp GF) (Hsub : ↑N ⊆ E) :
     ⊢ inv N P ={E, E \ ↑N}=∗ ▷ P ∗ (▷ P ={E \ ↑N, E}=∗ True) := by
-  simp only [inv]
+  unfold inv
   iaesop baseline
   -- iintro #HI
   -- iapply HI $$ %E []
@@ -324,9 +325,9 @@ theorem inv_alter (N : Namespace) (P Q : IProp GF) :
 @[rocq_alias inv_iff, iaesop backward]
 theorem inv_iff (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N P -∗ ▷ □ (P ↔ Q) -∗ inv N Q := by
-  iintro #HI #HPQ
-  iapply inv_alter $$ HI
   iaesop baseline
+  -- iintro #HI #HPQ
+  -- iapply inv_alter $$ HI
   -- inext;
   -- imodintro; iintro HP
   -- isplitl [HP]
