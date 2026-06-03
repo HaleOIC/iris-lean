@@ -40,16 +40,16 @@ private partial def matchConclusion? (type : Expr) : MetaM (Option Expr) :=
     | none, none, none => return none
 
 /- Instantiate a theorem declaration and all of its forall binders. -/
-def instantiateTheorem (decl : Name) : MetaM (Expr × Expr) := do
+def instantiateTheorem (decl : Name) : MetaM (Expr × Array Expr × Expr) := do
   let value ← mkConstWithFreshMVarLevels decl
   let type ← instantiateMVars (← inferType value)
   let ⟨mvars, _, body⟩ ← forallMetaTelescope type
-  return (mkAppN value mvars, ← instantiateMVars body)
+  return (mkAppN value mvars, mvars, ← instantiateMVars body)
 
 /- Instantiate a backward theorem and index it by the Iris proposition it can prove. -/
 def mkBackwardIndexingMode (decl : Name) : MetaM IndexingMode :=
   withoutModifyingState do
-    let (_, body) ← instantiateTheorem decl
+    let (_, _, body) ← instantiateTheorem decl
     let target? ← (show MetaM (Option Expr) from do
       match ← matchConclusion? body with
       | some target => return some target

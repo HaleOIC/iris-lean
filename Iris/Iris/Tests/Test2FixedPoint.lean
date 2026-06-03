@@ -345,21 +345,21 @@ theorem greatest_fixpoint_paco :
     -- · iapply H
   · iapply Hmon $$ HΦ
 
+@[iaesop backward]
 theorem greatest_fixpoint_coind [_HF : NonExpansive F] :
     ⊢ □ (∀ y, Φ y -∗ F (fun x => iprop(Φ x ∨ bi_greatest_fixpoint F x)) y) -∗
       ∀ x, Φ x -∗ bi_greatest_fixpoint F x := by
-  iintro #Ha
-  iapply greatest_fixpoint_paco
-  iintro !> %y Hy
   letI _ : NonExpansive fun Ψ a => iprop(Φ a ∨ F Ψ a) :=
     ⟨fun _ _ _ H x => or_ne.ne (.of_eq rfl) (_HF.ne H x)⟩
   letI _ : NonExpansive fun x => iprop(Φ x ∨ bi_greatest_fixpoint F x) :=
     ⟨fun _ _ _ H => or_ne.ne (NonExpansive.ne H) (NonExpansive.ne H)⟩
+  iintro #Ha
+  iapply greatest_fixpoint_paco
+  iintro !> %y Hy
   iapply mono_pred (Φ := (fun x => iprop(Φ x ∨ bi_greatest_fixpoint F x))) $$ [] [Ha Hy]
     <;> try iaesop baseline
   · iintro !> %x ⟨HΦ|Hf⟩
-    · iapply greatest_fixpoint_unfold_2
-      iaesop baseline
+    · iaesop baseline
       -- ileft
       -- iexact HΦ
     · iapply greatest_fixpoint_strong_mono (F := F) $$ [] Hf

@@ -11,7 +11,6 @@ public import Iris.Std.Namespaces
 public import Iris.Instances.IProp
 public import Iris.Tests.Test4Fupd
 public import Iris.Std.CoPset
-import Iris.Instances.Lib.WSat
 
 @[expose] public section
 

@@ -20,7 +20,7 @@ private structure BackwardExpansion where
 /-- Bridge a theorem proof into the current Iris BI as an intuitionistic proposition. -/
 private def mkBackwardHyp? {prop : Q(Type u)} (bi : Q(BI $prop))
     (decl : Name) : MetaM (Option Q($prop)) := do
-  let (_, body) ← instantiateTheorem decl
+  let (_, _, body) ← instantiateTheorem decl
   if !(← Meta.isProp body) then
     return none
   have body : Q(Prop) := body
@@ -98,10 +98,20 @@ def run {Q : Type} [Queue Q] (input : RuleInput) : SearchM Q RuleOutput := do
     }
   }
 
-/-- Replay a registered backward theorem as an Iris intuitionistic proposition. -/
+/-- Synthesize the backward theorem's instance-argument metavariables. -/
+private def synthAuxInstances (mvars : Array Expr) : MetaM Unit := do
+  for mvarExpr in mvars do
+    let .mvar mvarId := ← instantiateMVars mvarExpr | continue
+    if ← mvarId.isAssigned then continue
+    let mvarType ← instantiateMVars (← mvarId.getType)
+    let some _ ← isClass? mvarType | continue
+    let some inst ← synthInstance? mvarType | continue
+    mvarId.assign inst
+
+/-- Replay a registered backward theorem as an Iris intuitionistic proposition -/
 private def mkBackwardProof {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
-    (decl : Name) : ProofModeM ((hyp : Q($prop)) × Q($e ⊢ $e ∗ □ $hyp)) := do
-  let (value, body) ← instantiateTheorem decl
+    (decl : Name) : ProofModeM ((hyp : Q($prop)) × Q($e ⊢ $e ∗ □ $hyp) × Array Expr) := do
+  let (value, mvars, body) ← instantiateTheorem decl
   if !(← Meta.isProp body) then
     throwError m!"iaesop(baseline): backward replay theorem {decl} is not a proposition"
   have body : Q(Prop) := body
@@ -112,7 +122,7 @@ private def mkBackwardProof {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
   let body : Q(Prop) ← instantiateMVars body
   let value : Q($body) ← instantiateMVars value
   let inst : Q(AsEmpValid .into $body .in $prop .in $bi $hyp) := inst
-  return ⟨hyp, q(have_asEmpValid (P := $hyp) (Q := $e) (h1 := $inst) $value)⟩
+  return ⟨hyp, q(have_asEmpValid (P := $hyp) (Q := $e) (h1 := $inst) $value), mvars⟩
 
 /-- Replay a close-goal backward theorem application. -/
 private def replayClose (decl : Name) (goalMVarId : MVarId) :
@@ -121,8 +131,9 @@ private def replayClose (decl : Name) (goalMVarId : MVarId) :
     let goalType ← instantiateMVars (← goalMVarId.getType)
     let some { bi, e, goal := target, .. } := parseIrisGoal? goalType
       | throwError "iaesop(baseline): backward replay expected an Iris goal"
-    let ⟨hyp, haveProof⟩ ← mkBackwardProof (bi := bi) (e := e) decl
+    let ⟨hyp, haveProof, mvars⟩ ← mkBackwardProof (bi := bi) (e := e) decl
     let coreProof ← Rule.ApplyHyps.mkCloseCoreProof (bi := bi) (e := e) q(true) hyp target
+    synthAuxInstances mvars
     goalMVarId.assign q(Entails.trans $haveProof $coreProof)
     return #[]
 
@@ -133,9 +144,10 @@ private def replayApply (decl : Name) (goalMVarId : MVarId)
     let goalType ← instantiateMVars (← goalMVarId.getType)
     let some { bi, e, hyps, goal := target, .. } := parseIrisGoal? goalType
       | throwError "iaesop(baseline): backward replay expected an Iris goal"
-    let ⟨hyp, haveProof⟩ ← mkBackwardProof (bi := bi) (e := e) decl
+    let ⟨hyp, haveProof, mvars⟩ ← mkBackwardProof (bi := bi) (e := e) decl
     let (coreProof, goals) ←
       Rule.ApplyHyps.replayApplyCore (bi := bi) hyps q(true) hyp target contexts (← goalMVarId.getTag)
+    synthAuxInstances mvars
     goalMVarId.assign q(Entails.trans $haveProof $coreProof)
     return goals
 
