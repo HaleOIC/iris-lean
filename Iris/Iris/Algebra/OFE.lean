@@ -202,6 +202,8 @@ theorem Discrete.discrete [OFE α] [Discrete α] {n} {x y : α} (h : x ≡{n}≡
   discrete_0 (h.le (Nat.zero_le _))
 export OFE.Discrete (discrete)
 
+instance Discrete.toDiscreteE [OFE α] [Discrete α] (x : α) : DiscreteE x := ⟨discrete_0⟩
+
 /-- For discrete OFEs, `n`-equivalence implies equivalence for any `n`. -/
 theorem Discrete.discrete_n [OFE α] [Discrete α] {n} {x y : α} (h : x ≡{0}≡ y) : x ≡{n}≡ y :=
   (discrete h).dist
@@ -210,6 +212,9 @@ export OFE.Discrete (discrete_n)
 class Leibniz (α : Type _) [OFE α] where
   eq_of_eqv {x y : α} : x ≡ y → x = y
 export OFE.Leibniz (eq_of_eqv)
+
+theorem Equiv.to_eq {α} [OFE α] [Leibniz α] {x y : α} (h : x ≡ y) : x = y :=
+  eq_of_eqv h
 
 #rocq_ignore boolO "Canonical Leibniz OFE on `bool`; Lean uses `LeibnizO Bool`."
 #rocq_ignore natO "Canonical Leibniz OFE on `nat`; Lean uses `LeibnizO Nat`."
@@ -274,6 +279,13 @@ infixr:25 " -c> " => ContractiveHom
 
 instance [OFE α] [OFE β] : CoeFun (α -c> β) (fun _ => α → β) := ⟨fun x => x.toHom.f⟩
 instance [OFE α] [OFE β] (f : α -c> β) : Contractive f := f.contractive
+
+def _root_.Function.toContractiveHom (f : α → β) [OFE α] [OFE β] [ι : OFE.Contractive f] : α -c> β where
+  f := f
+  contractive := ι
+
+@[simp] theorem _root_.Function.toContractiveHom_apply {f : α → β} [OFE α] [OFE β] [ι : OFE.Contractive f] {x} :
+  f.toContractiveHom x = f x := by rfl
 
 theorem InvImage.equivalence {α : Sort u} {β : Sort v}
     {r : β → β → Prop} {f : α → β} (H : Equivalence r) : Equivalence (InvImage r f) where
@@ -382,7 +394,7 @@ instance [OFE α] [Discrete α] : Discrete (Option α) where
 instance OFE.Option.some.ne [OFE α] : OFE.NonExpansive (some : α → Option α) := ⟨fun _ _ _ => id⟩
 
 @[rocq_alias Some_discrete]
-theorem Option.some_is_discrete [OFE α] {a : α} (Ha : DiscreteE a) : DiscreteE (some a) := by
+instance Option.some_is_discrete [OFE α] {a : α} (Ha : DiscreteE a) : DiscreteE (some a) := by
   constructor
   rintro (_|_) H
   · exact H
@@ -396,7 +408,7 @@ theorem Option.ne_match [OFE α] {B : Type _} [OFE B]
     match x', y', h with | some _, some _, h => hf.ne h | none, none, _ => Dist.rfl⟩
 
 @[rocq_alias None_discrete]
-theorem Option.none_is_discrete [OFE α] : DiscreteE (none : Option α) := by
+instance Option.none_is_discrete [OFE α] : DiscreteE (none : Option α) := by
   constructor; rintro (_|_) <;> simp
 
 instance Option.merge_ne [OFE α] {op : α → α → α} [NonExpansive₂ op] :
@@ -521,7 +533,7 @@ theorem NonExpansive₂.uncurry [OFE α] [OFE β] [OFE γ] {f : α → β → γ
   ⟨fun {_ _ _} (h : _ ∧ _) => hf.ne h.1 h.2⟩
 
 @[rocq_alias prod_discrete]
-theorem prod.is_discrete [OFE α] [OFE β] {a : α} {b : β} (Ha : DiscreteE a) (Hb : DiscreteE b) :
+instance prod.is_discrete [OFE α] [OFE β] {a : α} {b : β} (Ha : DiscreteE a) (Hb : DiscreteE b) :
     DiscreteE (a, b) := by
   constructor
   intro y H; refine ⟨Ha.discrete H.1, Hb.discrete H.2⟩
@@ -1770,4 +1782,3 @@ theorem OFE.cast_dist [Iα : OFE α] [Iβ : OFE β] {x y : α}
     (Ht : α = β) (HIt : Iα = Ht ▸ Iβ)  (H : x ≡{n}≡ y) :
     (Ht ▸ x) ≡{n}≡ (Ht ▸ y) := by
   subst Ht; subst HIt; exact H
-

@@ -1,15 +1,15 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Index.Query
-public meta import Iris.ProofMode.Aesop.Rule.Common.ApplyHyps
-public meta import Iris.ProofMode.Aesop.Rule.Common.ICases
-public meta import Iris.ProofMode.Aesop.Rule.Common.Identity
-public meta import Iris.ProofMode.Aesop.Rule.Common.IMod
-public meta import Iris.ProofMode.Aesop.Rule.Common.IModIntro
-public meta import Iris.ProofMode.Aesop.Rule.Common.IPureIntro
-public meta import Iris.ProofMode.Aesop.Rule.Common.ILeftRight
-public meta import Iris.ProofMode.Aesop.Rule.Common.IExist
-public meta import Iris.ProofMode.Aesop.Rule.Common.ISplit
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.ApplyHyps
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.ICases
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.Identity
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.IMod
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.IModIntro
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.IPureIntro
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.ILeftRight
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.IExist
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.ISplit
 
 public meta section
 

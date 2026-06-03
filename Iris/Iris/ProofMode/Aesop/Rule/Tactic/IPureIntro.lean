@@ -74,7 +74,7 @@ private def tryAssignPureIntro (goal : MVarId) : MetaM PureIntroResult := do
       return .stuckPurityFlag
     return .success (← saveState)
 
-/- Search for the possibility of `ipure_intro` applications -/
+/- Search for the possibility of `ipureintro` applications -/
 def run (input : RuleInput) : SearchM Q RuleOutput := do
   let goal := input.goal
   let .success postState ← liftM (show MetaM PureIntroResult from do

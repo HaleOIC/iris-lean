@@ -1,6 +1,6 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Rule.Common.Main
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.Main
 public meta import Iris.ProofMode.Aesop.Rule.Backward.Apply
 
 public meta section

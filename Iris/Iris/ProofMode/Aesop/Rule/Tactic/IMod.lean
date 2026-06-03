@@ -64,7 +64,7 @@ private partial def collectFromIris
       if isTrue p then .intuitionistic hyp else .spatial hyp
     let postState ← liftM (m := MetaM) saveState
     let generatedHyps := match childIrisGoal.hyps.find? patName with
-      | some (ivar, p, _) => if isTrue p then #[] else #[{name := patName, ivar}]
+      | some (ivar, _) => if ivar.persistent? then #[] else #[{name := patName, ivar}]
       | none => #[]
 
     trace[iaesop.tactic] s!"imod selected {name} and generated 1 goal"

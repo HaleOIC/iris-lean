@@ -4,10 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Zongyuan Liu
 -/
 
-module
-
-meta import Lean
-public meta import Iris.Std.RocqPorting
+import Lean
+import Iris.Std.RocqPorting
 
 /-!
 # Dump Porting Data
@@ -74,7 +72,10 @@ meta partial def discoverModules (srcDir : System.FilePath) : IO (Array Name) :=
     worklist := worklist.eraseIdx 0
     for entry in (← dir.readDir) do
       if (← entry.path.isDir) then
-        worklist := worklist.push (entry.path, modPrefix ++ entry.fileName.toName)
+        let childPrefix := modPrefix ++ entry.fileName.toName
+        -- Test-only porting copies duplicate real library module declarations.
+        unless childPrefix == `Iris.Tests do
+          worklist := worklist.push (entry.path, childPrefix)
       else if entry.fileName.endsWith ".lean" then
         let stem := (entry.fileName.dropEnd 5).toString
         result := result.push (modPrefix ++ stem.toName)

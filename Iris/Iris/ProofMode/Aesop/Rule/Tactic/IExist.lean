@@ -47,7 +47,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
   }
 
 /- Replay rebuilds the same existential view and then assigns the parent goal
-using the generated child proof followed by `exists_intro'`. -/
+  using the generated child proof followed by `from_exists_intro`. -/
 def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
   input.goal.withContext do
     let goalType ← instantiateMVars (← input.goal.getType)
@@ -65,7 +65,7 @@ def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
     let childTarget : Q($prop) := q($Φ $witness)
     let childProof : Q($e ⊢ $childTarget) ← mkBIGoal hyps childTarget (← input.goal.getTag)
     let targetRfl : Q($target ⊢ $target) := q(.rfl)
-    let introProof : Q($childTarget ⊢ $target) := q(exists_intro' $witness $targetRfl)
+    let introProof : Q($childTarget ⊢ $target) := q(from_exists_intro $witness $targetRfl)
     input.goal.assign q(($childProof).trans $introProof)
     return #[childProof.mvarId!]
 

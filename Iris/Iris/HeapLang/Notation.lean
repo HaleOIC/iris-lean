@@ -6,6 +6,7 @@ Authors: Michael Sammler
 module
 
 public import Iris.HeapLang.Syntax
+public meta import Lean.PrettyPrinter.Parenthesizer
 
 public meta section
 namespace Iris.HeapLang
@@ -149,6 +150,12 @@ syntax:100 "fork(" hl_exp  ")" : hl_exp
 /-- assert -/
 syntax:100 "assert(" hl_exp  ")" : hl_exp
 
+open Lean.PrettyPrinter.Parenthesizer in
+@[category_parenthesizer hl_exp]
+def hl_exp.parenthesizer : CategoryParenthesizer := fun prec => do
+  maybeParenthesize `hl_exp false (fun stx => Unhygienic.run `(hl_exp|($(⟨stx⟩)))) prec <|
+    parenthesizeCategoryCore `hl_exp prec
+
 partial def unpackHLExp [Monad m] [MonadRef m] [MonadQuotation m] : Term → m (TSyntax `hl_exp)
   | `(hl($e)) => `(hl_exp|$e)
   | `($t) => `(hl_exp|{$t})
@@ -159,8 +166,7 @@ partial def unpackHLVal [Monad m] [MonadRef m] [MonadQuotation m] : Term → m (
 
 partial def unpackHLBinder [Monad m] [MonadRef m] [MonadQuotation m] : Term → m (TSyntax `Lean.binderIdent)
   | `(hl_binder($e)) => `(binderIdent|$e)
--- TODO
-  | `($_) => panic! "unknown binder"
+  | `($_) => `(binderIdent|_)
 
 /-- elaborating binders -/
 macro_rules

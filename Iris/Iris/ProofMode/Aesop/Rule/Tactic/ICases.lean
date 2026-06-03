@@ -39,10 +39,10 @@ private def mkHypExpansion?
         else return none
     | throwError "iaesop: icases candidate disappeared from Hyps"
   have : $out =Q iprop(□?$removedP $removedHypType) := ⟨⟩
-  let leftIvar ← mkFreshIVarId
+  let leftIvar ← mkFreshIVarId (isTrue removedP)
   let leftHyp : IrisHyp := { name, ivar := leftIvar }
   let leftHyps := Hyps.add irisGoal.bi name leftIvar removedP left remainingHyps
-  let rightIvar ← mkFreshIVarId
+  let rightIvar ← mkFreshIVarId (isTrue removedP)
   let rightHyp : IrisHyp := { name, ivar := rightIvar }
   let rightHyps := Hyps.add irisGoal.bi name rightIvar removedP right remainingHyps
   let leftIrisGoal := { irisGoal with e := _, hyps := leftHyps }
@@ -93,7 +93,7 @@ def run (input : RuleInput) : SearchM Q RuleOutput := do
       successPossibility := .hundred
       effect := {
         usedHyps := #[expansion.usedHyp]
-        generatedSpatialHyps := expansion.generatedHyp[0]?.toArray
+        generatedSpatialHyps := if expansion.generatedHyp[0]?.any (·.ivar.persistent?) == true then #[] else expansion.generatedHyp[0]?.toArray
         action := some (.splitGoals expansion.fullContextIrisSubgoals)
       }
     }
@@ -125,9 +125,9 @@ def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
       match usedHyp with
       | .spatial hyp | .intuitionistic hyp => hyp.name
       | .lean .. => `H
-    let leftIvar ← mkFreshIVarId
+    let leftIvar ← mkFreshIVarId (isTrue p)
     let leftHyps := Hyps.add bi usedName leftIvar p left remainingHyps
-    let rightIvar ← mkFreshIVarId
+    let rightIvar ← mkFreshIVarId (isTrue p)
     let rightHyps := Hyps.add bi usedName rightIvar p right remainingHyps
     let tag ← input.goal.getTag
     let leftProof ← mkBIGoal leftHyps target tag

@@ -6,6 +6,7 @@ Authors: Mario Carneiro, Сухарик (@suhr), Markus de Medeiros, Puming Liu
 module
 
 public import Iris.Algebra.OFE
+public import Iris.Algebra.Monoid
 meta import Iris.Std.RocqPorting
 
 @[expose] public section
@@ -856,6 +857,12 @@ instance empty_cancelable : Cancelable (unit : α) where
 theorem _root_.Iris.OFE.Dist.to_incN {n} {x y : α} (H : x ≡{n}≡ y) : x ≼{n} y :=
   ⟨unit, ((equiv_dist.mp unit_right_id n).trans H).symm⟩
 
+instance ucmraMonoidOps {α : Type _} [UCMRA α] : Algebra.MonoidOps (CMRA.op (α := α)) UCMRA.unit where
+  op_ne := ⟨fun _ _ _ hx _ _ hy => hx.op hy⟩
+  op_assoc := CMRA.assoc.symm
+  op_comm := CMRA.comm
+  op_left_id := UCMRA.unit_left_id
+
 end ucmra
 
 
@@ -863,50 +870,50 @@ section Leibniz
 variable [Leibniz α]
 
 @[rocq_alias cmra_assoc_L]
-theorem assoc_L {x y z : α} : x • (y • z) = (x • y) • z := eq_of_eqv assoc
+theorem assoc_L {x y z : α} : x • (y • z) = (x • y) • z := assoc.to_eq
 
 @[rocq_alias cmra_comm_L]
-theorem comm_L {x y : α} : x • y = y • x := eq_of_eqv comm
+theorem comm_L {x y : α} : x • y = y • x := comm.to_eq
 
 @[rocq_alias cmra_pcore_l_L]
 theorem pcore_op_left_L {x cx : α} (h : pcore x = some cx) : cx • x = x :=
-  eq_of_eqv (pcore_op_left h)
+   (pcore_op_left h).to_eq
 
 @[rocq_alias cmra_pcore_idemp_L]
 theorem pcore_idem_L {x cx : α} (h : pcore x = some cx) : pcore cx = some cx :=
-  eq_of_eqv (pcore_idem h)
+  (pcore_idem h).to_eq
 
 @[rocq_alias cmra_op_opM_assoc_L]
 theorem op_opM_assoc_L {x y : α} {mz} : (x • y) •? mz = x • (y •? mz) :=
-  eq_of_eqv (op_opM_assoc ..)
+  (op_opM_assoc ..).to_eq
 
 @[rocq_alias cmra_pcore_r_L]
 theorem pcore_op_right_L {x cx : α} (h : pcore x = some cx) : x • cx = x :=
-  eq_of_eqv (pcore_op_right h)
+  (pcore_op_right h).to_eq
 
 @[rocq_alias cmra_pcore_dup_L]
 theorem pcore_op_self_L {x cx : α} (h : pcore x = some cx) : cx • cx = cx :=
-  eq_of_eqv (pcore_op_self h)
+  (pcore_op_self h).to_eq
 
 @[rocq_alias core_id_dup_L]
 theorem core_id_dup_L {x : α} [CoreId x] : x • x = x :=
-  eq_of_eqv (op_self x)
+  (op_self x).to_eq
 
 @[rocq_alias cmra_core_r_L]
 theorem op_core_L {x : α} [IsTotal α] : x • core x = x :=
-  eq_of_eqv (op_core x)
+  (op_core x).to_eq
 
 @[rocq_alias cmra_core_l_L]
 theorem core_op_L {x : α} [IsTotal α] : core x • x = x :=
-  eq_of_eqv (core_op x)
+  (core_op x).to_eq
 
 @[rocq_alias cmra_core_idemp_L]
 theorem core_idem_L {x : α} [IsTotal α] : core (core x) = core x :=
-  eq_of_eqv (core_idem x)
+  (core_idem x).to_eq
 
 @[rocq_alias cmra_core_dup_L]
 theorem core_op_core_L {x : α} [IsTotal α] : core x • core x = core x :=
-  eq_of_eqv core_op_core
+  core_op_core.to_eq
 
 @[rocq_alias core_id_total_L]
 theorem coreId_iff_core_eq_self {x : α} [IsTotal α] : CoreId x ↔ core x = x := calc
@@ -989,11 +996,11 @@ protected theorem Hom.core [CMRA β] (f : α -C> β) {x : α} : core (f x) ≡ f
     let ⟨s, hs, es⟩ := equiv_some h.symm
     rw [hs]; exact es
 
-@[rocq_alias cmra_morphism_monotone]
+@[rocq_alias cmra_morphism_mono]
 protected theorem Hom.mono [CMRA β] (f : α -C> β) {x₁ x₂ : α} : x₁ ≼ x₂ → f x₁ ≼ f x₂
   | ⟨z, hz⟩ => ⟨f.f z, (f.eqv hz).trans (f.op ..)⟩
 
-@[rocq_alias cmra_morphism_monotoneN]
+@[rocq_alias cmra_morphism_monoN]
 protected theorem Hom.monoN [CMRA β] (f : α -C> β) n {x₁ x₂ : α} : x₁ ≼{n} x₂ → f x₁ ≼{n} f x₂
   | ⟨z, hz⟩ => ⟨f.f z, (f.ne.ne hz).trans (f.op ..).dist⟩
 

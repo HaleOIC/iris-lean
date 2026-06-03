@@ -76,7 +76,7 @@ theorem BUpdPlain_plainly {P : PROP} : BUpdPlain iprop(■ P) ⊢ (■ P) := by
   -- iapply wand_rfl
 
 /- BiBUpdPlainly entails the alternative definition -/
-theorem BUpd_BUpdPlain [BIUpdate PROP] [BIBUpdatePlainly PROP] {P : PROP} : (|==> P) ⊢ BUpdPlain P := by
+theorem BUpd_BUpdPlain [BIUpdate PROP] [BIBUpdateSbi PROP] [BIAffine PROP] {P : PROP} : (|==> P) ⊢ BUpdPlain P := by
   unfold BUpdPlain
   iaesop baseline
   -- iintro HP %_ Hx
@@ -102,7 +102,7 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
   -- iapply H
   -- iexists y
   -- isplit
-  -- · ipure_intro
+  -- · ipureintro
   --   exact HΦ
   -- · iexact Hy
 

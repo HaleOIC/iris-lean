@@ -20,32 +20,32 @@ public section
 open BI Std
 
 theorem false_elim' [BI PROP] {P Q : PROP} : P ∗ □?p False ⊢ Q :=
-  wand_elim' <| intuitionisticallyIf_elim.trans false_elim
+  wand_elim_swap <| intuitionisticallyIf_elim.trans false_elim
 
 theorem exists_elim' [BI PROP] {p} {P A Q : PROP} {Φ : α → PROP} [inst : IntoExists A Φ]
     (h : ∀ a, P ∗ □?p Φ a ⊢ Q) : P ∗ □?p A ⊢ Q :=
-  (sep_mono_r <| (intuitionisticallyIf_mono inst.1).trans intuitionisticallyIf_exists.1).trans <| sep_exists_l.1.trans (exists_elim h)
+  (sep_mono_right <| (intuitionisticallyIf_mono inst.1).trans intuitionisticallyIf_exists.1).trans <| sep_exists_left.1.trans (exists_elim h)
 
 theorem sep_and_elim_l [BI PROP] {P A Q A1 A2 : PROP} [inst : IntoAnd p A A1 A2]
     (h : P ∗ □?p A1 ⊢ Q) : P ∗ □?p A ⊢ Q :=
-  (sep_mono_r <| inst.1.trans <| intuitionisticallyIf_mono and_elim_l).trans h
+  (sep_mono_right <| inst.1.trans <| intuitionisticallyIf_mono and_elim_l).trans h
 
 theorem sep_and_elim_r [BI PROP] {P A Q A1 A2 : PROP} [inst : IntoAnd p A A1 A2]
     (h : P ∗ □?p A2 ⊢ Q) : P ∗ □?p A ⊢ Q :=
-  (sep_mono_r <| inst.1.trans <| intuitionisticallyIf_mono and_elim_r).trans h
+  (sep_mono_right <| inst.1.trans <| intuitionisticallyIf_mono and_elim_r).trans h
 
 theorem sep_elim_spatial [BI PROP] {P A Q A1 A2 : PROP} [inst : IntoSep A A1 A2]
     (h : P ∗ A1 ⊢ A2 -∗ Q) : P ∗ A ⊢ Q :=
-  (sep_mono_r inst.1).trans <| sep_assoc.2.trans <| wand_elim h
+  (sep_mono_right inst.1).trans <| sep_assoc.2.trans <| wand_elim h
 
 theorem and_elim_intuitionistic [BI PROP] {P A Q A1 A2 : PROP} [inst : IntoAnd true A A1 A2]
     (h : P ∗ □ A1 ⊢ □ A2 -∗ Q) : P ∗ □ A ⊢ Q :=
-  (sep_mono_r <| inst.1.trans intuitionistically_and_sep.1).trans <|
+  (sep_mono_right <| inst.1.trans intuitionistically_and_sep.1).trans <|
   sep_assoc.2.trans <| wand_elim h
 
 theorem or_elim' [BI PROP] {p} {P A Q A1 A2 : PROP} [inst : IntoOr A A1 A2]
     (h1 : P ∗ □?p A1 ⊢ Q) (h2 : P ∗ □?p A2 ⊢ Q) : P ∗ □?p A ⊢ Q :=
-  (sep_mono_r <| (intuitionisticallyIf_mono inst.1).trans (intuitionisticallyIf_or _).1).trans <| BI.sep_or_l.1.trans <| or_elim h1 h2
+  (sep_mono_right <| (intuitionisticallyIf_mono inst.1).trans (intuitionisticallyIf_or _).1).trans <| BI.sep_or_left.1.trans <| or_elim h1 h2
 
 theorem intuitionistic_elim_spatial [BI PROP] {A A' Q : PROP}
     [IntoPersistently false A A'] [TCOr (Affine A) (Absorbing Q)]
@@ -56,7 +56,7 @@ theorem intuitionistic_elim_intuitionistic [BI PROP] {A A' Q : PROP} [IntoPersis
 
 theorem spatial_elim [BI PROP] {p} {A A' Q : PROP} [FromAffinely A' A p]
     (h : P ∗ A' ⊢ Q) : P ∗ □?p A ⊢ Q :=
-      (sep_mono_r <| (affinelyIf_of_intuitionisticallyIf).trans from_affinely).trans h
+      (sep_mono_right <| (affinelyIf_of_intuitionisticallyIf).trans from_affinely).trans h
 
 theorem of_emp_sep [BI PROP] {A Q : PROP} (h : A ⊢ Q) : emp ∗ A ⊢ Q := emp_sep.1.trans h
 
@@ -197,13 +197,13 @@ A proof of `hyps ∗ □?p A ⊢ goal`.
 -/
 partial def iCasesCore {P} (hyps : Hyps bi P) (goal : Q($prop)) (pat : iCasesPat)
     (p : Q(Bool)) (A : Q($prop))
-    (k : ∀ {P}, Hyps bi P → (goal' : Q($prop)) → ProofModeM Q($P ⊢ $goal')) :
+    (k : ∀ {P}, Hyps bi P → (goal' : Q($prop)) → ProofModeM Q($P ⊢ $goal') := addBIGoal) :
     ProofModeM (Q($P ∗ □?$p $A ⊢ $goal)) :=
   match pat with
   | .one name => do
     -- TODO: use Hyps.addWithInfo here?
     let (name, ref) ← getFreshName name
-    let ivar ← mkFreshIVarId
+    let ivar ← mkFreshIVarId (isTrue p)
     addHypInfo ref name ivar prop A (isBinder := true)
     let hyp := .mkHyp bi name ivar p A
     if let .emp _ := hyps then pure q(of_emp_sep $(← k hyp goal))
@@ -215,7 +215,7 @@ partial def iCasesCore {P} (hyps : Hyps bi P) (goal : Q($prop)) (pat : iCasesPat
 
   | .frame => do
     let ⟨ivar, hyps'⟩ ← Hyps.addWithInfo bi (← `(binderIdent | _)) p A hyps
-    let res ← iFrame bi _ hyps' goal [⟨.inl ivar, true⟩]
+    let res ← iFrame bi _ hyps' goal [⟨.ipm ivar, true⟩]
     res.finish @k
 
   | .conjunction [arg] | .disjunction [arg] => iCasesCore hyps goal arg p A @k
@@ -267,12 +267,16 @@ elab "icases" keep:("+keep")? colGt pmt:pmTerm "with" colGt pat:icasesPat : tact
     (try_dup_context := pat.should_try_dup_context)
 
   -- process pattern
-  let pf2 ← iCasesCore bi hyps goal pat p A λ hyps goal => addBIGoal hyps goal
+  let pf2 ← iCasesCore bi hyps goal pat p A
 
   mvar.assign q(($pf).trans $pf2)
 
 macro "imod" colGt pmt:pmTerm "with" colGt pat:icasesPat : tactic => `(tactic | icases $pmt with >$pat)
-macro "imod" colGt hyp:ident : tactic => `(tactic | imod $hyp:ident with $hyp:ident)
+macro "imod" colGt pmt:pmTerm : tactic =>
+  match pmt with
+  | `(pmTerm | $hyp:ident) => `(tactic | imod $pmt with $hyp:ident)
+  | `(pmTerm | $hyp:ident $$ $_*) => `(tactic | imod $pmt with $hyp:ident)
+  | _ => `(tactic | imod $pmt with _)
 
 -- TODO: remove these shortcuts if they are not used
 macro "iintuitionistic" hyp:ident : tactic => `(tactic | icases $hyp:ident with #$hyp:ident)

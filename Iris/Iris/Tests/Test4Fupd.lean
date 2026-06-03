@@ -97,7 +97,7 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     -- iapply le_upd_if_mono $$ H
     -- iintro >⟨H1, H2, H3⟩
     -- iapply H3 $$ [$]
-  mask_frame_r' {_ _ _ _} Hdisj := by
+  mask_frame_right_strong {_ _ _ _} Hdisj := by
     simp only [uPred_fupd]
     iintro H ⟨Hwsat, HE⟩
     ihave ⟨HE1, HE2⟩ := ownE_op Hdisj $$ HE
@@ -108,15 +108,15 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
       <;> iaesop baseline
     -- · iframe
     -- iapply H3
-    -- ipure_intro; assumption
-  frame_r {_ _ _ _} := by
+    -- ipureintro; assumption
+  frame_right {_ _ _ _} := by
     simp only [uPred_fupd]
     iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
     ispecialize H $$ [$]
     iaesop baseline
     -- ihave H := le_upd_if_frame_r $$ [$H $Hx]
     -- imod H with ⟨>⟨$, $, $⟩, $⟩; imodintro
-    -- ipure_intro; trivial
+    -- ipureintro; trivial
 
 @[rocq_alias uPred_bi_bupd_fupd]
 instance {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIUpdateFUpdate (IProp GF) where
@@ -131,7 +131,7 @@ instance {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIUpdateFUpdate (IProp GF)
 @[rocq_alias uPred_bi_fupd_sbi_no_lc]
 instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen false GF] :
     BIFUpdatePlainly (IProp GF) where
-  fupd_plainly_keep_l E E' P Q := by
+  fupd_plainly_keep_left E E' P Q := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
     ihave #>HP : ◇ ■ P $$ [H Hx Hwsat HE]

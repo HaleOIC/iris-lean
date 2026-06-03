@@ -105,7 +105,7 @@ instance least_fixpoint_absorbing [BIMonoPred F]
     [∀ Φ, [∀ x, Absorbing (Φ x)] → (∀ x, Absorbing (F Φ x))] {x : A} :
     Absorbing (bi_least_fixpoint F x) where
   absorbing := by
-    iapply wand_elim'
+    iapply wand_elim_swap
     revert x
     letI _ : NonExpansive fun x => iprop(True -∗ bi_least_fixpoint F x) :=
       ⟨fun _ _ _ H => wand_ne.ne .rfl (NonExpansive.ne H)⟩

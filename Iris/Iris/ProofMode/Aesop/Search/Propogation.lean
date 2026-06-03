@@ -242,7 +242,7 @@ private def markOtherGoalsIrrelevant
 
 mutual
 
-meta partial def propogateFromGoal (gref : GoalRef) : SearchM Q Unit := do
+meta partial def propogateFromGoal (_gref : GoalRef) : SearchM Q Unit := do
   -- let g ← gref.get
   -- if !g.state.isProven then
   --   throwError "iaesop: internal error : unproved goal should not be propagated"

@@ -1,7 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Backward.Shape
-public meta import Iris.ProofMode.Aesop.Rule.Common.ApplyHyps
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.ApplyHyps
 
 public meta section
 

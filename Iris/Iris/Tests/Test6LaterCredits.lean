@@ -85,7 +85,7 @@ theorem lc_supply_bound {n m} : ⊢@{IProp GF} lc_supply m -∗ £ n -∗ ⌜n �
   ihave H := iOwn_cmraValid $$ H
   ihave ⟨H1, H2⟩ := auth_both_validI m n $$ H
   ihave %H := internalCmraIncluded_discrete $$ H1
-  ipure_intro
+  ipureintro
   obtain ⟨k, rfl⟩ := H
   exact n.le_add_right k
 
@@ -242,18 +242,18 @@ theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -�
     --   iright
     --   iexists m
     --   isplit
-    --   · ipure_intro; assumption
+    --   · ipureintro; assumption
     --   isplitl [Hsupp] <;> iassumption
   · iaesop baseline
     -- imodintro
     -- iright
     -- iexists m
     -- isplit
-    -- · ipure_intro; assumption
+    -- · ipureintro; assumption
     -- isplitl [Hsupp]; iassumption
     -- inext
     -- iapply HLöb $$ H G
-  ipure_intro; simp
+  ipureintro; simp
 
 -- [Note] Add this theorem into backward rule index will enter loop
 @[rocq_alias le_upd.le_upd_later_elim]
@@ -272,7 +272,7 @@ theorem le_upd_later_elim {P : IProp GF} : ⊢ £ 1 -∗ (▷ |==£> P) -∗ |==
     -- iright
     -- iexists n
     -- isplit
-    -- · ipure_intro; simp
+    -- · ipureintro; simp
     -- isplitr [H] <;> iassumption
 
 @[rocq_alias le_upd.le_upd_mono]
@@ -355,7 +355,7 @@ theorem le_upd_elim n (P : IProp GF) :
       -- imodintro; imodintro
       -- iexists 0
       -- isplit
-      -- · ipure_intro; rfl
+      -- · ipureintro; rfl
       -- isplitl [Ha] <;> iassumption
     · exfalso; exact m.not_lt_zero Hlt
   | succ n =>
@@ -368,7 +368,7 @@ theorem le_upd_elim n (P : IProp GF) :
       -- imodintro; imodintro
       -- iexists n.succ
       -- isplit
-      -- · ipure_intro; exact Nat.le_refl _
+      -- · ipureintro; exact Nat.le_refl _
       -- isplitl [Hc] <;> iassumption
     · imodintro
       icases Hupd with ⟨%m, ⟨%Hstep, ⟨Hown, LaterHupd⟩⟩⟩
@@ -386,7 +386,7 @@ theorem le_upd_elim n (P : IProp GF) :
       imod IH with ⟨%m', %Hlt, H1, H2⟩; imodintro
       iexists m'
       isplit
-      · ipure_intro
+      · ipureintro
         grind
       isplitl [H1] <;> iassumption
 
