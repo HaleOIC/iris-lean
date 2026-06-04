@@ -2,6 +2,7 @@ module
 
 public meta import Iris.ProofMode.Aesop.Index.Query
 public meta import Iris.ProofMode.Aesop.Rule.Tactic.ApplyHyps
+public meta import Iris.ProofMode.Aesop.Rule.Tactic.HaveHyps
 public meta import Iris.ProofMode.Aesop.Rule.Tactic.ICases
 public meta import Iris.ProofMode.Aesop.Rule.Tactic.Identity
 public meta import Iris.ProofMode.Aesop.Rule.Tactic.IMod
@@ -20,6 +21,7 @@ namespace TacticDescr
 def run {Q : Type} [Queue Q] : TacticDescr → RuleRunner Q
   | .identity => Rule.Identity.run
   | .applyHyps => Rule.ApplyHyps.run
+  | .haveHyps => Rule.HaveHyps.run
   | .icases => Rule.ICases.run
   | .imod => Rule.IMod.run
   | .imodIntro => Rule.IModIntro.run
@@ -33,6 +35,7 @@ def run {Q : Type} [Queue Q] : TacticDescr → RuleRunner Q
 def replay : TacticDescr → RuleReplayer
   | .identity => Rule.Identity.replay
   | .applyHyps => Rule.ApplyHyps.replay
+  | .haveHyps => Rule.HaveHyps.replay
   | .icases => Rule.ICases.replay
   | .imod => Rule.IMod.replay
   | .imodIntro => Rule.IModIntro.replay
@@ -66,6 +69,17 @@ def commonApplyHypsRule : Rule RuleInfo where
   id := commonApplyHypsRuleId
   indexingMode := .unindexed
   info := RuleInfo.ofBuilder (.tactic .applyHyps)
+
+def commonHaveHypsRuleId : RuleId where
+  name := `haveHyps
+  kind := .forward
+  phase := .safe
+  scope := .global
+
+def commonHaveHypsRule : Rule RuleInfo where
+  id := commonHaveHypsRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder (.tactic .haveHyps)
 
 def commonICasesRuleId : RuleId where
   name := `icases
@@ -159,6 +173,7 @@ def commonRuleIndex : Index RuleInfo :=
   ({} : Index RuleInfo)
     |>.add commonIdentityRule commonIdentityRule.indexingMode
     |>.add commonApplyHypsRule commonApplyHypsRule.indexingMode
+    |>.add commonHaveHypsRule commonHaveHypsRule.indexingMode
     |>.add commonICasesRule commonICasesRule.indexingMode
     |>.add commonIModRule commonIModRule.indexingMode
     |>.add commonIPureIntroRule commonIPureIntroRule.indexingMode

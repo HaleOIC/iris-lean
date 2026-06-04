@@ -21,6 +21,7 @@ inductive TacticDescr where
   | imod
   | isplit
   | applyHyps
+  | haveHyps
   | custom
   deriving Inhabited, BEq, Hashable, Ord
 
@@ -38,6 +39,7 @@ instance : ToString TacticDescr where
     | .imod => "imod"
     | .isplit => "isplit"
     | .applyHyps => "applyHyps"
+    | .haveHyps => "haveHyps"
     | .custom => "custom"
 
 end TacticDescr

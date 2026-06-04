@@ -389,8 +389,9 @@ theorem step_fupdN_soundness_lc' [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain
   | succ n IH =>
     simp only [Nat.repeat]
     iintro ⟨⟨Hcr, Hcrs⟩, >H⟩
-    imod lc_fupd_elim_later $$ Hcr H with >H
+    ihave H := lc_fupd_elim_later $$ Hcr H
     iaesop baseline
+    -- imod lc_fupd_elim_later $$ Hcr H with >H
     -- iapply IH
     -- iframe
 
