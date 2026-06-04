@@ -13,10 +13,11 @@ open Lean Meta
 
 /- Build the discrimination-tree index for all registered backward rules. -/
 def backwardRuleIndex : MetaM (Index RuleInfo) := do
-  let decls ← getIaesopBackwardLemmas
+  let entries ← getIaesopBackwardLemmas
   let mut idx : Index RuleInfo := {}
-  let mut entries : Array String := #[]
-  for decl in decls do
+  let mut traceEntries : Array String := #[]
+  for entry in entries do
+    let { decl, successProbability } := entry
     let indexingMode ← Rule.Backward.mkBackwardIndexingMode decl
     let rule : Rule RuleInfo := {
       id := {
@@ -26,12 +27,13 @@ def backwardRuleIndex : MetaM (Index RuleInfo) := do
         scope := .global
       }
       indexingMode
-      info := RuleInfo.ofBuilder .backward
+      info := RuleInfo.ofBuilder .backward successProbability
     }
-    entries := entries.push s!"{decl}: {toString (format indexingMode)}"
+    traceEntries := traceEntries.push
+      s!"{decl} ({successProbability}): {toString (format indexingMode)}"
     idx := idx.add rule rule.indexingMode
   trace[iaesop.ruleIndex] s!"iaesop.backward: generated backward index with {entries.size} rules"
-  entries.forM λ entry => do
+  traceEntries.forM λ entry => do
     trace[iaesop.ruleIndex] s!"  {entry}"
   return idx
 

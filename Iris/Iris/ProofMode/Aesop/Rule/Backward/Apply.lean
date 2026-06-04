@@ -10,16 +10,19 @@ namespace Iris.ProofMode.Aesop
 open Lean Meta Qq Iris BI
 open Iris.ProofMode
 
+initialize registerTraceClass `iaesop.backward
+
 namespace Rule.Backward
 
 private structure BackwardExpansion where
+  body : Expr
   goals : Array SubGoal
   fullContextIrisSubgoals : Array IrisGoal
   postState : SavedState
 
 /-- Bridge a theorem proof into the current Iris BI as an intuitionistic proposition. -/
 private def mkBackwardHyp? {prop : Q(Type u)} (bi : Q(BI $prop))
-    (decl : Name) : MetaM (Option Q($prop)) := do
+    (decl : Name) : MetaM (Option (Q($prop) × Expr)) := do
   let (_, _, body) ← instantiateTheorem decl
   if !(← Meta.isProp body) then
     return none
@@ -29,12 +32,13 @@ private def mkBackwardHyp? {prop : Q(Type u)} (bi : Q(BI $prop))
   | .none | .undef => return none
   | .some _ =>
     let hyp : Q($prop) ← instantiateMVars hyp
-    return some hyp
+    let body ← instantiateMVars body
+    return some (hyp, body)
 
 /-- Build a search expansion when a backward theorem directly proves the target. -/
 private def mkCloseExpansion?
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
-    (hyp target : Q($prop)) : MetaM (Option BackwardExpansion) := do
+    (hyp target : Q($prop)) (body : Expr) : MetaM (Option BackwardExpansion) := do
   let hyp : Q($prop) ← instantiateMVars hyp
   let target : Q($prop) ← instantiateMVars target
   let preState ← saveState
@@ -44,6 +48,7 @@ private def mkCloseExpansion?
     let _ := ← instantiateMVars hyp
     let _ := ← instantiateMVars target
     return some {
+      body,
       goals := #[],
       fullContextIrisSubgoals := #[],
       postState := ← saveState
@@ -54,21 +59,17 @@ private def mkExpansion? (decl : Name) (irisGoal : IrisGoal) (tag : Name)
     (baseState : SavedState) : MetaM (Option BackwardExpansion) := do
   let { bi, goal := target, .. } := irisGoal
   baseState.restore
-  let some hyp ← mkBackwardHyp? bi decl
+  let some (hyp, body) ← mkBackwardHyp? bi decl
     | return none
   let bridgedState ← saveState
-  if let some expansion ← mkCloseExpansion? (bi := bi) hyp target then
+  if let some expansion ← mkCloseExpansion? (bi := bi) hyp target body then
     return some expansion
   bridgedState.restore
   let some premises ← Rule.ApplyHyps.collectApplyPremises? (bi := bi) q(true) hyp target
     | baseState.restore; return none
   let (goals, fullContextIrisSubgoals) ←
     Rule.ApplyHyps.mkChildren irisGoal tag irisGoal.hyps premises
-  return some {
-    goals,
-    fullContextIrisSubgoals,
-    postState := ← saveState
-  }
+  return some { body, goals, fullContextIrisSubgoals, postState := ← saveState }
 
 /-- Search stage work for a registered backward theorem. -/
 def run {Q : Type} [Queue Q] (input : RuleInput) : SearchM Q RuleOutput := do
@@ -82,10 +83,9 @@ def run {Q : Type} [Queue Q] (input : RuleInput) : SearchM Q RuleOutput := do
       mkExpansion? decl irisGoal (← input.goal.getTag) (← saveState)
   let some expansion := expansion?
     | return {}
-  trace[iaesop.tactic] s!"backward selected {decl} and generated {expansion.goals.size} goals"
-  for irisGoal in expansion.fullContextIrisSubgoals do
-    let targetFmt ← liftM <| ppExpr irisGoal.goal
-    trace[iaesop.tactic] s!"  backward child target: {targetFmt.pretty}"
+  trace[iaesop.backward] s!"backward selected {decl}"
+  let bodyFmt ← liftM <| ppExpr expansion.body
+  trace[iaesop.backward] s!"backward selected body: {bodyFmt.pretty}"
   return RuleOutput.ofRappSpec {
     goals := expansion.goals
     postState := expansion.postState

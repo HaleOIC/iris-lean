@@ -69,7 +69,7 @@ instance own_inv_persistent (N : Namespace) (P : IProp GF) : Persistent (own_inv
   unfold own_inv
   infer_instance
 
-@[rocq_alias except_0_inv, iaesop backward]
+@[rocq_alias except_0_inv, iaesop backward 25%]
 theorem except_0_inv (N : Namespace) (P : IProp GF) : ⊢ ◇ inv N P -∗ inv N P := by
   unfold inv
   iaesop baseline
@@ -82,7 +82,9 @@ theorem except_0_inv (N : Namespace) (P : IProp GF) : ⊢ ◇ inv N P -∗ inv N
 
 @[rocq_alias is_except_0_inv]
 instance is_except_0_inv (N : Namespace) (P : IProp GF) : IsExcept0 (inv N P) where
-  is_except0 := by iintro H; iapply except_0_inv $$ H
+  is_except0 := by
+    iaesop baseline
+    -- iintro H; iapply except_0_inv $$ H
 
 end Instances
 
@@ -92,7 +94,7 @@ open Iris Std LawfulSet
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias own_inv_acc, iaesop backward]
+@[rocq_alias own_inv_acc, iaesop backward 75%]
 theorem own_inv_acc (E : CoPset) (N : Namespace) (P : IProp GF)  :
     ↑N ⊆ E → own_inv N P ={E, E \ ↑N}=∗ ▷ P ∗ (▷ P ={E \ ↑N, E}=∗ True) := by
   simp only [own_inv, fupd, uPred_fupd]
@@ -143,15 +145,15 @@ theorem own_inv_acc (E : CoPset) (N : Namespace) (P : IProp GF)  :
   -- isplitl [HE]; iassumption
   -- apply true_intro
 
-@[rocq_alias own_inv_alloc, iaesop backward]
+@[rocq_alias own_inv_alloc, iaesop backward 50%]
 theorem own_inv_alloc (N : Namespace) (E : CoPset) (P : IProp GF) :
   ⊢ ▷ P ={E}=∗ own_inv N P := by
   simp only [own_inv, fupd, uPred_fupd]
   iintro HP ⟨Hw, HE⟩
   imod ownI_alloc (.∈ (↑N : CoPset)) P $$ [HP Hw] with ⟨%i, %Hin, Hw, HI⟩
-  · intro E; apply fresh_name
   all_goals
-    iaesop baseline
+    try iaesop baseline
+  intro E; apply fresh_name
   -- · isplitl [Hw] <;> iassumption
   -- · imodintro; imodintro
   --   isplitl [Hw]; iassumption
@@ -161,7 +163,7 @@ theorem own_inv_alloc (N : Namespace) (E : CoPset) (P : IProp GF) :
   --   · ipureintro; assumption
   --   · iassumption
 
-@[rocq_alias own_inv_alloc_open, iaesop backward]
+@[rocq_alias own_inv_alloc_open, iaesop backward 100%]
 theorem own_inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : ↑N ⊆ E) :
     ⊢ |={E, E \ ↑N}=> own_inv N P ∗ (▷P ={E \ ↑N, E}=∗ True) := by
   simp only [own_inv, fupd, uPred_fupd]
@@ -216,7 +218,7 @@ theorem own_inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : �
   -- apply true_intro
 
 -- [TODO] Why it is failed?
-@[rocq_alias own_inv_to_inv, iaesop backward]
+@[rocq_alias own_inv_to_inv, iaesop backward 100%]
 theorem own_inv_to_inv (M : Namespace) (P : IProp GF) :
     ⊢ own_inv M P -∗ inv M P := by
   unfold inv
@@ -232,7 +234,7 @@ section Allocation
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias inv_alloc, iaesop backward]
+@[rocq_alias inv_alloc, iaesop backward 100%]
 theorem inv_alloc (N : Namespace) (E : CoPset) (P : IProp GF) :
     ⊢ ▷ P ={E}=∗ inv N P := by
   iintro HP
@@ -241,7 +243,7 @@ theorem inv_alloc (N : Namespace) (E : CoPset) (P : IProp GF) :
   -- imodintro
   -- iapply own_inv_to_inv $$ H
 
-@[rocq_alias inv_alloc_open, iaesop backward]
+@[rocq_alias inv_alloc_open, iaesop backward 100%]
 theorem inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : ↑N ⊆ E) :
     ⊢ |={E, E \ ↑N}=> inv N P ∗ (▷ P ={E \ ↑N, E}=∗ True) := by
   imod own_inv_alloc_open _ _ P Hsub with ⟨Hown, Hcl⟩
@@ -259,7 +261,7 @@ open Iris Std LawfulSet
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias inv_acc, iaesop backward]
+@[rocq_alias inv_acc, iaesop backward 100%]
 theorem inv_acc (E : CoPset) (N : Namespace) (P : IProp GF) (Hsub : ↑N ⊆ E) :
     ⊢ inv N P ={E, E \ ↑N}=∗ ▷ P ∗ (▷ P ={E \ ↑N, E}=∗ True) := by
   unfold inv
@@ -268,7 +270,7 @@ theorem inv_acc (E : CoPset) (N : Namespace) (P : IProp GF) (Hsub : ↑N ⊆ E) 
   -- iapply HI $$ %E []
   -- ipureintro; assumption
 
-@[rocq_alias inv_acc_strong, iaesop backward]
+@[rocq_alias inv_acc_strong, iaesop backward 100%]
 theorem inv_acc_strong (E : CoPset) (N : Namespace) (P : IProp GF) (Hsub : ↑N ⊆ E) :
     ⊢ inv N P ={E, E \ ↑N}=∗ ▷ P ∗ ∀ E', ▷ P ={E', ↑N ∪ E'}=∗ True := by
   iintro Hinv
@@ -287,7 +289,7 @@ theorem inv_acc_strong (E : CoPset) (N : Namespace) (P : IProp GF) (Hsub : ↑N 
   -- imod H; imodintro
   -- iexact H
 
-@[rocq_alias inv_acc_timeless, iaesop backward]
+@[rocq_alias inv_acc_timeless, iaesop backward 100%]
 theorem inv_acc_timeless (E : CoPset) (N : Namespace) (P : IProp GF) [Timeless P] (Hsub : ↑N ⊆ E) :
     ⊢ inv N P ={E, E \ ↑N}=∗ P ∗ (P ={E \ ↑N, E}=∗ True) := by
   iintro HI
@@ -305,7 +307,7 @@ section Modification
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias inv_alter, iaesop backward]
+@[rocq_alias inv_alter, iaesop backward 100%]
 theorem inv_alter (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N P -∗ ▷ □ (P -∗ Q ∗ (Q -∗ P)) -∗ inv N Q := by
   simp only [inv]
@@ -322,7 +324,7 @@ theorem inv_alter (N : Namespace) (P Q : IProp GF) :
   --   iapply H
   --   iapply HQP $$ HQ
 
-@[rocq_alias inv_iff, iaesop backward]
+@[rocq_alias inv_iff, iaesop backward 100%]
 theorem inv_iff (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N P -∗ ▷ □ (P ↔ Q) -∗ inv N Q := by
   iaesop baseline
@@ -345,7 +347,7 @@ open Iris Std LawfulSet
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias inv_combine, iaesop backward]
+@[rocq_alias inv_combine, iaesop backward 100%]
 theorem inv_combine (N1 N2 N : Namespace) (P Q : IProp GF) (Hdisj : N1 ## N2)
     (Hsub : ↑N1 ∪ ↑N2 ⊆ (↑N : CoPset)) : ⊢ inv N1 P -∗ inv N2 Q -∗ inv N iprop(P ∗ Q) := by
   simp only [inv]
@@ -378,7 +380,7 @@ theorem inv_combine (N1 N2 N : Namespace) (P Q : IProp GF) (Hdisj : N1 ## N2)
   -- imodintro
   -- iassumption
 
-@[rocq_alias inv_combine_dup_l, iaesop backward]
+@[rocq_alias inv_combine_dup_l, iaesop backward 100%]
 theorem inv_combine_dup_l (N : Namespace) (P Q : IProp GF) :
     ⊢ □ (P -∗ (P ∗ P)) -∗ inv N P -∗ inv N Q -∗ inv N iprop(P ∗ Q) := by
   simp only [inv]
@@ -388,8 +390,8 @@ theorem inv_combine_dup_l (N : Namespace) (P Q : IProp GF) :
   ihave ⟨HP1, HP2⟩ : ▷ P ∗ ▷ P $$ [HP]
   · iapply later_sep; inext; iapply HPP $$ HP
   imod HI1 $$ HP2 with _
-  imod HI2 $$ %E Hsub with ⟨HQ, HI2⟩
   iaesop baseline
+  -- imod HI2 $$ %E Hsub with ⟨HQ, HI2⟩
   -- imodintro
   -- isplitl [HP1 HQ]
   -- · inext; isplitl [HP1] <;> iassumption
@@ -403,7 +405,7 @@ section Splitting
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias inv_split_l, iaesop backward]
+@[rocq_alias inv_split_l, iaesop backward 100%]
 theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P := by
   iaesop baseline
@@ -416,7 +418,7 @@ theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
   -- iintro HP
   -- isplitl [HP] <;> iassumption
 
-@[rocq_alias inv_split_r, iaesop backward]
+@[rocq_alias inv_split_r, iaesop backward 100%]
 theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N Q := by
   iaesop baseline
@@ -429,7 +431,7 @@ theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
   -- iintro HQ
   -- isplitl [HP] <;> iassumption
 
-@[rocq_alias inv_split, iaesop backward]
+@[rocq_alias inv_split, iaesop backward 100%]
 theorem inv_split (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P ∗ inv N Q := by
   iaesop baseline

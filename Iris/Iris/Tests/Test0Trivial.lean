@@ -57,20 +57,20 @@ example [BI PROP] (P Q R S : PROP) :
   iaesop baseline
 
 /-- Tests `iapply` with two wands and subgoals -/
-@[iaesop forward backward]
+@[iaesop forward 100% backward 100%]
 example [BI PROP] (P Q : Nat → PROP) :
     (P 1 -∗ P 2 -∗ Q 1) ⊢ □ P 1 -∗ P 2 -∗ Q 1 := by
   iaesop baseline
 
 /-- Tests `ispecialize` with named subgoal -/
-@[iaesop backward]
+@[iaesop backward 100%]
 example [BI PROP] (Q : PROP) (φ : Prop) (hφ : φ):
     P ⊢ (⌜φ⌝ -∗ P -∗ ⌜True⌝ -∗ Q) -∗ Q := by
   iaesop baseline
 
 /-- Tests `ispecialize` with mixed forall and wand specialization -/
 -- A very useful example: we can identify the iprop in the target proposition
-@[iaesop forward]
+@[iaesop forward 100%]
 example [BI PROP] (Q : Nat → PROP) :
     ⊢ □ P1 -∗ P2 -∗ (□ P1 -∗ (∀ x, P2 -∗ Q x)) -∗ Q y := by
   iaesop baseline

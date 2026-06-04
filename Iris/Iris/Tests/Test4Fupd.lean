@@ -10,7 +10,7 @@ public import Iris.Algebra.Numbers
 public import Iris.ProofMode
 public import Iris.BI.Algebra
 public import Iris.Instances.IProp
-public import Iris.Tests.Test9WSat
+public import Iris.Instances.Lib.WSat
 public import Iris.Tests.Test6LaterCredits
 public import Iris.BI.Plainly
 
@@ -144,9 +144,9 @@ instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen fa
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro H ⟨Hwsat, HE⟩
     ihave #HP : ▷ ◇ ■ P $$ [H Hwsat HE]
-    · inext
-      imod H $$ [$] with ⟨_, _, $⟩
-    iaesop baseline
+      <;> iaesop baseline
+      -- ihave H' := H $$ [Hwsat HE]
+      --   <;> iaesop baseline
     -- imodintro
     -- iframe
     -- imodintro; inext;

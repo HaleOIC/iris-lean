@@ -47,7 +47,7 @@ section LeastFixpoint
 
 variable [BI PROP] [OFE A] (F : (A → PROP) → (A → PROP))
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem least_fixpoint_unfold_2 [BIMonoPred F] {x} :
     F (bi_least_fixpoint F) x ⊢ bi_least_fixpoint F x := by
   unfold bi_least_fixpoint
@@ -63,9 +63,10 @@ theorem least_fixpoint_unfold_2 [BIMonoPred F] {x} :
   -- · unfold bi_least_fixpoint
   --   iexact Hf
 
+@[iaesop backward 100%]
 theorem least_fixpoint_unfold_1 {x} [BIMonoPred F] :
     bi_least_fixpoint F x ⊢ F (bi_least_fixpoint F) x := by
-  iintro Hf; unfold bi_least_fixpoint
+  unfold bi_least_fixpoint; iintro Hf
   ispecialize Hf $$ %(Hom.mk (F (bi_least_fixpoint F)) mono_pred_ne)
   unfold bi_least_fixpoint
   iapply Hf; iintro !> %y Hy
@@ -73,15 +74,17 @@ theorem least_fixpoint_unfold_1 {x} [BIMonoPred F] :
     ⟨λ _ _ _ Hx => forall_ne λ Φ => wand_ne.ne (.rfl) $ NonExpansive.ne Hx⟩
   iapply mono_pred (Φ := F (bi_least_fixpoint F)) $$ [] [Hy]
   · iintro !> %z Hz
+    -- [TODO]!!!!!! here we can only use apply to prove this
     apply least_fixpoint_unfold_2
   · unfold bi_least_fixpoint
     iaesop baseline
 
 theorem least_fixpoint_unfold {x} [BIMonoPred F] :
-    bi_least_fixpoint F x ≡ F (bi_least_fixpoint F) x :=
-  equiv_iff.mpr ⟨least_fixpoint_unfold_1 _, least_fixpoint_unfold_2 _⟩
+    bi_least_fixpoint F x ≡ F (bi_least_fixpoint F) x := by
+  iaesop baseline
+  -- equiv_iff.mpr ⟨least_fixpoint_unfold_1 _, least_fixpoint_unfold_2 _⟩
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem least_fixpoint_iter {Φ : A → PROP} [I : NonExpansive Φ] :
     ⊢ □ (∀ y, F Φ y -∗ Φ y) -∗ ∀ x, bi_least_fixpoint F x -∗ Φ x := by
   unfold bi_least_fixpoint
@@ -240,7 +243,7 @@ theorem greatest_fixpoint_ne_outer {F1 F2 : (A → PROP) → (A → PROP)}
   refine wand_ne.ne (.of_eq rfl) ?_
   exact (HF _ _ n)
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem greatest_fixpoint_unfold_1 {x} [BIMonoPred F] :
     bi_greatest_fixpoint F x ⊢ F (bi_greatest_fixpoint F) x := by
   letI _ : NonExpansive λ x => iprop(∃ (Φ : A -n> PROP), (□ ∀ x, Φ.f x -∗ F Φ.f x) ∗ Φ.f x) :=
@@ -256,7 +259,7 @@ theorem greatest_fixpoint_unfold_1 {x} [BIMonoPred F] :
   --   · iassumption
   -- · iapply Hincl $$ HΦ
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem greatest_fixpoint_unfold_2 {x} [BIMonoPred F] :
     F (bi_greatest_fixpoint F) x ⊢ bi_greatest_fixpoint F x := by
   iintro Hf; unfold bi_greatest_fixpoint
@@ -274,7 +277,7 @@ theorem greatest_fixpoint_unfold {x} [BIMonoPred F] :
     bi_greatest_fixpoint F x ≡ F (bi_greatest_fixpoint F) x :=
   equiv_iff.mpr ⟨greatest_fixpoint_unfold_1 _, greatest_fixpoint_unfold_2 _⟩
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem greatest_fixpoint_coiter (Φ : A → PROP) [I : NonExpansive Φ] :
     ⊢ □ (∀ y, Φ y -∗ F Φ y) -∗ ∀ x, Φ x -∗ bi_greatest_fixpoint F x := by
   unfold bi_greatest_fixpoint
@@ -302,7 +305,7 @@ instance greatest_fixpoint_absorbing [BIMonoPred F]
     -- iintro !> %_ HF !>
     -- iassumption
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem greatest_fixpoint_strong_mono (G : (A → PROP) → (A → PROP)) [BIMonoPred F] :
     ⊢ □ (∀ Φ x, F Φ x -∗ G Φ x) -∗ ∀ x, bi_greatest_fixpoint F x -∗ bi_greatest_fixpoint G x := by
   unfold bi_greatest_fixpoint
@@ -345,7 +348,7 @@ theorem greatest_fixpoint_paco :
     -- · iapply H
   · iapply Hmon $$ HΦ
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem greatest_fixpoint_coind [_HF : NonExpansive F] :
     ⊢ □ (∀ y, Φ y -∗ F (fun x => iprop(Φ x ∨ bi_greatest_fixpoint F x)) y) -∗
       ∀ x, Φ x -∗ bi_greatest_fixpoint F x := by

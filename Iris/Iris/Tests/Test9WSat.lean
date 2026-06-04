@@ -94,13 +94,13 @@ variable {GF : BundledGFunctors} [W : WsatGS GF]
 
 theorem ownE_empty : ⊢ |==> ownE (W := W) ∅ := iOwn_unit (ε := UCMRA.unit)
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownE_op {E1 E2} (Hdisj : E1 ## E2) : ownE (E1 ∪ E2) ⊣⊢@{IProp GF} ownE E1 ∗ ownE E2 := by
   refine .trans (.of_eq ?_) iOwn_op
   rw [disj_op_union Hdisj]
   rfl
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownE_disjoint {E1 E2} : ownE E1 ∗ ownE E2 ⊢@{IProp GF} ⌜E1 ## E2⌝ := by
   iintro ⟨H1, H2⟩
   icases iOwn_op $$ [H1 H2] with H
@@ -111,7 +111,7 @@ theorem ownE_disjoint {E1 E2} : ownE E1 ∗ ownE E2 ⊢@{IProp GF} ⌜E1 ## E2�
   ipureintro
   exact valid_op_iff_disj.mp H
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownE_op_iff {E1 E2} : ⌜E1 ## E2⌝ ∧ ownE (E1 ∪ E2) ⊣⊢@{IProp GF} ownE E1 ∗ ownE E2 := by
   constructor
   · iintro ⟨%Hdisj, H⟩
@@ -126,7 +126,7 @@ theorem ownE_op_iff {E1 E2} : ⌜E1 ## E2⌝ ∧ ownE (E1 ∪ E2) ⊣⊢@{IProp 
     · iapply (ownE_op Hdisj).mpr $$ [H1 H2]
       isplitl [H1] <;> iassumption
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownE_singleton_singleton {i : Pos} : ownE {i} ∗ ownE {i} ⊢@{IProp GF} False :=
   ownE_disjoint.trans (pure_mono fun h => h i (by simp [mem_singleton]))
 
@@ -136,16 +136,16 @@ section ownD
 
 variable {GF : BundledGFunctors} [W : WsatGS GF]
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownD_empty : ⊢@{IProp GF} |==> ownD ∅ := iOwn_unit (ε := UCMRA.unit)
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownD_op {E1 E2} (Hdisj : E1 ## E2) : ownD (E1 ∪ E2) ⊣⊢@{IProp GF} ownD E1 ∗ ownD E2 := by
   refine .trans (.of_eq ?_) iOwn_op
   rw [disj_op_union Hdisj]
   rfl
 
-@[iaesop backward]
+@[iaesop backward 100%]
 theorem ownD_disjoint (E1 E2 : PosSet) :
     ownD E1 ∗ ownD E2 ⊢@{IProp GF}  ⌜E1 ## E2⌝ := by
   unfold ownD

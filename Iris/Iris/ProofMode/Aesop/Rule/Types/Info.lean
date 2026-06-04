@@ -64,9 +64,16 @@ end RuleBuilder
 structure RuleInfo where
   builder : RuleBuilder
   successProbability : Percent
-  deriving Inhabited, BEq, Ord
+  deriving Inhabited, BEq
 
 namespace RuleInfo
+
+protected def compare (rule₁ rule₂ : RuleInfo) : Ordering :=
+  (compare rule₂.successProbability rule₁.successProbability).then
+    (compare rule₁.builder rule₂.builder)
+
+instance : Ord RuleInfo where
+  compare := RuleInfo.compare
 
 instance : Hashable RuleInfo where
   hash rule := hash rule.builder

@@ -115,7 +115,7 @@ nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
 theorem alloc : ⊢@{IProp GF} |==> ∃ p : NaInvPoolName, own p ⊤ :=
   iOwn_alloc (E := W.inv) (.valid (⊤ : CoPset), .valid (∅ : PosSet)) ⟨trivial, trivial⟩
 
-@[rocq_alias na_own_disjoint, iaesop backward]
+@[rocq_alias na_own_disjoint, iaesop backward 100%]
 theorem own_disjoint {p : NaInvPoolName} {E1 E2 : CoPset} :
     ⊢ own (GF := GF) p E1 -∗ own p E2 -∗ ⌜E1 ## E2⌝ := by
   unfold own
@@ -127,7 +127,7 @@ theorem own_disjoint {p : NaInvPoolName} {E1 E2 : CoPset} :
   ipureintro
   exact valid_op_iff_disj.mp H.1
 
-@[rocq_alias na_own_union, iaesop backward]
+@[rocq_alias na_own_union, iaesop backward 100%]
 theorem own_union {p : NaInvPoolName} {E1 E2 : CoPset} (Hdisj : E1 ## E2) :
     own (GF := GF) p (E1 ∪ E2) ⊣⊢ own p E1 ∗ own p E2 := by
   refine .trans ?_ iOwn_op

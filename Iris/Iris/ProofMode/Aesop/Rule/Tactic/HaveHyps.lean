@@ -43,38 +43,42 @@ private partial def parseHypothesis? {u : Level} {prop : Q(Type u)} {bi : Q(BI $
 private def satisfy? {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (hyp : Q($prop)) : MetaM Bool := do
   let hyp : Q($prop) ← instantiateMVars hyp
+  let hypFmt ← ppExpr hyp
+  trace[iaesop.tactic] s!"haveHyps conclusion: {hypFmt.pretty}"
   let preState ← saveState
   let v ← mkFreshLevelMVar
   let α : Q(Sort v) ← mkFreshExprMVarQ q(Sort v)
   let Φ : Q($α → $prop) ← mkFreshExprMVarQ q($α → $prop)
   match ← trySynthInstanceProbeQ q(IntoExists $hyp $Φ) with
-  | .some _ => preState.restore; return true
-  | .none | .undef => preState.restore
+  | .some _ => trace[iaesop.tactic] "haveHyps conclusion matched IntoExists"; preState.restore; return true
+  | .none | .undef => trace[iaesop.tactic] "haveHyps conclusion did not match IntoExists"; preState.restore
 
   let left ← mkFreshExprMVarQ prop
   let right ← mkFreshExprMVarQ prop
   match ← trySynthInstanceProbeQ q(IntoSep $hyp $left $right) with
-  | .some _ => preState.restore; return true
-  | .none | .undef => preState.restore
+  | .some _ => trace[iaesop.tactic] "haveHyps conclusion matched IntoSep"; preState.restore; return true
+  | .none | .undef => trace[iaesop.tactic] "haveHyps conclusion did not match IntoSep"; preState.restore
 
   let left ← mkFreshExprMVarQ prop
   let right ← mkFreshExprMVarQ prop
   match ← trySynthInstanceProbeQ q(IntoOr $hyp $left $right) with
-  | .some _ => preState.restore; return true
-  | .none | .undef => preState.restore
+  | .some _ => trace[iaesop.tactic] "haveHyps conclusion matched IntoOr"; preState.restore; return true
+  | .none | .undef => trace[iaesop.tactic] "haveHyps conclusion did not match IntoOr"; preState.restore
 
+  let prop' : Q(Type u) ← mkFreshExprMVarQ q(Type u)
+  let bi' ← mkFreshExprMVarQ q(BI $prop')
   let Φ ← mkFreshExprMVarQ q(Prop)
-  let M ← mkFreshExprMVarQ q(Modality $prop $prop)
-  let sel ← mkFreshExprMVarQ prop
-  let inner ← mkFreshExprMVarQ prop
-  match ← trySynthInstanceProbeQ q(@FromModal $prop $prop $bi $bi $Φ $M $sel $hyp $inner) with
-  | .some _ => preState.restore; return true
-  | .none | .undef => preState.restore
+  let M ← mkFreshExprMVarQ q(Modality $prop' $prop)
+  let sel ← mkFreshExprMVarQ q($prop')
+  let inner ← mkFreshExprMVarQ q($prop')
+  match ← trySynthInstanceProbeQ q(@FromModal $prop' $prop $bi' $bi $Φ $M $sel $hyp $inner) with
+  | .some _ => trace[iaesop.tactic] "haveHyps conclusion matched FromModal"; preState.restore; return true
+  | .none | .undef => trace[iaesop.tactic] "haveHyps conclusion did not match FromModal"; preState.restore
 
   let inner ← mkFreshExprMVarQ prop
   match ← trySynthInstanceProbeQ q(IntoExcept0 $hyp $inner) with
-  | .some _ => preState.restore; return true
-  | .none | .undef => preState.restore; return false
+  | .some _ => trace[iaesop.tactic] "haveHyps conclusion matched IntoExcept0"; preState.restore; return true
+  | .none | .undef => trace[iaesop.tactic] "haveHyps conclusion did not match IntoExcept0"; preState.restore; return false
 
 /- Turn each collected premise and conclusion into both a search subgoal and its IrisGoal template. -/
 private def mkChildren (irisGoal : IrisGoal) (tag : Name) (depth : Nat)
@@ -121,7 +125,7 @@ private def collectFromIris {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
         let usedHyp : AppliedHyp :=
           if isTrue p then .intuitionistic { name, ivar } else .spatial { name, ivar }
         let some ⟨_, _, hyps', _, _, _, _, _⟩ ←
-          irisGoal.hyps.removeG false λ _ ivar' _ _ => do
+          irisGoal.hyps.removeG true λ _ ivar' _ _ => do
             if ivar == ivar' then return some ()
             else return none
         | throwError "iaesop: haveHyps candidate disappear from Hyps"
@@ -225,7 +229,7 @@ private def replayHave (goalMVarId : MVarId) (usedHyp : AppliedHyp)
     match usedHyp with
     | .spatial _ | .intuitionistic _ =>
       let some ⟨_, _, hyps', out, hypType, p, _, removePf⟩ ←
-          hyps.removeG false λ name _ p _ => do
+          hyps.removeG true λ name _ p _ => do
             if irisHypMatches usedHyp name p then return some ()
             else return none
         | throwError "iaesop(baseline): haveHyps replay selected Iris hypothesis disappeared"

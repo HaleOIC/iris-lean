@@ -1,6 +1,7 @@
 module
 
 public meta import Lean
+public meta import Iris.ProofMode.Aesop.Util.Percent
 
 public meta section
 
@@ -8,41 +9,60 @@ namespace Iris.ProofMode.Aesop
 
 open Lean Elab
 
-/-- Names of theorems registered with `@[iaesop backward]`. -/
-initialize iaesopBackwardExt : SimpleScopedEnvExtension Name (Array Name) ←
+structure RuleAttrEntry where
+  decl : Name
+  successProbability : Percent
+  deriving Inhabited
+
+/-- Theorems registered with `@[iaesop backward <p>%]`. -/
+initialize iaesopBackwardExt :
+    SimpleScopedEnvExtension RuleAttrEntry (Array RuleAttrEntry) ←
   registerSimpleScopedEnvExtension {
-    addEntry := λ s n => if s.contains n then s else s.push n
+    addEntry := λ s entry =>
+      if s.any λ old => old.decl == entry.decl then s else s.push entry
     initial := #[]
   }
 
-/-- Names of theorems registered with `@[iaesop forward]`. -/
-initialize iaesopForwardExt : SimpleScopedEnvExtension Name (Array Name) ←
+/-- Theorems registered with `@[iaesop forward <p>%]`. -/
+initialize iaesopForwardExt :
+    SimpleScopedEnvExtension RuleAttrEntry (Array RuleAttrEntry) ←
   registerSimpleScopedEnvExtension {
-    addEntry := λ s n => if s.contains n then s else s.push n
+    addEntry := λ s entry =>
+      if s.any λ old => old.decl == entry.decl then s else s.push entry
     initial := #[]
   }
 
 namespace Parser
 
 declare_syntax_cat iaesopAttrRule
-syntax "forward" : iaesopAttrRule
-syntax "backward" : iaesopAttrRule
+syntax "forward" num "%" : iaesopAttrRule
+syntax "backward" num "%" : iaesopAttrRule
 
 syntax (name := iaesop) "iaesop" (ppSpace iaesopAttrRule)+ : attr
 
 end Parser
 
 inductive AttrRule where
-  | backward
-  | forward
+  | backward (successProbability : Percent)
+  | forward (successProbability : Percent)
 
 namespace AttrRule
+
+private def elabSuccessProbability (kind : String) (p : Syntax) : CoreM Percent := do
+  let some p := p.isNatLit?
+    | throwError "iaesop: expected a numeral success probability for {kind} rule"
+  match Percent.ofNat p with
+  | some p => return p
+  | none => throwError
+      "iaesop: {kind} rule success probability '{p}%' is not between 0 and 100"
 
 def «elab» (stx : Syntax) : CoreM AttrRule :=
   withRef stx do
     match stx with
-    | `(iaesopAttrRule| forward) => return .forward
-    | `(iaesopAttrRule| backward) => return .backward
+    | `(iaesopAttrRule| forward $p:num %) =>
+      return .forward (← elabSuccessProbability "forward" p)
+    | `(iaesopAttrRule| backward $p:num %) =>
+      return .backward (← elabSuccessProbability "backward" p)
     | _ => throwUnsupportedSyntax
 
 end AttrRule
@@ -61,15 +81,17 @@ def «elab» (stx : Syntax) : CoreM AttrConfig :=
 
 end AttrConfig
 
-private def addBackwardRule (decl : Name) (kind : AttributeKind) : CoreM Unit := do
-  if (iaesopBackwardExt.getState (← getEnv)).contains decl then
+private def addBackwardRule (decl : Name) (successProbability : Percent)
+    (kind : AttributeKind) : CoreM Unit := do
+  if (iaesopBackwardExt.getState (← getEnv)).any λ entry => entry.decl == decl then
     throwError "iaesop: backward rule '{decl}' is already registered"
-  iaesopBackwardExt.add decl kind
+  iaesopBackwardExt.add { decl, successProbability } kind
 
-private def addForwardRule (decl : Name) (kind : AttributeKind) : CoreM Unit := do
-  if (iaesopForwardExt.getState (← getEnv)).contains decl then
+private def addForwardRule (decl : Name) (successProbability : Percent)
+    (kind : AttributeKind) : CoreM Unit := do
+  if (iaesopForwardExt.getState (← getEnv)).any λ entry => entry.decl == decl then
     throwError "iaesop: forward rule '{decl}' is already registered"
-  iaesopForwardExt.add decl kind
+  iaesopForwardExt.add { decl, successProbability } kind
 
 initialize registerBuiltinAttribute {
   name := `iaesop
@@ -79,16 +101,16 @@ initialize registerBuiltinAttribute {
     let config ← AttrConfig.elab stx
     for rule in config.rules do
       match rule with
-      | .backward => addBackwardRule decl kind
-      | .forward => addForwardRule decl kind
+      | .backward successProbability => addBackwardRule decl successProbability kind
+      | .forward successProbability => addForwardRule decl successProbability kind
 }
 
-/-- All lemmas currently registered with `@[iaesop backward]`. -/
-def getIaesopBackwardLemmas [Monad m] [MonadEnv m] : m (Array Name) := do
+/-- All lemmas currently registered with `@[iaesop backward <p>%]`. -/
+def getIaesopBackwardLemmas [Monad m] [MonadEnv m] : m (Array RuleAttrEntry) := do
   return iaesopBackwardExt.getState (← getEnv)
 
-/-- All lemmas currently registered with `@[iaesop forward]`. -/
-def getIaesopForwardLemmas [Monad m] [MonadEnv m] : m (Array Name) := do
+/-- All lemmas currently registered with `@[iaesop forward <p>%]`. -/
+def getIaesopForwardLemmas [Monad m] [MonadEnv m] : m (Array RuleAttrEntry) := do
   return iaesopForwardExt.getState (← getEnv)
 
 end Iris.ProofMode.Aesop

@@ -102,10 +102,12 @@ private def collectSurface [Ord α] (idx : Index α)
 @[inline]
 private def hitMapToResults [Ord α] (m : HitMap α) :
     Array (IndexMatchResult (Rule α)) :=
-  m.fold
+  let results := m.fold
     (λ acc rule locations =>
       acc.push { rule, locations := locationsToSet locations })
     (init := Array.mkEmpty m.size)
+  results.qsort λ r s =>
+    Rule.compareByPriorityThenName r.rule s.rule == .lt
 
 /-- Query an index against all matchable surfaces of an Iris proof-mode goal:
 the full Lean goal type, the Iris target, Iris proof-mode hypotheses, Lean local
