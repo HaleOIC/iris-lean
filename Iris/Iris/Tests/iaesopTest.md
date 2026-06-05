@@ -87,13 +87,17 @@
 | `greatest_fixpoint_paco` | Partial | Needs coinduction setup and case extraction; baseline closes a disjunction branch. |
 | `greatest_fixpoint_coind` | Partial | Needs nonexpansive instances and paco setup; baseline closes several branch goals. |
 
-Iris/Tests/Test3Proofs.lean
+### `Iris/Tests/Test3Proofs.lean`
 
 | theorem name | successfully covered | missing |
 | --- | --- | --- |
 | `proof_example_1` | Yes | Nothing; the whole example is covered by baseline. |
 
-Iris/Tests/Test4Fupd.lean
+### `Iris/Tests/Test4Fupd.lean`
+
+1. `HaveHyps` and `forward` theorem will make search explode
+    - Perhaps users should be allowed to specify which forward rule to try first. (see `uPred_bi_fupd_plainly_no_lc`)
+2. ``
 
 | theorem name | successfully covered | missing |
 | --- | --- | --- |

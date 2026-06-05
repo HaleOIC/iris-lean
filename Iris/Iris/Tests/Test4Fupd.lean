@@ -10,8 +10,8 @@ public import Iris.Algebra.Numbers
 public import Iris.ProofMode
 public import Iris.BI.Algebra
 public import Iris.Instances.IProp
-public import Iris.Instances.Lib.WSat
 public import Iris.Tests.Test6LaterCredits
+public import Iris.Tests.Test9WSat
 public import Iris.BI.Plainly
 
 @[expose] public section
@@ -65,6 +65,8 @@ section Instances
 
 open Std.LawfulSet
 
+/- [Note] It will really pass although takes a lot of time -/
+set_option maxHeartbeats 1000000 in
 @[rocq_alias uPred_bi_fupd]
 instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (IProp GF) where
   fupd := uPred_fupd
@@ -82,9 +84,9 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     -- iintro >H; iexact H
   mono H := by
     simp only [uPred_fupd]
-    iintro H ⟨Hwsat, HE⟩
-    ihave H := H $$ [$]
     iaesop baseline
+    -- iintro H ⟨Hwsat, HE⟩
+    -- ihave H := H $$ [$]
     -- iapply le_upd_if_mono $$ H
     -- iintro >⟨$, $, H3⟩ !>
     -- iapply H $$ H3
@@ -92,8 +94,8 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     simp only [uPred_fupd]
     iintro H ⟨Hwsat, HE⟩
     iapply le_upd_if_trans
-    ihave H := H $$ [$]
     iaesop baseline
+    -- ihave H := H $$ [$]
     -- iapply le_upd_if_mono $$ H
     -- iintro >⟨H1, H2, H3⟩
     -- iapply H3 $$ [$]
@@ -111,9 +113,9 @@ instance uPred_bi_fupd {GF : BundledGFunctors} [InvGS_gen hlc GF] : BIFUpdate (I
     -- ipureintro; assumption
   frame_right {_ _ _ _} := by
     simp only [uPred_fupd]
-    iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
-    ispecialize H $$ [$]
     iaesop baseline
+    -- iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
+    -- ispecialize H $$ [$]
     -- ihave H := le_upd_if_frame_r $$ [$H $Hx]
     -- imod H with ⟨>⟨$, $, $⟩, $⟩; imodintro
     -- ipureintro; trivial
@@ -134,17 +136,15 @@ instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen fa
   fupd_plainly_keep_left E E' P Q := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro ⟨H, Hx⟩ ⟨Hwsat, HE⟩
-    ihave #>HP : ◇ ■ P $$ [H Hx Hwsat HE]
-    · imod H $$ Hx [$] with ⟨_, _, $⟩
-    iaesop baseline
+    ihave #>HP : ◇ ■ P $$ [H Hx Hwsat HE] <;> iaesop baseline
+    -- · imod H $$ Hx [$] with ⟨_, _, $⟩
     -- imodintro
     -- iframe
     -- iassumption
   fupd_plainly_later _ P := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro H ⟨Hwsat, HE⟩
-    ihave #HP : ▷ ◇ ■ P $$ [H Hwsat HE]
-      <;> iaesop baseline
+    ihave #HP : ▷ ◇ ■ P $$ [H Hwsat HE] <;> iaesop baseline
       -- ihave H' := H $$ [Hwsat HE]
       --   <;> iaesop baseline
     -- imodintro
@@ -154,9 +154,9 @@ instance uPred_bi_fupd_plainly_no_lc {GF : BundledGFunctors} [INV : InvGS_gen fa
   fupd_plainly_sForall_2 E P := by
     simp only [fupd, uPred_fupd, le_upd_if, Bool.false_eq_true, ↓reduceIte]
     iintro H ⟨Hwsat, HE⟩
-    ihave #HP : ◇ ■ sForall P $$ [H Hwsat HE]
-    · imod H $$ [$] with ⟨_, _, $⟩
-    iaesop baseline
+    ihave HP := H $$ [Hwsat HE] <;> iaesop baseline
+    -- ihave #HP : ◇ ■ sForall P $$ [H Hwsat HE]
+    -- · imod H $$ [$] with ⟨_, _, $⟩
     -- imodintro;
     -- imod HP
     -- imodintro
@@ -314,10 +314,10 @@ theorem step_fupdN_soundness_lc [InvGpreS GF] (n m : Nat) {P : IProp GF} [Plain 
   induction n with
   | zero =>
     simp only [Nat.repeat]
-    iaesop baseline
-    -- iintro ⟨_, HP⟩
-    -- imodintro
-    -- iassumption
+    -- iaesop baseline
+    iintro ⟨_, HP⟩
+    imodintro
+    iassumption
   | succ n IH =>
     simp only [Nat.repeat]
     iintro ⟨⟨Hcr, Hcrs⟩, >H⟩

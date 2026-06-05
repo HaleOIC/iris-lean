@@ -253,7 +253,7 @@ theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -�
     -- isplitl [Hsupp]; iassumption
     -- inext
     -- iapply HLöb $$ H G
-  ipureintro; simp
+  ipureintro; grind
 
 -- [Note] Add this theorem into backward rule index will enter loop
 @[rocq_alias le_upd.le_upd_later_elim]
@@ -480,8 +480,8 @@ theorem lc_alloc [H : LcGpreS GF] n : ⊢@{IProp GF} |==> ∃ _ : LcGS GF, lc_su
   let LC : LcGS GF := { lc_elem := H.lc_elem, lc_name := γLC }
   simp only [lc_supply, lc]
   iexists LC
-  imodintro
   iaesop baseline
+  -- imodintro
   -- isplitl [HAuth] <;> iassumption
 
 @[rocq_alias le_upd.lc_soundness]

@@ -324,7 +324,7 @@ theorem inv_alter (N : Namespace) (P Q : IProp GF) :
   --   iapply H
   --   iapply HQP $$ HQ
 
-@[rocq_alias inv_iff, iaesop backward 100%]
+@[rocq_alias inv_iff]
 theorem inv_iff (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N P -∗ ▷ □ (P ↔ Q) -∗ inv N Q := by
   iaesop baseline
@@ -356,7 +356,8 @@ theorem inv_combine (N1 N2 N : Namespace) (P Q : IProp GF) (Hdisj : N1 ## N2)
   iintro %E %Hsub'
   imod HI1 $$ %E [] with ⟨HP, H1⟩
   · ipureintro
-    exact subset_trans (subset_trans union_subset_left Hsub) Hsub'
+    grind [subset_trans, union_subset_left]
+    -- exact subset_trans (subset_trans union_subset_left Hsub) Hsub'
   imod HI2 $$ %(E \ ↑N1) [] with ⟨HQ, H2⟩
   · ipureintro
     intro x; simp only [mem_diff]
@@ -373,10 +374,10 @@ theorem inv_combine (N1 N2 N : Namespace) (P Q : IProp GF) (Hdisj : N1 ## N2)
   iintro Hcl
   isplitl [HP HQ]; inext; isplitl [HP] <;> iassumption
   iintro ⟨HP, HQ⟩
-  imod Hcl
-  imod H2 $$ HQ with _
-  imod H1 $$ HP with _
   iaesop baseline
+  -- imod Hcl
+  -- imod H2 $$ HQ with _
+  -- imod H1 $$ HP with _
   -- imodintro
   -- iassumption
 
@@ -398,7 +399,6 @@ theorem inv_combine_dup_l (N : Namespace) (P Q : IProp GF) :
   -- iintro ⟨_, HQ⟩
   -- imod HI2 $$ HQ with _
   -- imodintro; iassumption
-
 end Combination
 
 section Splitting
@@ -434,6 +434,8 @@ theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
 @[rocq_alias inv_split, iaesop backward 100%]
 theorem inv_split (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P ∗ inv N Q := by
+  set_option trace.iaesop.ruleIndex true in
+  set_option trace.iaesop.search.replay true in
   iaesop baseline
   -- iintro #H
   -- ihave H1 := inv_split_l $$ H
