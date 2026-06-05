@@ -57,7 +57,7 @@ def commonIdentityRuleId : RuleId where
 def commonIdentityRule : Rule RuleInfo where
   id := commonIdentityRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .identity)
+  info := RuleInfo.ofBuilder (.tactic .identity) .almost
 
 def commonApplyHypsRuleId : RuleId where
   name := `applyHyps
@@ -68,7 +68,7 @@ def commonApplyHypsRuleId : RuleId where
 def commonApplyHypsRule : Rule RuleInfo where
   id := commonApplyHypsRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .applyHyps)
+  info := RuleInfo.ofBuilder (.tactic .applyHyps) .high
 
 def commonHaveHypsRuleId : RuleId where
   name := `haveHyps
@@ -79,7 +79,7 @@ def commonHaveHypsRuleId : RuleId where
 def commonHaveHypsRule : Rule RuleInfo where
   id := commonHaveHypsRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .haveHyps)
+  info := RuleInfo.ofBuilder (.tactic .haveHyps) .almost
 
 def commonICasesRuleId : RuleId where
   name := `icases
@@ -90,7 +90,7 @@ def commonICasesRuleId : RuleId where
 def commonICasesRule : Rule RuleInfo where
   id := commonICasesRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .icases)
+  info := RuleInfo.ofBuilder (.tactic .icases) .almost
 
 def commonIPureIntroRuleId : RuleId where
   name := `ipureIntro
@@ -101,7 +101,7 @@ def commonIPureIntroRuleId : RuleId where
 def commonIPureIntroRule : Rule RuleInfo where
   id := commonIPureIntroRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .ipureIntro)
+  info := RuleInfo.ofBuilder (.tactic .ipureIntro) .high
 
 def commonIExistRuleId : RuleId where
   name := `iExist
@@ -112,7 +112,7 @@ def commonIExistRuleId : RuleId where
 def commonIExistRule : Rule RuleInfo where
   id := commonIExistRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .iexist)
+  info := RuleInfo.ofBuilder (.tactic .iexist) .almost
 
 def commonILeftRuleId : RuleId where
   name := `ileft
@@ -123,7 +123,7 @@ def commonILeftRuleId : RuleId where
 def commonILeftRule : Rule RuleInfo where
   id := commonILeftRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .ileft)
+  info := RuleInfo.ofBuilder (.tactic .ileft) .high
 
 def commonIRightRuleId : RuleId where
   name := `iright
@@ -134,7 +134,7 @@ def commonIRightRuleId : RuleId where
 def commonIRightRule : Rule RuleInfo where
   id := commonIRightRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .iright)
+  info := RuleInfo.ofBuilder (.tactic .iright) .high
 
 def commonIModIntroRuleId : RuleId where
   name := `imodintro
@@ -145,7 +145,7 @@ def commonIModIntroRuleId : RuleId where
 def commonIModIntroRule : Rule RuleInfo where
   id := commonIModIntroRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .imodIntro)
+  info := RuleInfo.ofBuilder (.tactic .imodIntro) .medium
 
 def commonIModRuleId : RuleId where
   name := `imod
@@ -156,7 +156,7 @@ def commonIModRuleId : RuleId where
 def commonIModRule : Rule RuleInfo where
   id := commonIModRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .imod)
+  info := RuleInfo.ofBuilder (.tactic .imod) .high
 
 def commonISplitRuleId : RuleId where
   name := `isplit
@@ -167,7 +167,7 @@ def commonISplitRuleId : RuleId where
 def commonISplitRule : Rule RuleInfo where
   id := commonISplitRuleId
   indexingMode := .unindexed
-  info := RuleInfo.ofBuilder (.tactic .isplit)
+  info := RuleInfo.ofBuilder (.tactic .isplit) .almost
 
 def commonRuleIndex : Index RuleInfo :=
   ({} : Index RuleInfo)

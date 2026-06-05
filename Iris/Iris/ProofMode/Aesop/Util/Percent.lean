@@ -46,11 +46,12 @@ instance : ToString Percent where
 instance : HPow Percent Nat Percent where
   hPow | ⟨p⟩, n => ⟨p ^ n.toFloat⟩
 
-def hundred : Percent :=
-  ⟨1⟩
-
-def fifty : Percent :=
-  ⟨0.5⟩
+def hundred : Percent := ⟨1⟩
+def almost  : Percent := ⟨0.99⟩
+def high    : Percent := ⟨0.75⟩
+def medium  : Percent := ⟨0.5⟩
+def low     : Percent := ⟨0.25⟩
+def last    : Percent := ⟨0.01⟩
 
 protected def ofNat (n : Nat) : Option Percent :=
   Percent.ofFloat $ n.toFloat / 100
