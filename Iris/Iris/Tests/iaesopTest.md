@@ -48,6 +48,18 @@
 
 ### `Iris/Tests/Test2FixedPoint.lean`
 
+1. Registering `mono_pred` is not currently supported because it is an internal theorem of the class.
+    - Not sure whether registering it, since $\Psi$ and $\Phi$ always need to be specified
+    - Another solution is use `ihave` to inject some hypothesis before search (see `wf_pred_mono`)
+2. The definition only works in one direction. During the search stage, if we obtain `∀ Φ, (□ ∀ x, F Φ.f x -∗ Φ.f x) -∗ Φ.f z`, we cannot convert it back into `bi_least_fixpoint z`. (in `least_fixpoint_unfold_1`)
+3. The type of applied hypothesis is `∗HF : ∀ Φ, (□ ∀ x, F Φ.f x -∗ Φ.f x) -∗ Φ.f x`, and we can not align `Φ.f x` with `Φ x`. (in `least_fixpoint_iter`)
+    - This seems to be solvable? (after expansion, `HF` will become `?Φ.f x`)
+4. Normalization stage's quantifier elimintation is eager, making it impossible to detect the presence of `least_fixpoint_iter`'s conclusion `∀ x, bi_least_fixpoint F x -∗ Φ x` (in `least_fixpoint_affine`, `laest_fixpoint_strong_mono`, `least_fixpoint_ind_wf`)
+    - Before normalization stage, we try to expand the goal directly? it requires backward theorem registration procedure do not peel (`∀`) eagerly. **(Important!)**
+    - However, there exists a counterexample (see `least_fixpoint_ind`)
+5. Require external theorem (in `least_fixpoint_absorbing`, `least_fixpoint_persistent_affine`)
+6. Unfolding this theorem will likely require forward reasoning; (see `greatest_fixpoint_paco`).
+
 | theorem name | successfully covered | missing |
 | --- | --- | --- |
 | `bi_least_fixpoint` NonExpansive instance | No | Pure nonexpansiveness proof is hand-written with `refine`; not a proof-mode goal. |
