@@ -2,6 +2,7 @@ module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
 public meta import Iris.ProofMode.Tactics.Pure
+public meta import Lean.Meta.Tactic.Grind
 
 public meta section
 
@@ -13,8 +14,8 @@ open Iris.ProofMode
 
 variable {Q : Type} [Queue Q]
 
-/- [Note] Only try to solve lean hypothesis after `pure_intro` using assumption or simp -/
-private def tryCloseByLocalAssumptionOrSimp (goal : MVarId) : MetaM Bool := do
+/- [Note] Try to solve the pure Lean goal produced by `pure_intro` locally. -/
+private def tryCloseByLocalAutomation (goal : MVarId) : MetaM Bool := do
   goal.withContext do
     let target ← instantiateMVars (← goal.getType)
     let preState ← saveState
@@ -33,8 +34,24 @@ private def tryCloseByLocalAssumptionOrSimp (goal : MVarId) : MetaM Bool := do
       Meta.simpGoal goal ctx (simprocs := #[]) (discharge? := none)
         (simplifyTarget := true) (fvarIdsToSimp := #[])
     match result? with
-    | none => return true
-    | some _ => preState.restore; return false
+    | none =>
+      if ← goal.isAssignedOrDelayedAssigned then
+        return true
+      preState.restore
+    | some _ => preState.restore
+    try
+      let params ← Grind.mkDefaultParams {}
+      let result ← Grind.main goal params
+      if result.hasFailed then
+        preState.restore
+        return false
+      if ← goal.isAssignedOrDelayedAssigned then
+        return true
+      preState.restore
+      return false
+    catch _ =>
+      preState.restore
+      return false
 
 /- Keep enough failure detail for replay diagnostics while letting search treat every
 unsuccessful probe as "this rule does not apply here". -/
@@ -58,7 +75,7 @@ private def tryAssignPureIntro (goal : MVarId) : MetaM PureIntroResult := do
     let .some (h, _) ← trySynthInstanceProbeQ q(FromPure $b $target .out $φ)
       | return .notPure
     let proof : Q($φ) ← mkFreshExprMVar (← instantiateMVars φ)
-    unless ← tryCloseByLocalAssumptionOrSimp proof.mvarId! do
+    unless ← tryCloseByLocalAutomation proof.mvarId! do
       return .pureGoalUnproved
     let h : Q(FromPure $b $target .out $φ) := h
     match ← whnf b with
