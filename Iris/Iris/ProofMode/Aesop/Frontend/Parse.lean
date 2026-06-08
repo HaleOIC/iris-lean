@@ -30,9 +30,15 @@ private meta def parseStrategy (stx : Syntax) : TermElabM Strategy := do
   | `(iaesopStrategy| breadthFirst) => pure .breadthFirst
   | _ => throwUnsupportedSyntax
 
+private meta def parsePureSolver (stx : Syntax) : TermElabM Syntax := do
+  match stx with
+  | `(iaesopPureSolver| pureBy $solver:tactic) => pure solver.raw
+  | _ => throwUnsupportedSyntax
+
 private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesopStrategy))
     (normModeStx? : Option (TSyntax `iaesopNormMode))
-    (ruleSetStx? : Option (TSyntax `iaesopRuleSet)) : TermElabM SearchConfig := do
+    (ruleSetStx? : Option (TSyntax `iaesopRuleSet))
+    (pureSolverStx? : Option (TSyntax `iaesopPureSolver)) : TermElabM SearchConfig := do
   let strategy ← match strategyStx? with
     | none => pure .bestFirst
     | some strategyStx => parseStrategy strategyStx
@@ -42,12 +48,16 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
   let useBaseline ← match ruleSetStx? with
     | none => pure false
     | some ruleSetStx => parseRuleSet ruleSetStx
+  let pureSolver ← match pureSolverStx? with
+    | none => pure defaultPureSolver
+    | some pureSolverStx => parsePureSolver pureSolverStx
   return {
     generateScript? := trace
     strategy := strategy
     enableSimp? := enableSimp
     enableUnfold? := enableUnfold
     baseline? := useBaseline
+    pureSolver
   }
 
 /- Parse given syntax into search configuration -/
@@ -55,11 +65,11 @@ meta def parse (stx : Syntax) : TermElabM SearchConfig := do
   withRef stx do
     match stx with
     | `(tactic| iaesop $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
-        $[$ruleSet:iaesopRuleSet]?) =>
-        mkConfig false strategy normMode ruleSet
+        $[$ruleSet:iaesopRuleSet]? $[$pureSolver:iaesopPureSolver]?) =>
+        mkConfig false strategy normMode ruleSet pureSolver
     | `(tactic| iaesop? $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
-        $[$ruleSet:iaesopRuleSet]?) =>
-        mkConfig true strategy normMode ruleSet
+        $[$ruleSet:iaesopRuleSet]? $[$pureSolver:iaesopPureSolver]?) =>
+        mkConfig true strategy normMode ruleSet pureSolver
     | _ =>
         throwUnsupportedSyntax
 

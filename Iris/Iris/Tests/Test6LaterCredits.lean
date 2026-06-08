@@ -266,8 +266,8 @@ theorem le_upd_later_elim {P : IProp GF} : ⊢ £ 1 -∗ (▷ |==£> P) -∗ |==
   | zero => exfalso; cases H
   | succ n =>
     rw [show n.succ = 1 + n by omega]
-    imod lc_decrease_supply $$ Hsupp Hcr with Hsupp
-    iaesop baseline
+    iaesop baseline pureBy grind
+    -- imod lc_decrease_supply $$ Hsupp Hcr with Hsupp
     -- imodintro
     -- iright
     -- iexists n
@@ -319,8 +319,7 @@ theorem le_upd_later {P : IProp GF} : ⊢ £ 1 -∗ ▷ P -∗ |==£> P := by
 @[rocq_alias le_upd.except_0_le_upd, iaesop backward 100%]
 theorem except_0_le_upd {P : IProp GF} : ◇ (|==£> P) ⊢ |==£> (◇ P) := by
   unfold BIBase.except0
-  iintro (H|H)
-    <;> iaesop baseline
+  iintro (H|H) <;> iaesop baseline
   -- · iapply le_upd_intro
   --   ileft
   --   iexact H
@@ -351,7 +350,7 @@ theorem le_upd_elim n (P : IProp GF) :
   | zero =>
     simp only [Nat.le_zero_eq, Nat.repeat]
     imod Hupd with (⟨Ha, HP⟩|⟨%m, %Hlt, _⟩)
-    · iaesop baseline
+    · iaesop baseline pureBy grind
       -- imodintro; imodintro
       -- iexists 0
       -- isplit
@@ -363,7 +362,7 @@ theorem le_upd_elim n (P : IProp GF) :
     imod Hupd with (⟨Hc, HP⟩|Hupd)
     · imodintro; inext
       iapply iter_modal_intro $$ [Hc HP]
-        <;> iaesop baseline
+        <;> iaesop baseline pureBy grind
       -- · intro Q; iintro H; imodintro; inext; iexact H
       -- imodintro; imodintro
       -- iexists n.succ

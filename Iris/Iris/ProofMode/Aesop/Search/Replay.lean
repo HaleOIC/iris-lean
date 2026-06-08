@@ -51,7 +51,8 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
   let rapp ← rref.get
   let obun ← rapp.children.get
   liftM <| Search.traceReplayStep goalMVarId (toString rapp.appliedRule.info.builder)
-  let goalMVarIds ← liftM <| rapp.appliedRule.info.builder.replay { goal := goalMVarId, rapp }
+  let goalMVarIds ← liftM <|
+    rapp.appliedRule.info.builder.replay { goal := goalMVarId, rapp, config }
 
   /- The replayed rule closed the focused metavariable and produced no children. -/
   if goalMVarIds.isEmpty && obun.goals.isEmpty then

@@ -98,7 +98,7 @@ instance least_fixpoint_affine [Ia : ∀ x, Affine (F (fun _ => emp) x)] {x : A}
     Affine (bi_least_fixpoint F x) where
   affine := by
     revert x; iapply least_fixpoint_iter (Φ := fun _ => emp) -- Φ can be dropped
-    iaesop baseline
+    iaesop baseline pureBy simp
     -- iintro !> %y H
     -- iapply (Ia y).affine $$ H
 
@@ -111,7 +111,7 @@ instance least_fixpoint_absorbing [BIMonoPred F]
     iapply wand_elim_swap
     revert x; iapply least_fixpoint_iter
     ihave Hmono := mono_pred (F := F) (Φ := (fun x : A => iprop(True -∗ bi_least_fixpoint F x))) (Ψ := bi_least_fixpoint F)
-    iaesop baseline
+    iaesop baseline pureBy simp
     -- iintro !> %y HF HT
     -- iapply least_fixpoint_unfold_2
     -- iapply Hmono

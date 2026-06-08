@@ -141,7 +141,7 @@ theorem own_inv_acc (E : CoPset) (N : Namespace) (P : IProp GF)  :
     -- isplitl [HE1]; iassumption
     -- iassumption
   rw [HEEQ]
-  iaesop baseline
+  iaesop baseline pureBy grind
   -- isplitl [HE]; iassumption
   -- apply true_intro
 
@@ -213,7 +213,7 @@ theorem own_inv_alloc_open (N : Namespace) (E : CoPset) (P : IProp GF) (Hsub : �
     -- isplitl [HE1]; iassumption
     -- iassumption
   rw [HEEQ]
-  iaesop baseline
+  iaesop baseline pureBy simp
   -- isplitl [HE]; iassumption
   -- apply true_intro
 
@@ -434,8 +434,6 @@ theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
 @[rocq_alias inv_split, iaesop backward 100%]
 theorem inv_split (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P ∗ inv N Q := by
-  set_option trace.iaesop.ruleIndex true in
-  set_option trace.iaesop.search.replay true in
   iaesop baseline
   -- iintro #H
   -- ihave H1 := inv_split_l $$ H

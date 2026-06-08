@@ -21,9 +21,13 @@ declare_syntax_cat iaesopRuleSet
 syntax "builtin" : iaesopRuleSet
 syntax "baseline" : iaesopRuleSet
 
+/- Optional pure Lean solver run after `ipureintro` exposes a pure goal. -/
+declare_syntax_cat iaesopPureSolver
+syntax "pureBy" tactic : iaesopPureSolver
+
 syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
-  (ppSpace iaesopRuleSet)? : tactic
+  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? : tactic
 syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
-  (ppSpace iaesopRuleSet)? : tactic
+  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? : tactic
 
 end Iris.ProofMode.Aesop

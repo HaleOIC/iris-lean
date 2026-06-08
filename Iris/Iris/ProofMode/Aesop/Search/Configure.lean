@@ -1,5 +1,7 @@
 module
 
+public meta import Lean.Parser.Tactic
+
 public section
 
 namespace Iris.ProofMode.Aesop
@@ -12,6 +14,10 @@ inductive Strategy
   | depthFirst
   | breadthFirst
   deriving Inhabited, BEq, Repr
+
+/-- Default solver used for pure Lean goals produced by `ipureintro`. -/
+def defaultPureSolver : Syntax :=
+  .node .none ``_root_.Lean.Parser.Tactic.assumption #[.atom .none "assumption"]
 
 structure SearchConfig where
   /- maximum depth of the search tree -/
@@ -30,3 +36,5 @@ structure SearchConfig where
   enableUnfold? : Bool := false
   /- whether select the baseline version (default: false) -/
   baseline? : Bool := false
+  /- Solver run on pure Lean goals produced by `ipureintro`. -/
+  pureSolver : Syntax := defaultPureSolver

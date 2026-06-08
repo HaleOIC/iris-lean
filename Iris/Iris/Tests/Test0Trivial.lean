@@ -66,7 +66,7 @@ example [BI PROP] (P Q : Nat → PROP) :
 @[iaesop backward 100%]
 example [BI PROP] (Q : PROP) (φ : Prop) (hφ : φ):
     P ⊢ (⌜φ⌝ -∗ P -∗ ⌜True⌝ -∗ Q) -∗ Q := by
-  iaesop baseline
+  iaesop baseline pureBy grind
 
 /-- Tests `ispecialize` with mixed forall and wand specialization -/
 -- A very useful example: we can identify the iprop in the target proposition
@@ -112,7 +112,7 @@ example [BI PROP] (P Q : α → PROP) (R : PROP) :
 
 /-- Tests `iexists` with anonymous metavariable -/
 example [BI PROP] : ⊢@{PROP} ∃ x, ⌜x = 42⌝ := by
-  iaesop baseline
+  iaesop baseline pureBy grind
 
 example [BI PROP] (P : α → PROP) : P a ⊢ ∃ x, P x := by
   iaesop baseline

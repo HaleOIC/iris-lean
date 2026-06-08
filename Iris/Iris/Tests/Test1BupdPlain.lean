@@ -92,7 +92,7 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
   (Hup : x ~~>: Φ) :
     own x ⊢ BUpdPlain iprop(∃ y, ⌜Φ y⌝ ∧ own y) := by
   unfold BUpdPlain
-  iaesop baseline
+  iaesop baseline pureBy assumption
   -- iintro Hx
   -- iintro %R H
   -- iapply own_updateP_plainly x Φ R Hup

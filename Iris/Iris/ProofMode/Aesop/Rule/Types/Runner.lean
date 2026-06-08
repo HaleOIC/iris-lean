@@ -22,6 +22,7 @@ structure RuleInput where
 structure RuleReplayInput where
   goal : MVarId
   rapp : Rapp
+  config : SearchConfig := {}
 
 /- SubGoal produced by a rule application -/
 structure SubGoal where
