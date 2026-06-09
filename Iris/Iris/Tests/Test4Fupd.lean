@@ -183,6 +183,7 @@ theorem lc_fupd_elim_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (▷ P) -
   -- isplitl [HE]; iassumption
   -- iassumption
 
+set_option maxHeartbeats 300000 in
 @[rocq_alias lc_fupd_add_later]
 theorem lc_fupd_add_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (|={E}=> ▷ P) -∗ |={E}=> P := by
   iintro Hcr HP
@@ -190,8 +191,9 @@ theorem lc_fupd_add_later {E : CoPset} {P : IProp GF} : ⊢ £ 1 -∗ (|={E}=> �
   iintro ⟨Hwsat, HE⟩
   simp only [le_upd_if, ↓reduceIte]
   -- FIXME: Is it possible to make >> work instead of adding the spaces between them?
-  ihave > > ⟨H1, H2, H3⟩ := HP $$ [Hwsat HE]
-  all_goals iaesop baseline
+  ihave H := HP $$ [Hwsat HE] <;> iaesop baseline
+  -- ihave > > ⟨H1, H2, H3⟩ := HP $$ [Hwsat HE]
+  -- all_goals iaesop baseline
   -- · isplitl [Hwsat] <;> iassumption
   -- imod le_upd_later $$ Hcr H3 with H3
   -- imodintro; imodintro

@@ -11,6 +11,11 @@ open Lean.Meta
 
 variable {Q : Type} [Queue Q]
 
+private def isErasedTheoremRule (erasedRules : Array ErasedTheoremRule)
+    (rule : Rule RuleInfo) : Bool :=
+  erasedRules.any λ erased =>
+    erased.kind == rule.id.kind && erased.decl == rule.id.name
+
 def selectRulesFromIndex (index : Index RuleInfo) (parentRef : GoalRef) :
     SearchM Q RuleQueue := do
   let parent ← parentRef.get
@@ -20,9 +25,11 @@ def selectRulesFromIndex (index : Index RuleInfo) (parentRef : GoalRef) :
     | .notNormal => parent.preNormState
     | .normal _ postState .. => postState
     | .provenByNorm postState .. => postState
+  let erasedTheoremRules := (← readThe SearchM.Context).config.erasedTheoremRules
   let results ← liftM do
     state.restore
-    Index.queryMVar index goal
+    Index.queryMVar index goal λ rule =>
+      !isErasedTheoremRule erasedTheoremRules rule
   return RuleQueue.ofArray results
 
 def selectRules (parentRef : GoalRef) : SearchM Q RuleQueue := do

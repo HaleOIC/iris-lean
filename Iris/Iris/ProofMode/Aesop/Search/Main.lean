@@ -19,6 +19,28 @@ open Iris.BI
 
 variable {Q : Type} [Queue Q]
 
+private meta def localTheoremRuleIndex (rules : Array LocalTheoremRule) :
+    MetaM (Index RuleInfo) := do
+  let mut idx : Index RuleInfo := {}
+  let mut traceEntries : Array String := #[]
+  for localRule in rules do
+    match localRule.kind with
+    | .backward =>
+        let rule ← Rule.Backward.mkBackwardRule
+          localRule.decl localRule.successProbability .local
+        traceEntries := traceEntries.push
+          s!"backward {localRule.decl} ({localRule.successProbability}): {toString (format rule.indexingMode)}"
+        idx := idx.add rule rule.indexingMode
+    | .forward =>
+        throwError "iaesop: local forward theorem rules are not implemented yet"
+    | kind =>
+        throwError "iaesop: local theorem rule kind '{kind}' is not supported"
+  unless rules.isEmpty do
+    trace[iaesop.ruleIndex] s!"iaesop: generated local theorem index with {rules.size} rules"
+    traceEntries.forM λ entry => do
+      trace[iaesop.ruleIndex] s!"  {entry}"
+  return idx
+
 private meta partial def nextActiveGoal? : SearchM Q (Option GoalRef) := do
   let some gref ← popGoal?
     | return none
@@ -118,7 +140,9 @@ private meta partial def searchLoop : SearchM Q (Array MVarId) := do
 meta def search (goal : MVarId) (config : SearchConfig := {}) :
     ProofModeM (Array MVarId) := do
   goal.checkNotAssigned `iaesop
-  let ruleIndex := commonRuleIndex.merge (← backwardRuleIndex)
+  let ruleIndex :=
+    (commonRuleIndex.merge (← backwardRuleIndex)).merge
+      (← localTheoremRuleIndex config.localTheoremRules)
   Queue.withStrategy config.strategy λ Q => do
     let (remaining, _, _) ← SearchM.run (Q := Q) config ruleIndex goal do
       searchLoop

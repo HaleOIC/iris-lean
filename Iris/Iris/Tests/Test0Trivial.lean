@@ -116,3 +116,30 @@ example [BI PROP] : ⊢@{PROP} ∃ x, ⌜x = 42⌝ := by
 
 example [BI PROP] (P : α → PROP) : P a ⊢ ∃ x, P x := by
   iaesop baseline
+
+section LocalRuleFrontend
+
+theorem local_rule_added_test [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
+  ipureintro
+  exact And.intro True.intro True.intro
+
+example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
+  iaesop baseline with [backward local_rule_added_test 75%]
+
+theorem removable_rule_test [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
+  ipureintro
+  exact And.intro True.intro True.intro
+
+attribute [local iaesop backward 100%] removable_rule_test
+
+/--
+error: unsolved goals
+-/
+#guard_msgs (substring := true) in
+example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
+  iaesop baseline without [backward removable_rule_test]
+
+example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
+  iaesop baseline
+
+end LocalRuleFrontend

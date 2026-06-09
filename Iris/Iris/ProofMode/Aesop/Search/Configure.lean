@@ -1,6 +1,8 @@
 module
 
 public meta import Lean.Parser.Tactic
+public import Iris.ProofMode.Aesop.Util.Percent
+public import Iris.ProofMode.Aesop.Rule.Types.Name
 
 public section
 
@@ -18,6 +20,19 @@ inductive Strategy
 /-- Default solver used for pure Lean goals produced by `ipureintro`. -/
 def defaultPureSolver : Syntax :=
   .node .none ``_root_.Lean.Parser.Tactic.assumption #[.atom .none "assumption"]
+
+/- A theorem rule added for a single `iaesop` invocation. -/
+structure LocalTheoremRule where
+  kind : RuleBuilderKind
+  decl : Name
+  successProbability : Percent := Percent.hundred
+  deriving Inhabited
+
+/- A theorem rule erased for a single `iaesop` invocation. -/
+structure ErasedTheoremRule where
+  kind : RuleBuilderKind
+  decl : Name
+  deriving Inhabited
 
 structure SearchConfig where
   /- maximum depth of the search tree -/
@@ -38,3 +53,7 @@ structure SearchConfig where
   baseline? : Bool := false
   /- Solver run on pure Lean goals produced by `ipureintro`. -/
   pureSolver : Syntax := defaultPureSolver
+  /- Extra theorem rules added only for this `iaesop` invocation. -/
+  localTheoremRules : Array LocalTheoremRule := #[]
+  /- Rule declarations removed only for this `iaesop` invocation. -/
+  erasedTheoremRules : Array ErasedTheoremRule := #[]

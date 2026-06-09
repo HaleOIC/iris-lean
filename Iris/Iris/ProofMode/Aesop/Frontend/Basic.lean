@@ -25,9 +25,24 @@ syntax "baseline" : iaesopRuleSet
 declare_syntax_cat iaesopPureSolver
 syntax "pureBy" tactic : iaesopPureSolver
 
+/- Local rule edits for one `iaesop` invocation. -/
+declare_syntax_cat iaesopRuleDirection
+syntax "backward" : iaesopRuleDirection
+syntax "forward" : iaesopRuleDirection
+
+declare_syntax_cat iaesopLocalRule
+syntax iaesopRuleDirection ppSpace ident (ppSpace num "%")? : iaesopLocalRule
+
+declare_syntax_cat iaesopErasedRule
+syntax iaesopRuleDirection ppSpace ident : iaesopErasedRule
+
+declare_syntax_cat iaesopRuleEdit
+syntax "with" "[" iaesopLocalRule,* "]" : iaesopRuleEdit
+syntax "without" "[" iaesopErasedRule,* "]" : iaesopRuleEdit
+
 syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
-  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? : tactic
+  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
 syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
-  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? : tactic
+  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
 
 end Iris.ProofMode.Aesop

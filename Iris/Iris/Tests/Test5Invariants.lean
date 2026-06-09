@@ -405,7 +405,7 @@ section Splitting
 
 variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 
-@[rocq_alias inv_split_l, iaesop backward 100%]
+@[rocq_alias inv_split_l]
 theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P := by
   iaesop baseline
@@ -418,7 +418,7 @@ theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
   -- iintro HP
   -- isplitl [HP] <;> iassumption
 
-@[rocq_alias inv_split_r, iaesop backward 100%]
+@[rocq_alias inv_split_r]
 theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N Q := by
   iaesop baseline
@@ -431,7 +431,7 @@ theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
   -- iintro HQ
   -- isplitl [HP] <;> iassumption
 
-@[rocq_alias inv_split, iaesop backward 100%]
+@[rocq_alias inv_split]
 theorem inv_split (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P ∗ inv N Q := by
   iaesop baseline
