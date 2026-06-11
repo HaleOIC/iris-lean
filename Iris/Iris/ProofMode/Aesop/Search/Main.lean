@@ -91,6 +91,48 @@ private meta def collectRemainingGoals : SearchM Q (Array MVarId) := do
     let g ← gref.get
     return goals ++ (Goal.currentMVar? g).toArray
 
+private meta def lazyStepsToScript (ruleName : DisplayRuleId)
+    (steps? : Option (Array Script.LazyStep)) : SearchM Q Script.UScript := do
+  let some steps := steps?
+    | throwError "iaesop?: tactic script generation is not supported by rule {ruleName}"
+  return steps
+
+mutual
+  private meta partial def extractScriptFromGoal (gref : GoalRef) :
+      SearchM Q Script.UScript := do
+    let goal ← gref.get
+    let normScript ←
+      match goal.normalizationState with
+      | .notNormal => return #[]
+      | .normal (script := script) .. | .provenByNorm (script := script) .. =>
+        script.foldlM (init := #[]) λ acc (ruleName, steps?) => do
+          let some steps := steps?
+            | throwError "iaesop?: tactic script generation is not supported by rule {ruleName}"
+          return acc ++ steps
+    if goal.normalizationState.isProvenByNorm then
+      return normScript
+    let some rref ← goal.children.findM? λ rref => do
+      let rapp ← rref.get
+      return rapp.state.isProven && !rapp.isIrrelevant
+      /- The goal is proven but exposes no proven rule application (e.g. closed
+      purely by context inheritance); emit only the normalization prefix. -/
+      | return normScript
+    return normScript ++ (← extractScriptFromRapp rref)
+
+  private meta partial def extractScriptFromRapp (rref : RappRef) :
+      SearchM Q Script.UScript := do
+    let rapp ← rref.get
+    let mut script ← lazyStepsToScript (.ruleId rapp.appliedRule.id) rapp.scriptSteps?
+    let obun ← rapp.children.get
+    /- Only follow the children on the proven path, mirroring replay; dead or
+    irrelevant search branches must not contribute to the script. -/
+    for child in obun.goals do
+      let childGoal ← child.get
+      if childGoal.state.isProven && !childGoal.isIrrelevant then
+        script := script ++ (← extractScriptFromGoal child)
+    return script
+end
+
 /-- Check tree status function set -/
 private meta def checkRootProven : SearchM Q Bool := do
   let rootRef := ← getRootGoal
@@ -100,42 +142,26 @@ private meta def checkRootProven : SearchM Q Bool := do
       Baseline.replayProof
     else
       finalizeProof
+    let config := (← readThe SearchM.Context).config
+    unless config.generateScript? do return true
+    let rootRef ← getRootGoal
+    let root ← rootRef.get
+    let script ← extractScriptFromGoal rootRef
+    let tacs ← liftM <| script.render root.preNormGoal
+    liftM <| Script.addTryThisTacticSeqSuggestion (← getRef) tacs
     return true
   else
     return false
-
-private meta def checkRootUnprovable : SearchM Q (Option MessageData) := do
-  return none
-
-private meta def checkGoalLimit : SearchM Q (Option MessageData) := do
-  return none
-
-private meta def checkRappLimit : SearchM Q (Option MessageData) := do
-  return none
-
-private meta def checkNonfatalError? : SearchM Q (Option MessageData) := do
-  let checks : Array (SearchM Q (Option MessageData)) :=
-    #[checkRootUnprovable, checkGoalLimit, checkRappLimit]
-  for check in checks do
-    if let some err ← check then
-      return some err
-  return none
-
-private meta def handleNonfatalError (_err : MessageData) : SearchM Q (Array MVarId) := do
-  return #[]
 
 /- [Note] Release the restriction from depth factor -/
 private meta partial def searchLoop : SearchM Q (Array MVarId) := do
   checkSystem "iaesop"
   if ← checkRootProven then return #[]
-  if let some err ← checkNonfatalError? then
-    handleNonfatalError err
+  if ← expandNextGoal then
+    incrementIteration
+    searchLoop
   else
-    if ← expandNextGoal then
-      incrementIteration
-      searchLoop
-    else
-      collectRemainingGoals
+    collectRemainingGoals
 
 meta def search (goal : MVarId) (config : SearchConfig := {}) :
     ProofModeM (Array MVarId) := do

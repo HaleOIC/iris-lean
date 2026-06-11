@@ -3,6 +3,10 @@ module
 public meta import Iris.ProofMode.Aesop.Rule.Dispatch
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.Tracing
+public meta import Iris.ProofMode.Tactics.Cases
+public meta import Iris.ProofMode.Tactics.Exact
+public meta import Iris.ProofMode.Tactics.Exists
+public meta import Iris.ProofMode.Tactics.Have
 
 public meta section
 
@@ -26,15 +30,116 @@ private structure ReplayM.State where
 private abbrev ReplayM :=
   ReaderT ReplayM.Context $ StateRefT ReplayM.State ProofModeM
 
+private def appliedHypTacticIdent? : AppliedHyp → Option (TSyntax `ident)
+  | .spatial hyp | .intuitionistic hyp => some (mkIdent hyp.name)
+  | .lean userName _ => some (mkIdent userName)
+
+private def mkSpatialSpecPat (hyps : Array IrisHyp) : MetaM (TSyntax `specPat) := do
+  let names := hyps.map λ hyp => (⟨mkIdent hyp.name⟩: TSyntax `frameIdent)
+  `(specPat| [$[$names:frameIdent]*])
+
+private def mkIApplyTactic (fn : TSyntax `term) (obun : Obun) :
+    MetaM (TSyntax `tactic) := do
+  if obun.finalizedSpatialSplits.isEmpty then
+    `(tactic| iapply $fn:term)
+  else
+    let spats ← obun.finalizedSpatialSplits.mapM mkSpatialSpecPat
+    `(tactic| iapply $fn:term $$ $spats:specPat*)
+
+/-- Reconstruct the surface tactic that a replayed rule corresponds to. Rules
+without a faithful surface representation fall back to `skip` so that the
+rendered tactic chain stays structurally consistent. -/
+private def mkReplayTactic (rapp : Rapp) (obun : Obun) (config : SearchConfig) :
+    MetaM (TSyntax `tactic) := do
+  let fallback ← `(tactic| skip)
+  match rapp.appliedRule.info.builder with
+  | .backward =>
+      let decl := mkIdent rapp.appliedRule.id.name
+      mkIApplyTactic decl obun
+  | .tactic .ipureIntro =>
+      let solver : TSyntax `tactic := ⟨config.pureSolver⟩
+      `(tactic| (ipureintro; $solver:tactic))
+  | .tactic .iexist => `(tactic| iexists _)
+  | .tactic .icases =>
+      match rapp.usedHyp? >>= appliedHypTacticIdent? with
+      | some ident =>
+          let binder ← `(binderIdent| $ident:ident)
+          let pat ← `(icasesPat| ($binder:binderIdent | $binder:binderIdent))
+          `(tactic| icases $ident:term with $pat:icasesPat)
+      | none => pure fallback
+  | .tactic .isplit => `(tactic| isplit)
+  | .tactic .ileft => `(tactic| ileft)
+  | .tactic .iright => `(tactic| iright)
+  | .tactic .imodIntro => `(tactic| imodintro)
+  | .tactic .imod =>
+      match rapp.usedHyp? >>= appliedHypTacticIdent? with
+      | some ident =>
+          /- Name the modal-elimination result so later steps that reference the
+          generated hypothesis resolve to the same name. -/
+          match rapp.generatedSpatialHyps[0]? with
+          | some gen =>
+              let genName := mkIdent gen.name
+              let genBi ← `(binderIdent| $genName:ident)
+              let genPat ← `(icasesPat| $genBi:binderIdent)
+              `(tactic| imod $ident:term with $genPat:icasesPat)
+          | none => `(tactic| imod $ident:term)
+      | none => pure fallback
+  | .tactic .identity =>
+      /- The identity rule performs a spatial split `P ∗ Q`; the left context
+      goes to the first subgoal via `isplitl [..]`. -/
+      match obun.finalizedSpatialSplits[0]? with
+      | some leftCtx =>
+          let leftIdents := leftCtx.map (fun h => mkIdent h.name)
+          `(tactic| isplitl [$leftIdents*])
+      | none => pure fallback
+  | .tactic .applyHyps =>
+      match rapp.usedHyp? >>= appliedHypTacticIdent? with
+      | some ident =>
+          /- A `close` application (no remaining child goals) discharges the
+          goal directly, so emit `iexact`; otherwise the hypothesis is applied. -/
+          if obun.goals.isEmpty || obun.kind.isInherited then
+            `(tactic| iexact $ident:ident)
+          else
+            mkIApplyTactic ident obun
+      | none => pure fallback
+  | .tactic .haveHyps =>
+      match rapp.usedHyp? >>= appliedHypTacticIdent?, rapp.generatedSpatialHyps[0]? with
+      | some usedIdent, some generatedHyp =>
+          let generatedIdent := mkIdent generatedHyp.name
+          let generatedBinder ← `(binderIdent| $generatedIdent:ident)
+          let generatedPat ← `(icasesPat| $generatedBinder:binderIdent)
+          let premiseContexts :=
+            obun.finalizedSpatialSplits.extract 0 (obun.goals.size - 1)
+          if premiseContexts.isEmpty then
+            pure fallback
+          else
+            let spats ← premiseContexts.mapM mkSpatialSpecPat
+            `(tactic| ihave $generatedPat:icasesPat := $usedIdent:term $$ $spats:specPat*)
+      | _, _ => pure fallback
+  | _ => pure fallback
+
 /- Assign the proof term following the proven chain -/
 /- [Note] We should follow the tree but with different goal (real replay stage) MVarId -/
-private partial def assignProof (goal : Goal) : ReplayM Unit := do
+private partial def assignProof (gref : GoalRef) : ReplayM Unit := do
+  let goal ← gref.get
   /- First check the normalization stage's change -/
   let goalMVarId := (← getThe ReplayM.State).focus
   let config := (← readThe ReplayM.Context).config
-  let result ← liftM do
+  let (result, normScript) ← liftM do
     normalizeGoalMVar goalMVarId goal.depth config.maxNormIterations
-      config.enableSimp? goal.unassignedMvars
+      config.enableSimp? goal.unassignedMvars (recordScript := config.generateScript?)
+
+  /- Construct normalization stage proof script -/
+  if !(← readThe ReplayM.Context).config.generateScript? || normScript.isEmpty then
+    return
+  let entry : Array (DisplayRuleId × Option (Array Script.LazyStep)) :=
+    #[(.normSimp, some normScript)]
+  gref.modify fun g =>
+    let ns := match g.normalizationState with
+      | .notNormal => .notNormal
+      | .normal pg ps gen used _ => .normal pg ps gen used entry
+      | .provenByNorm ps gen used _ => .provenByNorm ps gen used entry
+    g.setNormalizationState ns
   let some goalMVarId := match result with
     | .proved => none
     | .changed goalMVarId => some goalMVarId
@@ -51,8 +156,20 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
   let rapp ← rref.get
   let obun ← rapp.children.get
   liftM <| Search.traceReplayStep goalMVarId (toString rapp.appliedRule.info.builder)
+  let preState ← liftM (show MetaM SavedState from saveState)
   let goalMVarIds ← liftM <|
     rapp.appliedRule.info.builder.replay { goal := goalMVarId, rapp, config }
+
+  /- Make up scripts during replay process if needed -/
+  if !(← readThe ReplayM.Context).config.generateScript? then
+    return
+  let config := (← readThe ReplayM.Context).config
+  let rapp ← rref.get
+  let tactic ← liftM <| mkReplayTactic rapp obun config
+  let postState ← liftM (show MetaM SavedState from saveState)
+  rref.modify λ rapp => rapp.setScriptSteps? <| some #[
+    { preState, preGoal := goalMVarId, tactic, postState, postGoals := goalMVarIds }
+  ]
 
   /- The replayed rule closed the focused metavariable and produced no children. -/
   if goalMVarIds.isEmpty && obun.goals.isEmpty then
@@ -71,7 +188,7 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
       throwError s!"iaesop(baseline): replay produced one goal but search child obun has {obun.goals.size} goals"
     let some goalRef := obun.goals[0]?
       | throwError "iaesop(baseline): child obun has no goal at index 0"
-    assignProof (← goalRef.get)
+    assignProof goalRef
     return ()
 
   /- Find the proven child goal that replay should follow next. -/
@@ -97,7 +214,7 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
       focus := goalMVarId
       pendingByCase := state.pendingByCase.erase nextKey
     }
-    assignProof nextGoal
+    assignProof nextGoalRef
     return ()
 
   if goalMVarIds.size != obun.goals.size then
@@ -119,12 +236,13 @@ private partial def assignProof (goal : Goal) : ReplayM Unit := do
     focus := goalMVarId
     pendingByCase := pendingByCase.erase nextKey
   }
-  assignProof nextGoal
+  assignProof nextGoalRef
 
 /- (Baseline) Replay proof entry point -/
 public meta def replayProof : SearchM Q Unit := do
   let config := (← readThe SearchM.Context).config
-  let rootGoal ← (← getRootGoal).get
+  let rootRef ← getRootGoal
+  let rootGoal ← rootRef.get
   if !rootGoal.state.isProven then
     throwError "iaesop(baseline): replay procedure reach an unproven goal"
 
@@ -136,7 +254,7 @@ public meta def replayProof : SearchM Q Unit := do
   /- Enter the replay context -/
   rootGoal.preNormState.restore
   let (_, replayState) ← liftM (m := ProofModeM) <|
-    ReaderT.run (assignProof rootGoal) { config } |>.run {
+    ReaderT.run (assignProof rootRef) { config } |>.run {
       focus := rootGoal.preNormGoal
       pendingByCase := {}
     }

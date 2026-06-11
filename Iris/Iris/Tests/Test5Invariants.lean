@@ -374,7 +374,7 @@ theorem inv_combine (N1 N2 N : Namespace) (P Q : IProp GF) (Hdisj : N1 ## N2)
   iintro Hcl
   isplitl [HP HQ]; inext; isplitl [HP] <;> iassumption
   iintro ⟨HP, HQ⟩
-  iaesop baseline
+  iaesop? baseline
   -- imod Hcl
   -- imod H2 $$ HQ with _
   -- imod H1 $$ HP with _
@@ -391,7 +391,7 @@ theorem inv_combine_dup_l (N : Namespace) (P Q : IProp GF) :
   ihave ⟨HP1, HP2⟩ : ▷ P ∗ ▷ P $$ [HP]
   · iapply later_sep; inext; iapply HPP $$ HP
   imod HI1 $$ HP2 with _
-  iaesop baseline
+  iaesop? baseline
   -- imod HI2 $$ %E Hsub with ⟨HQ, HI2⟩
   -- imodintro
   -- isplitl [HP1 HQ]
@@ -408,7 +408,7 @@ variable {GF : BundledGFunctors} [InvGS_gen hlc GF]
 @[rocq_alias inv_split_l]
 theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P := by
-  iaesop baseline
+  iaesop? baseline
   -- iintro H
   -- iapply inv_alter $$ H
   -- inext
@@ -421,7 +421,7 @@ theorem inv_split_l (N : Namespace) (P Q : IProp GF) :
 @[rocq_alias inv_split_r]
 theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N Q := by
-  iaesop baseline
+  iaesop? baseline
   -- iintro H
   -- iapply inv_alter $$ H
   -- inext
@@ -434,7 +434,7 @@ theorem inv_split_r (N : Namespace) (P Q : IProp GF) :
 @[rocq_alias inv_split]
 theorem inv_split (N : Namespace) (P Q : IProp GF) :
     ⊢ inv N iprop(P ∗ Q) -∗ inv N P ∗ inv N Q := by
-  iaesop baseline
+  iaesop? baseline with [backward inv_split_l 100%, backward inv_split_r 100%]
   -- iintro #H
   -- ihave H1 := inv_split_l $$ H
   -- ihave H2 := inv_split_r $$ H

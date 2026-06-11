@@ -244,7 +244,7 @@ theorem le_upd_bind {P Q : IProp GF} : ⊢ (P -∗ |==£> Q) -∗ (|==£> P) -�
     --   isplit
     --   · ipureintro; assumption
     --   isplitl [Hsupp] <;> iassumption
-  · iaesop baseline
+  · iaesop? baseline
     -- imodintro
     -- iright
     -- iexists m
@@ -277,7 +277,7 @@ theorem le_upd_later_elim {P : IProp GF} : ⊢ £ 1 -∗ (▷ |==£> P) -∗ |==
 
 @[rocq_alias le_upd.le_upd_mono]
 theorem le_upd_mono {P Q : IProp GF} (Hent : P ⊢ Q) : (|==£> P) ⊢ (|==£> Q) := by
-  iaesop baseline
+  iaesop? baseline
   -- iintro H
   -- iapply le_upd_bind $$ [] H
   -- iintro H
@@ -293,7 +293,7 @@ theorem le_upd_trans {P : IProp GF} : (|==£> |==£> P) ⊢ |==£> P := by
 
 @[rocq_alias le_upd.le_upd_frame_r, iaesop backward 100%]
 theorem le_upd_frame_r {P R : IProp GF} : (|==£> P) ∗ R ⊢ |==£> (P ∗ R) := by
-  iaesop baseline
+  iaesop? baseline
   -- iintro ⟨H, HR⟩
   -- iapply le_upd_bind $$ [HR] H
   -- iintro HP
@@ -302,16 +302,16 @@ theorem le_upd_frame_r {P R : IProp GF} : (|==£> P) ∗ R ⊢ |==£> (P ∗ R) 
 
 @[rocq_alias le_upd.le_upd_frame_l, iaesop backward 100%]
 theorem le_upd_frame_l {P R : IProp GF} : R ∗ (|==£> P) ⊢ |==£> (R ∗ P) := by
-  iaesop baseline
+  iaesop? baseline
   -- refine .trans ?_ (le_upd_mono sep_comm.mp)
   -- refine (.trans sep_comm.mp ?_)
   -- iapply le_upd_frame_r
 
 @[rocq_alias le_upd.le_upd_later, iaesop backward 100%]
 theorem le_upd_later {P : IProp GF} : ⊢ £ 1 -∗ ▷ P -∗ |==£> P := by
-  iintro H1 H2
-  iapply le_upd_later_elim $$ H1
-  iaesop baseline
+  iaesop? baseline with [backward le_upd_later_elim]
+  -- iintro H1 H2
+  -- iapply le_upd_later_elim $$ H1
   -- inext
   -- iapply le_upd_intro $$ H2
 

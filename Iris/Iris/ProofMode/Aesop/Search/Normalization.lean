@@ -1,6 +1,7 @@
 module
 
 public meta import Lean.Meta.Tactic.Simp.SimpAll
+public meta import Iris.ProofMode.Aesop.Script.Basic
 public meta import Iris.ProofMode.Aesop.Search.Types
 public meta import Iris.ProofMode.Aesop.Search.Names
 public meta import Iris.ProofMode.Aesop.Search.SearchM
@@ -16,9 +17,49 @@ open Iris.BI ProofMode
 
 variable {Q : Type} [Queue Q]
 
+/-- Render an `iCasesPat` back into surface syntax so that normalization steps
+can be reported as concrete `icases`/`iintro` tactics in `iaesop?` scripts. -/
+private partial def renderICasesPat : iCasesPat → MetaM (TSyntax `icasesPat)
+  | .one name => `(icasesPat| $name:binderIdent)
+  | .pure name => `(icasesPat| %$name:binderIdent)
+  | .clear => `(icasesPat| -)
+  | .intuitionistic p => do let q ← renderICasesPat p; `(icasesPat| #$q)
+  | .spatial p => do let q ← renderICasesPat p; `(icasesPat| ∗$q)
+  | .mod p => do let q ← renderICasesPat p; `(icasesPat| >$q)
+  | .conjunction ps => do
+      let alts ← ps.toArray.mapM fun p => do
+        let q ← renderICasesPat p
+        `(icasesPatAlts| $q:icasesPat)
+      `(icasesPat| ⟨$alts,*⟩)
+  | .disjunction ps => do
+      let qs ← ps.toArray.mapM renderICasesPat
+      `(icasesPat| ($qs|*))
+  | .frame => `(icasesPat| -)
+
+/-- Build the `iintro` tactic syntax corresponding to a normalization intro. -/
+private def mkIntroTactic (pat : IntroPat) : MetaM (TSyntax `tactic) := do
+  match pat with
+  | .intro casesPat =>
+      let p ← renderICasesPat casesPat
+      `(tactic| iintro $p:icasesPat)
+  | .trivial => `(tactic| iintro //)
+  | .modintro => `(tactic| iintro !>)
+
+/-- Build the `icases` tactic syntax for a normalization case split on `hyp`. -/
+private def mkICasesTactic (hyp : Name) (pat : iCasesPat) :
+    MetaM (TSyntax `tactic) := do
+  let p ← renderICasesPat pat
+  let hypIdent := mkIdent hyp
+  `(tactic| icases $hypIdent:term with $p:icasesPat)
+
+/-- As `mkICasesTactic`, but only when script recording is requested. -/
+private def mkICasesTactic? (record : Bool) (hyp : Name) (pat : iCasesPat) :
+    MetaM (Option (TSyntax `tactic)) :=
+  if record then some <$> mkICasesTactic hyp pat else pure none
+
 private inductive NormStepResult where
   | proved
-  | changed (goal : MVarId)
+  | changed (goal : MVarId) (tactic? : Option (TSyntax `tactic))
   | unchanged
 
 private structure NormStepInput where
@@ -26,6 +67,9 @@ private structure NormStepInput where
   depth : Nat
   enableSimp : Bool
   goalMVars : Std.HashSet MVarId
+  /- Whether to reconstruct surface tactics for `iaesop?` script generation.
+  Disabled during search to avoid building syntax that is thrown away. -/
+  recordScript : Bool := false
 
 private inductive NormStepKind where
   | intro
@@ -75,7 +119,7 @@ private def runIntroPat (goal : MVarId) (pat : IntroPat) :
     return none
 
 private def runCasesPatOnHyp (goal : MVarId) (info : IrisHypInfo)
-    (pat : iCasesPat) : ProofModeM (Option MVarId) := do
+    (pat : iCasesPat) : ProofModeM (Option (MVarId × Name)) := do
   let preState ← liftM (show MetaM SavedState from saveState)
   let prePMState ← getThe ProofModeM.State
   try
@@ -97,7 +141,7 @@ private def runCasesPatOnHyp (goal : MVarId) (info : IrisHypInfo)
             newGoalRef.set (some newGoalExpr.mvarId!)
             return newGoalExpr
       goal.assign q(($removePf).1.trans $proof)
-      return (← newGoalRef.get)
+      return (← newGoalRef.get).map (·, info.name)
   catch _ =>
     set prePMState
     liftM <| preState.restore
@@ -107,7 +151,7 @@ private def firstSuccessfulCasesStep (goal : MVarId)
     (infos : Array IrisHypInfo)
     (pat : iCasesPat)
     (eligible : IrisHypInfo → MetaM Bool) :
-    ProofModeM (Option MVarId) := do
+    ProofModeM (Option (MVarId × Name)) := do
   infos.findSomeM? λ info => do
     let ok ← liftM (m := MetaM) do
       let preState ← saveState
@@ -192,10 +236,16 @@ private def introNormStep : NormStep where
       | some name => mkBinderFromName name
       | none => mkFreshLeanBinderFromNames names input.depth
     if let some newGoal ← runIntroPat input.goal (.intro (.pure pureName)) then
-      return .changed newGoal
+      let tac? ← if input.recordScript then
+        liftM <| some <$> mkIntroTactic (.intro (.pure pureName))
+      else pure none
+      return .changed newGoal tac?
     let name ← mkFreshBinderFromNames names input.depth
     if let some newGoal ← runIntroPat input.goal (.intro (.one name)) then
-      return .changed newGoal
+      let tac? ← if input.recordScript then
+        liftM <| some <$> mkIntroTactic (.intro (.one name))
+      else pure none
+      return .changed newGoal tac?
     return .unchanged
 
 /- `icases`-related normalization step -/
@@ -212,43 +262,44 @@ private def casesNormStep : NormStep where
       /- Split Spatial separating conjunctions first -/
       let h₁ ← mkFreshBinderFromNames names input.depth
       let h₂ ← mkFreshBinderFromNames names input.depth 2
-      if let some newGoal ←
-          firstSuccessfulCasesStep input.goal infos
-            (.conjunction [.one h₁, .one h₂]) canSplitSep then
-        return .changed newGoal
+      let sepPat := iCasesPat.conjunction [.one h₁, .one h₂]
+      if let some (newGoal, hyp) ←
+          firstSuccessfulCasesStep input.goal infos sepPat canSplitSep then
+        return .changed newGoal (← liftM <| mkICasesTactic? input.recordScript hyp sepPat)
 
        /- Destruct existentials: `icases H with ⟨%x, Hx⟩`. -/
       let x ← mkFreshLeanBinderFromNames names input.depth
       let h ← mkFreshBinderFromNames names input.depth
-      if let some newGoal ←
-          firstSuccessfulCasesStep input.goal infos
-            (.conjunction [.pure x, .one h])
+      let exPat := iCasesPat.conjunction [.pure x, .one h]
+      if let some (newGoal, hyp) ←
+          firstSuccessfulCasesStep input.goal infos exPat
             (canExists (prop := irisGoal.prop) (bi := irisGoal.bi)) then
-        return .changed newGoal
+        return .changed newGoal (← liftM <| mkICasesTactic? input.recordScript hyp exPat)
 
       /- Split conjunction-like hypotheses, including iff -/
       let h₁ ← mkFreshBinderFromNames names input.depth
       let h₂ ← mkFreshBinderFromNames names input.depth 2
-      if let some newGoal ←
-          firstSuccessfulCasesStep input.goal infos
-            (.conjunction [.one h₁, .one h₂])
+      let conjPat := iCasesPat.conjunction [.one h₁, .one h₂]
+      if let some (newGoal, hyp) ←
+          firstSuccessfulCasesStep input.goal infos conjPat
             (canSplitConjLike (prop := irisGoal.prop) (bi := irisGoal.bi)) then
-        return .changed newGoal
+        return .changed newGoal (← liftM <| mkICasesTactic? input.recordScript hyp conjPat)
 
       /- Extract pure hypotheses. -/
       let h ← mkFreshBinderFromNames names input.depth
-      if let some newGoal ←
-          firstSuccessfulCasesStep input.goal infos
-            (.pure h)
+      let purePat := iCasesPat.pure h
+      if let some (newGoal, hyp) ←
+          firstSuccessfulCasesStep input.goal infos purePat
             (canPure (prop := irisGoal.prop) (bi := irisGoal.bi)) then
-        return .changed newGoal
+        return .changed newGoal (← liftM <| mkICasesTactic? input.recordScript hyp purePat)
       /- Move persistent hypotheses into the intuitionistic context -/
       let h ← mkFreshBinderFromNames names input.depth
+      let intuitPat := iCasesPat.intuitionistic (.one h)
       match ←
-          firstSuccessfulCasesStep input.goal infos
-            (.intuitionistic (.one h))
+          firstSuccessfulCasesStep input.goal infos intuitPat
             (canIntuitionistic (prop := irisGoal.prop) (bi := irisGoal.bi)) with
-      | some newGoal => return .changed newGoal
+      | some (newGoal, hyp) =>
+          return .changed newGoal (← liftM <| mkICasesTactic? input.recordScript hyp intuitPat)
       | none => return .unchanged
 
 /- Simplify normalization step -/
@@ -273,7 +324,7 @@ private def simpNormStep : NormStep where
             return .unchanged
           | some (_, newGoal) =>
             if newGoal == input.goal then return .unchanged
-            return .changed newGoal
+            return .changed newGoal none
       catch _ =>
         preState.restore
         return .unchanged
@@ -296,20 +347,33 @@ private def runFirstNormStep (input : NormStepInput) :
 /- Invoked by `normalizeGoal` during search stage and `assignProof` during replay stage -/
 /- [Note]: ensure already been in the correct `Meta.SavedState` before calling -/
 partial def normalizeGoalMVar (goal : MVarId) (depth : Nat)
-    (maxIterations : Nat) (enableSimp : Bool) (goalMVars : Std.HashSet MVarId) :
-    ProofModeM NormSeqResult := do
-  go 0 goal false
+    (maxIterations : Nat) (enableSimp : Bool) (goalMVars : Std.HashSet MVarId)
+    (recordScript : Bool := false) :
+    ProofModeM (NormSeqResult × Array Script.LazyStep) := do
+  go 0 goal false #[]
 where
-  go (iteration : Nat) (goal : MVarId) (changed : Bool) : ProofModeM NormSeqResult := do
+  go (iteration : Nat) (goal : MVarId) (changed : Bool)
+      (script : Array Script.LazyStep) :
+      ProofModeM (NormSeqResult × Array Script.LazyStep) := do
     if iteration >= maxIterations then
       throwError "iaesop: exceeded maximum number of normalisation iterations ({maxIterations})."
-    let input : NormStepInput := { goal, depth, enableSimp, goalMVars }
+    let input : NormStepInput := { goal, depth, enableSimp, goalMVars, recordScript }
+    /- Only snapshot states when generating a script; search throws them away. -/
+    let preState? ← if recordScript then
+        liftM (m := MetaM) (some <$> saveState) else pure none
     match ← runFirstNormStep input with
-    | .proved => return .proved
-    | .changed newGoal => go (iteration + 1) newGoal true
+    | .proved => return (.proved, script)
+    | .changed newGoal tactic? =>
+      let script ← match tactic?, preState? with
+        | some tactic, some preState =>
+          let postState ← liftM (m := MetaM) saveState
+          pure <| script.push
+            { preState, preGoal := goal, tactic, postState, postGoals := #[newGoal] }
+        | _, _ => pure script
+      go (iteration + 1) newGoal true script
     | .unchanged =>
-      if changed then return .changed goal
-      else return .unchanged
+      if changed then return (.changed goal, script)
+      else return (.unchanged, script)
 
 /- Search stage entry point -/
 def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
@@ -330,7 +394,7 @@ def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
           | throwError "iaesop: normalization stage should be done in iris proof-mode"
         return (spatialHypEntries irisGoal.hyps).map λ (name, ivar, _) => { name, ivar }
 
-      let result ← normalizeGoalMVar preGoalMVarId goal.depth
+      let (result, _) ← normalizeGoalMVar preGoalMVarId goal.depth
           config.maxNormIterations config.enableSimp? goal.unassignedMvars
 
       /- Collect spatial hypotheses after normalization. -/

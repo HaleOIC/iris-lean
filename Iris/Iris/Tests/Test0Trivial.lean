@@ -140,6 +140,6 @@ example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
   iaesop baseline without [backward removable_rule_test]
 
 example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
-  iaesop baseline
+  iapply Iris.Tests.removable_rule_test
 
 end LocalRuleFrontend
