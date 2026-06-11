@@ -34,8 +34,11 @@ private def appliedHypTacticIdent? : AppliedHyp → Option (TSyntax `ident)
   | .spatial hyp | .intuitionistic hyp => some (mkIdent hyp.name)
   | .lean userName _ => some (mkIdent userName)
 
+private def irisHypFrameIdent (hyp : IrisHyp) : TSyntax `frameIdent :=
+  ⟨mkIdent hyp.name⟩
+
 private def mkSpatialSpecPat (hyps : Array IrisHyp) : MetaM (TSyntax `specPat) := do
-  let names := hyps.map λ hyp => (⟨mkIdent hyp.name⟩: TSyntax `frameIdent)
+  let names := hyps.map irisHypFrameIdent
   `(specPat| [$[$names:frameIdent]*])
 
 private def mkIApplyTactic (fn : TSyntax `term) (obun : Obun) :
@@ -118,6 +121,34 @@ private def mkReplayTactic (rapp : Rapp) (obun : Obun) (config : SearchConfig) :
       | _, _ => pure fallback
   | _ => pure fallback
 
+private def recordScriptStep (rref : RappRef) (obun : Obun) (preState : SavedState)
+    (preGoal : MVarId) (postGoals : Array MVarId) : ReplayM Unit := do
+  if !(← readThe ReplayM.Context).config.generateScript? then
+    return
+  let config := (← readThe ReplayM.Context).config
+  let rapp ← rref.get
+  let tactic ← liftM <| mkReplayTactic rapp obun config
+  let postState ← liftM (show MetaM SavedState from saveState)
+  rref.modify λ rapp =>
+    rapp.setScriptSteps? <| some #[
+      { preState, preGoal, tactic, postState, postGoals }
+    ]
+
+/- Store the reconstructed normalization tactics on the goal so that script
+generation can prepend them ahead of the rule applications. -/
+private def setNormScript (gref : GoalRef) (steps : Array Script.LazyStep) :
+    ReplayM Unit := do
+  if !(← readThe ReplayM.Context).config.generateScript? || steps.isEmpty then
+    return
+  let entry : Array (DisplayRuleId × Option (Array Script.LazyStep)) :=
+    #[(.normSimp, some steps)]
+  gref.modify fun g =>
+    let ns := match g.normalizationState with
+      | .notNormal => .notNormal
+      | .normal pg ps gen used _ => .normal pg ps gen used entry
+      | .provenByNorm ps gen used _ => .provenByNorm ps gen used entry
+    g.setNormalizationState ns
+
 /- Assign the proof term following the proven chain -/
 /- [Note] We should follow the tree but with different goal (real replay stage) MVarId -/
 private partial def assignProof (gref : GoalRef) : ReplayM Unit := do
@@ -128,18 +159,7 @@ private partial def assignProof (gref : GoalRef) : ReplayM Unit := do
   let (result, normScript) ← liftM do
     normalizeGoalMVar goalMVarId goal.depth config.maxNormIterations
       config.enableSimp? goal.unassignedMvars (recordScript := config.generateScript?)
-
-  /- Construct normalization stage proof script -/
-  if !(← readThe ReplayM.Context).config.generateScript? || normScript.isEmpty then
-    return
-  let entry : Array (DisplayRuleId × Option (Array Script.LazyStep)) :=
-    #[(.normSimp, some normScript)]
-  gref.modify fun g =>
-    let ns := match g.normalizationState with
-      | .notNormal => .notNormal
-      | .normal pg ps gen used _ => .normal pg ps gen used entry
-      | .provenByNorm ps gen used _ => .provenByNorm ps gen used entry
-    g.setNormalizationState ns
+  setNormScript gref normScript
   let some goalMVarId := match result with
     | .proved => none
     | .changed goalMVarId => some goalMVarId
@@ -159,17 +179,7 @@ private partial def assignProof (gref : GoalRef) : ReplayM Unit := do
   let preState ← liftM (show MetaM SavedState from saveState)
   let goalMVarIds ← liftM <|
     rapp.appliedRule.info.builder.replay { goal := goalMVarId, rapp, config }
-
-  /- Make up scripts during replay process if needed -/
-  if !(← readThe ReplayM.Context).config.generateScript? then
-    return
-  let config := (← readThe ReplayM.Context).config
-  let rapp ← rref.get
-  let tactic ← liftM <| mkReplayTactic rapp obun config
-  let postState ← liftM (show MetaM SavedState from saveState)
-  rref.modify λ rapp => rapp.setScriptSteps? <| some #[
-    { preState, preGoal := goalMVarId, tactic, postState, postGoals := goalMVarIds }
-  ]
+  recordScriptStep rref obun preState goalMVarId goalMVarIds
 
   /- The replayed rule closed the focused metavariable and produced no children. -/
   if goalMVarIds.isEmpty && obun.goals.isEmpty then
