@@ -1,0 +1,10 @@
+name = "IAesopTest"
+defaultTargets = ["IAesopTest"]
+
+[[require]]
+name = "iris"
+path = "../Iris"
+
+[[lean_lib]]
+name = "IAesopTest"
+globs = ["IAesopTest.*"]
