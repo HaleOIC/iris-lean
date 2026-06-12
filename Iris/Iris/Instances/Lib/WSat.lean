@@ -30,7 +30,7 @@ abbrev PosSet := Std.ExtTreeSet Pos compare
 
 abbrev InvMap (x : Type _) := Std.ExtTreeMap Pos x compare
 
-abbrev InvMapF := HeapViewURF (F := PNat) (H := InvMap) (AgreeRF (LaterOF IdOF))
+abbrev InvMapF := HeapViewURF (H := InvMap) (AgreeRF (LaterOF IdOF))
 
 /-- Wsat inclusion typeclass (`GF` contains the necessary functors for wsat) -/
 @[rocq_alias wsatGS.wsatGpreS]
@@ -203,7 +203,7 @@ theorem invariant_lookup (I : InvMap (IProp GF)) (i : Pos) (P : IProp GF) :
   iintro H
   ihave H := iOwn_cmraValid_op $$ H
   ihave ⟨%v', %dp', %Hdp, %Hlookup, H1, H2⟩ :=
-    (auth_op_frag_validI_total (F := PNat)
+    (auth_op_frag_validI_total
       (own 1) (map toAgree (map invariant_unfold I))) $$ H
   simp only [get?_map, Option.map_map, Option.map_eq_some_iff, Function.comp_apply] at Hlookup
   have ⟨Q', Hget, Hagree⟩ := Hlookup
@@ -352,7 +352,7 @@ theorem ownI_alloc_open [W : WsatGS GF] (φ : Pos → Prop) (P : IProp GF)
 @[rocq_alias wsat_alloc]
 theorem wsat_alloc [WP : WsatGpreS GF] :
     ⊢ |==> ∃ (W : WsatGS GF), wsat (W := W) ∗ ownE ⊤ := by
-  imod (iOwn_alloc (E := WP.inv) (Auth (.own 1) empty) auth_one_valid) with ⟨%γ, H⟩
+  imod (iOwn_alloc (E := WP.inv) (Auth (.own 1) ∅) auth_one_valid) with ⟨%γ, H⟩
   imod (iOwn_alloc (E := WP.enabled) (valid ⊤) ⟨⟩) with ⟨%γe, He⟩
   imod (iOwn_alloc (E := WP.disabled) (valid ∅) ⟨⟩) with ⟨%γd, Hd⟩
   imodintro
@@ -367,10 +367,10 @@ theorem wsat_alloc [WP : WsatGpreS GF] :
   iexists W
   isplitr [He]
   · unfold wsat
-    iexists empty
+    iexists ∅
     isplitl
     · iclear Hd
-      have H : liftInv (empty : InvMap (IProp GF)) = empty := by
+      have H : liftInv (∅ : InvMap (IProp GF)) = ∅ := by
         refine ExtensionalPartialMap.equiv_iff_eq.mp fun _ => ?_
         simp [get?_map, get?_empty]
       rw [invMap, H]
