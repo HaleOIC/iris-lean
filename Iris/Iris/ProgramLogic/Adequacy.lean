@@ -44,7 +44,7 @@ theorem wp_step (s : Stuckness) (e1 : Expr) (σ1 : State)
         stateInterp σ2 (ns + 1) κs (nt + efs.length) ∗
         WP e2 @ s ; ⊤ {{ Φ }} ∗
         wptp s efs (List.replicate efs.length iG.forkPost) := by
-  rw [IProp.ext wp_unfold]
+  rw [wp_unfold.to_eq]
   simp only [wp.pre, Language.val_stuck Hstep]
   iintro Hσ Hcred Hwp
   imod Hwp $$ %σ1 %ns %κ %κs %nt Hσ with ⟨%_, Hcont⟩
@@ -91,14 +91,14 @@ theorem wp_not_stuck (κs : List Obs) (nt : Nat) (e : Expr) (σ : State)
     (ns : Nat) (Φ : Val → IProp GF) :
     ⊢ stateInterp σ ns κs nt -∗
       WP e @ Stuckness.NotStuck ; ⊤ {{ Φ }} ={⊤,∅}=∗ ⌜NotStuck (e, σ)⌝ := by
-  rw [IProp.ext wp_unfold]
+  rw [wp_unfold.to_eq]
   unfold wp.pre
   match h : toVal e with
   | some v =>
     dsimp only
     iintro _ _
     iapply fupd_mask_intro_discard empty_subset
-    ipure_intro
+    ipureintro
     exact .inl (by rw [h]; rfl)
   | none =>
     dsimp only
@@ -107,7 +107,7 @@ theorem wp_not_stuck (κs : List Obs) (nt : Nat) (e : Expr) (σ : State)
     rw [List.nil_append]
     imod Hcont $$ Hst with ⟨%H, _⟩
     imodintro
-    ipure_intro
+    ipureintro
     exact .inr H
 
 @[rocq_alias wptp_preservation]
@@ -192,7 +192,7 @@ theorem wp_strong_adequacy_gen [InvGpreS GF] (s : Stuckness) (es : List Expr) (�
     φ := by
   apply pure_soundness (PROP := IProp GF)
   apply laterN_soundness (n := steps_sum numLaters 0 n + 1)
-  rw [eq_of_eqv <| equiv_iff.mpr <| laterN_later _]
+  rw [(laterN_later _).to_eq]
   refine Entails.trans ?_ (laterN_mono _ except0_into_later)
   apply fupd_finally_soundness hlc (steps_sum numLaters 0 n) ⊤
   iintro %Hinv Hf
@@ -205,14 +205,14 @@ theorem wp_strong_adequacy_gen [InvGpreS GF] (s : Stuckness) (es : List Expr) (�
   iapply step_fupdN_fupd_finally
   iapply step_fupdN_wand $$ H
   iintro >⟨%nt', Hσ, Ht⟩
-  iapply fupd_finally_keep _ iprop(⌜∀ e2, s = .NotStuck → e2 ∈ t2 → NotStuck (e2, σ2)⌝)
+  iapply fupd_finally_keep iprop(⌜∀ e2, s = .NotStuck → e2 ∈ t2 → NotStuck (e2, σ2)⌝)
   isplit
   · iintro %e %Heq %Hin
     subst s
     obtain ⟨i, He⟩ := List.getElem?_of_mem Hin
     icases BigSepL2.bigSepL2_lookup_left $$ Ht with ⟨%Φ', _, He⟩; exact He
     imod wp_not_stuck $$ Hσ He with %_
-    ipure_intro;trivial
+    itrivial
   iintro %_
   imod wptp_postconditions $$ Ht with Ht
   icases BigSepL2.bigSepL2_app_inv_right $$ Ht with ⟨%es', %t2', %Heq, Hes', Ht2'⟩; subst Heq
@@ -225,10 +225,10 @@ theorem wp_strong_adequacy_gen [InvGpreS GF] (s : Stuckness) (es : List Expr) (�
   · iapply BigSepL.bigSepL_mono $$ Ht2'
     intros; rcases (toVal _)
     simp only [Option.elim_none]
-    ipure_intro; trivial
+    itrivial
     simp only [Option.elim_some]
     exact .rfl
-  imod Hφ $$ [] [] [] Hσ Hes' Ht2' with %_ <;> ipure_intro <;> grind
+  imod Hφ $$ [] [] [] Hσ Hes' Ht2' with %_ <;> ipureintro <;> grind
 
 @[rocq_alias wp_strong_adequacy]
 abbrev wp_strong_adequacy := @wp_strong_adequacy_gen .hasLC
@@ -306,9 +306,9 @@ theorem wp_adequacy_gen [InvGpreS GF] (s : Stuckness) (e : Expr) (σ : State) (�
   icases BigSepL2.bigSepL2_nil_inv_right $$ H with %Heq
   subst Heq
   cases h : toVal e'
-  · ipure_intro; grind
+  · ipureintro; grind
   · dsimp only [Option.elim_some]; icases Hpost with %Hpost
-    ipure_intro; grind
+    ipureintro; grind
 
 @[rocq_alias wp_adequacy]
 abbrev wp_adequacy := @wp_adequacy_gen .hasLC
