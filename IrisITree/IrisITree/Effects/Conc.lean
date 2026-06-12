@@ -85,10 +85,10 @@ instance coneEH_adequate {GE GR} :
       iexists _, _, λ P => P (k .parent),
         Ms ++ [(λ P => iprop(|={⊤, ∅}=> P (k .child)))],
         [λ P => P (k .parent), λ P => iprop(|={⊤, ∅}=> P (k .child))]
-      isplitr; ipure_intro; trivial
-      isplitr; ipure_intro; simp
+      isplitr; itrivial
+      isplitr; itrivial
       simp; iframe; isplitr
-      · ipure_intro; simp [h, ConcState.add]
+      · ipureintro; simp [h, ConcState.add]
       · iintro %_ $ //
     · iintro Ht %h !>
       rcases Hhandle with ⟨i, _, _, _, _⟩

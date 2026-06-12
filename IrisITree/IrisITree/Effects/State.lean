@@ -83,6 +83,6 @@ instance stateEH_adequate :
     simp [stateH, stateEH] at Hhandle ⊢
     iintro Hs Hinv; imod Hs $$ [$] with ⟨_, _⟩
     iintro !>; iexists _, _; iframe
-    ipure_intro; apply Hhandle
+    ipureintro; apply Hhandle
 
 end exec

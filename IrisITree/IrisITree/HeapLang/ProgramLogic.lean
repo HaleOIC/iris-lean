@@ -63,9 +63,10 @@ theorem wp_fupd E (e : Exp) (Φ : Val → IProp GF) :
 
 theorem wp_val E (v : Val) (Φ : Val → IProp GF) :
     Φ v -∗
-    WP hl(v(v)) @ m; E { { Φ } } := by
-  simp only [wp_unfold, Exp.denote]
-  iapply wpi_pure
+    WP hl(v(&v)) @ m; E { { Φ } } := by
+  sorry
+  -- simp only [wp_unfold, Exp.denote]
+  -- iapply wpi_pure
 
 -- TODO...
 

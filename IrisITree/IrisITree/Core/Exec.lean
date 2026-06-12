@@ -26,14 +26,14 @@ theorem bi_close_mono (P1 P2 : α → PROP) (a : α) :
   iintro Hclose Hwand; simp [bi_close]
   icases Hclose with ⟨%a', %HR, HP1⟩
   iexists a'; isplitr
-  · ipure_intro; exact HR
+  · ipureintro; exact HR
   · iapply Hwand $$ HP1
 
 theorem bi_close_intro (P : α → PROP) (a : α) [Href : Reflexive R] :
     P a ⊢ bi_close R P a := by
   iintro HP; simp [bi_close]
   iexists a; isplitr
-  · ipure_intro; exact Href.refl
+  · ipureintro; exact Href.refl
   · iexact HP
 
 theorem bi_close_respect (P : α → PROP) [Hsym : Symm R] [Htran : Trans R R R] :
@@ -41,7 +41,7 @@ theorem bi_close_respect (P : α → PROP) [Hsym : Symm R] [Htran : Trans R R R]
   intro x y Hxy
   isplit <;> (
     iintro Hclose; simp [bi_close]; icases Hclose with ⟨%a', %Hra, HP⟩;
-    iexists a'; isplitr; ipure_intro
+    iexists a'; isplitr; ipureintro
   )
   · exact Htran.trans (Hsym.symm x y Hxy) Hra
   · iexact HP
@@ -181,7 +181,7 @@ theorem lfp_tp_ind (Φ : LeibnizO (List ((α → PROP) → PROP)) → PROP)
   iapply least_fixpoint_ind (lfp_tpF (PROP := PROP) F)
   · iintro !> %y Hlfp; iapply Hwand;
     iapply lfp_tpF_mono F $$ [] Hlfp
-    iintro !> %Ms Hpre; iapply and_congr_r $$ Hpre
+    iintro !> %Ms Hpre; iapply BI.and_congr_right $$ Hpre
     simp [lfp_tp]
   · simp [lfp_tp]; iexact Hlfp
 
@@ -226,7 +226,7 @@ theorem lfp_tpF_perm (Ms1 Ms2 : List ((α → PROP) → PROP))
   iintro %x Hstep; icases Hstep with ⟨%G, HFx, Hcont⟩
   iexists G; isplitl [HFx]; iexact HFx
   iintro %Ms' HM'; iapply Hwp $$ %⟨Ms' ++ Ms1.eraseIdx j⟩ %⟨Ms' ++ Ms2.eraseIdx i⟩
-  · ipure_intro; simp; exact (List.perm_append_left_iff Ms').2 Herase
+  · ipureintro; simp; exact (List.perm_append_left_iff Ms').2 Herase
   · iapply Hcont $$ HM'
 
 theorem lfp_tpF_perm_close (Ms1 Ms2 : List ((α → PROP) → PROP))
@@ -238,7 +238,7 @@ theorem lfp_tpF_perm_close (Ms1 Ms2 : List ((α → PROP) → PROP))
   · exact h
   · iintro %Ns1 %Ns2 %Hperm Hwp; simp only [bi_close]
     iexists Ns1; isplitr
-    · ipure_intro; exact Hperm.symm
+    · ipureintro; exact Hperm.symm
     · iexact Hwp
 
 theorem lfp_tp_perm (Ms1 Ms2 : List ((α → PROP) → PROP)) (h : Ms1.Perm Ms2) :
@@ -254,7 +254,7 @@ theorem lfp_tp_perm (Ms1 Ms2 : List ((α → PROP) → PROP)) (h : Ms1.Perm Ms2)
   iintro !> %Ms1 Htp %Ms2 %Hperm; iapply lfp_tp_unfold
   iapply lfp_tpF_perm F Ms1.car _ _ _ Hperm $$ Htp
   iintro %Ns1 %Ns2 %Hperm Hw; icases Hw with ⟨H, -⟩
-  iapply H; ipure_intro; exact Hperm
+  iapply H; ipureintro; exact Hperm
 
 theorem lfp_tp_app (Ms1 Ms2 : List ((α → PROP) → PROP)) :
     ⊢ lfp_tp F Ms1 -∗ lfp_tp F Ms2 -∗ lfp_tp F (Ms1 ++ Ms2) := by

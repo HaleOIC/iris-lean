@@ -190,10 +190,10 @@ instance {E GE : Effect.{u} } {R σ : Type _}
     iintro Hh Hinv
     ihave >⟨%a, %s', %_, _, _⟩ := A.adequate $$ Hh [$]; assumption
     imodintro; iexists (k a), _, (λ P => P (k a)), Ms, [λ P => P (k a)]
-    isplitr; ipure_intro; trivial
+    isplitr; itrivial
     iframe
-    isplitr; ipure_intro; simp
+    isplitr; itrivial
     simp; iframe
-    iintro %_ $ !>; ipure_intro; trivial
+    iintro %_ $ !> //
 
 end adequate
