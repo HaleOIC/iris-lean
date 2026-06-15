@@ -16,17 +16,17 @@ open Iris BI ITree
 -/
 structure IHandler (PROP : Type u) [BI PROP] (E : Effect.{v}) where
   ihandle :
-      (i : E.I) →
-      -- Continuation conditions [λ a, ▷ WPi k a @ H; ∅ {{ Φ }}]
-      (E.O i → PROP) →
-      -- Conditions for spawning threads [λ a, ▷ WPi k a @ H; ⊤ {{ False }}]
-      (E.O i → PROP) →
-      -- Condition [WPi (Vis i k) @ H; ∅ {{ Φ }}]
-      PROP
+    (i : E.I) →
+    -- Continuation conditions [λ a, ▷ WPi k a @ H; ∅ {{ Φ }}]
+    (E.O i → PROP) →
+    -- Conditions for spawning threads [λ a, ▷ WPi k a @ H; ⊤ {{ False }}]
+    (E.O i → PROP) →
+    -- Condition [WPi (Vis i k) @ H; ∅ {{ Φ }}]
+    PROP
 
   ihandle_mono :
     ∀ (i : E.I) (Φ Φ' s s' : E.O i → PROP),
-      (∀ a, Φ a -∗ Φ' a) ⊢
+      (∀ a, Φ a -∗ Φ' a) -∗
       □ (∀ t, s t -∗ s' t) -∗
       ihandle i Φ s -∗ ihandle i Φ' s'
 
@@ -42,11 +42,11 @@ instance {PROP E} [BI PROP] (H : IHandler PROP E) (i : E.I) :
     · iintro ⟨%Φ', ⟨%s', ⟨HmonΦ, ⟨Hmons, HH⟩⟩⟩⟩
       iapply H.ihandle_mono $$ HmonΦ Hmons HH
   apply (Hmon Φ₁ s₁).dist.trans
-  apply ((exists_ne fun Φ' => ?_)).trans (Hmon Φ₂ s₂).dist.symm
-  refine exists_ne fun s' => ?_
+  apply ((exists_ne λ Φ' => ?_)).trans (Hmon Φ₂ s₂).dist.symm
+  refine exists_ne λ s' => ?_
   refine sep_ne.ne ?_ <| sep_ne.ne ?_ .rfl
-  · apply forall_ne; intro a; exact wand_ne.ne .rfl (HΦ a)
-  · apply intuitionistically_ne.ne; apply forall_ne; intro a; exact wand_ne.ne .rfl (Hs a)
+  · exact forall_ne λ a => wand_ne.ne .rfl (HΦ a)
+  · exact intuitionistically_ne.ne $ forall_ne λ a => wand_ne.ne .rfl (Hs a)
 
 section handler_sumH
 

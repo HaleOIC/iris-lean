@@ -17,6 +17,7 @@ public section
 
 section wp_itree_def
 
+
 variable {E} (H : IHandler PROP E)
 
 @[expose]
@@ -114,18 +115,36 @@ section instances
 
 open ProofMode
 instance elimModal_fupd_wpi p E1 E2 E3 (P : PROP) :
-    ElimModal True p false iprop(|={E1,E2}=> P) P iprop(WPi t @> H;E1,E3 {{Φ}}) iprop(WPi t @> H;E2,E3 {{Φ}}) where
-  elim_modal _ := by sorry
+    ElimModal True p false
+      iprop(|={E1,E2}=> P) P
+      iprop(WPi t @> H;E1,E3 {{Φ}}) iprop(WPi t @> H;E2,E3 {{Φ}}) where
+  elim_modal _ := by
+    cases p <;> simp
+    · iintro ⟨HP, Hwand⟩; iapply fupd_wpi_empty
+      imod HP; iapply fupd_wpi_empty; iapply Hwand $$ HP
+    · iintro ⟨#HP, Hwand⟩; iapply fupd_wpi_empty
+      imod HP; iapply fupd_wpi_empty; iapply Hwand $$ HP
 
 instance elimModal_wpi_wpi p H1 H2 (t1 : ITree E1 R1) (t2 : ITree E2 R2) Ms Me1 Me2 Φ1 Φ2 :
     ElimModal (PROP:=PROP) True p false
       iprop(WPi t1 @> H1;Ms,Me1 {{Φ1}}) iprop(WPi t1 @> H1;∅,Me1 {{Φ1}})
       iprop(WPi t2 @> H2;Ms,Me2 {{Φ2}}) iprop(WPi t2 @> H2;∅,Me2 {{Φ2}}) where
-  elim_modal _ := by sorry
+  elim_modal _ := by
+    cases p <;> simp
+    all_goals
+      iintro ⟨HΦ, Hwand⟩; ihave HΦ := fupd_wpi_empty $$ HΦ
+      iapply fupd_wpi_empty; imod HΦ; imodintro
+      iapply Hwand $$ HΦ
 
 instance elimModal_wpi_fupd p E1 E2 E3 (P : PROP) :
-    ElimModal True p false iprop(WPi t @> H;E1,E3 {{Φ}}) iprop(WPi t @> H;∅,E3 {{Φ}}) iprop(|={E1,E2}=> P) iprop(|={∅,E2}=> P) where
-  elim_modal _ := by sorry
+    ElimModal True p false
+      iprop(WPi t @> H;E1,E3 {{Φ}}) iprop(WPi t @> H;∅,E3 {{Φ}})
+      iprop(|={E1,E2}=> P) iprop(|={∅,E2}=> P) where
+  elim_modal _ := by
+    cases p <;> simp
+    all_goals
+      iintro ⟨HΦ, Hwand⟩; ihave HΦ := fupd_wpi_empty $$ HΦ
+      imod HΦ; iapply Hwand $$ HΦ
 
 end instances
 
@@ -158,7 +177,7 @@ theorem wpi_vis {R} (Φ : R → PROP) (i : E.I) (k : E.O i → ITree E R) :
     (|={Ms, ∅}=> H.ihandle i
       (λ a => WPi (k a) @> H; ∅,Me {{ Φ }})
       (λ a => WPi (k a) @> H; ∅,Me {{ λ _ => iprop(False) }})) :=
-     wpi_unfold _ _
+  wpi_unfold _ _
 
 theorem wpi_trigger_bind {E' A} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     (i : E'.I) (k : E'.O i → ITree E A) (Φ : A → PROP) :
@@ -264,7 +283,11 @@ theorem wpi_wand (Φ Ψ : R → PROP) :
   iintro >Hwp Hwand
   let G := λ t (Φ : R → PROP) =>
     iprop(∀ Ψ, (∀ r, Φ r -∗ Ψ r) -∗ WPi t @> H;∅,Me {{ Ψ }})
-  have : ∀ t, OFE.NonExpansive (G t) := by sorry
+  have : ∀ t, OFE.NonExpansive (G t) := by
+    intro t; constructor
+    intro n x₁ x₂ Hx; simp [G]
+    refine forall_ne λ Ψ => wand_ne.ne ?_ .rfl
+    exact forall_ne λ r => wand_ne.ne (Hx r) .rfl
   iapply wpi_iter' G $$ [] [] [] Hwp Hwand
   · iintro !> %Φ %r >Hwpi %Ψ Hwand
     iapply wpi_pure; iapply Hwand $$ [$]
@@ -281,8 +304,49 @@ theorem wpi_fupd_empty (Φ : R → PROP) :
     (WPi t @> H; Ms, ∅ {{ v, iprop(|={∅, Me}=> Φ v) }})
      := by
   isplit <;> iintro >Hwp
-  · sorry
-  · sorry
+  · let G := λ t (Ψ : R → PROP) =>
+      WPi t @> H; ∅,∅ {{ v, iprop(|={∅, Me}=> Ψ v) }}
+    have : ∀ t, OFE.NonExpansive (G t) := by
+      intro t; constructor
+      intro n Ψ₁ Ψ₂ HΨ; simp [G]
+      exact OFE.NonExpansive.ne (f := wpi H ∅ ∅ t) <|
+        λ v => BIFUpdate.ne.ne (HΨ v)
+    iapply wpi_iter' G $$ [] [] [] Hwp
+    · iintro !> %Ψ %r HΨ; simp [G]
+      iapply wpi_pure; iframe
+    · iintro !> %Ψ %t >HΨ
+      iapply wpi_tau; iframe
+    · iintro !> %Ψ %i %k >HΨ; simp [G]
+      iapply wpi_vis; imodintro
+      iapply H.ihandle_mono $$ [] [] HΨ
+      · iintro %_ $
+      · iintro !> %_;
+        sorry
+  · let G := λ t (Ψ : R → PROP) =>
+      iprop(∀ Φ, (∀ r, Ψ r -∗ |={∅, Me}=> Φ r) -∗ WPi t @> H;∅,Me {{ Φ }})
+    have : ∀ t, OFE.NonExpansive (G t) := by
+      intro t; constructor
+      intro n Ψ₁ Ψ₂ HΨ; simp [G]
+      refine forall_ne λ Φ => wand_ne.ne ?_ .rfl
+      exact forall_ne λ r => wand_ne.ne (HΨ r) .rfl
+    iapply wpi_iter' G $$ [] [] [] Hwp
+    · iintro !> %Ψ %r >HΨ %Φ Hwand
+      iapply wpi_pure'
+      iapply Hwand $$ HΨ
+    · iintro !> %Ψ %t >HΨ %Φ Hwand
+      iapply wpi_tau
+      iapply HΨ $$ Hwand
+    · iintro !> %Ψ %i %k >HΨ %Φ Hwand
+      iapply wpi_vis
+      imodintro
+      iapply H.ihandle_mono $$ [Hwand] [] HΨ
+      · iintro %_ HG
+        iapply HG $$ Hwand
+      · iintro !> %_ HG
+        iapply HG
+        iintro %_ Hfalse
+        icases Hfalse with ⟨⟩
+    · iintro %r $
 
 theorem wpi_fupd (Φ : R → PROP) :
     (WPi t @> H; Ms, Me {{ Φ }}) ⊣⊢
