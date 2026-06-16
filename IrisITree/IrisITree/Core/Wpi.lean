@@ -299,54 +299,67 @@ theorem wpi_wand (Φ Ψ : R → PROP) :
     · iintro %_ HG; iapply HG $$ Hwand
     · iintro !> %_ HG; iapply HG; iintro %_ ⟨⟩
 
-theorem wpi_fupd_empty (Φ : R → PROP) :
-    (WPi t @> H; Ms, Me {{ Φ }}) ⊣⊢
-    (WPi t @> H; Ms, ∅ {{ v, iprop(|={∅, Me}=> Φ v) }})
+theorem wpi_fupd_empty_2 (Φ : R → PROP) :
+    WPi t @> H; Ms, ∅ {{ v, iprop(|={∅, Me}=> Φ v) }} ⊢
+    WPi t @> H; Ms, Me {{ Φ }}
      := by
-  isplit <;> iintro >Hwp
-  · let G := λ t (Ψ : R → PROP) =>
-      WPi t @> H; ∅,∅ {{ v, iprop(|={∅, Me}=> Ψ v) }}
-    have : ∀ t, OFE.NonExpansive (G t) := by
-      intro t; constructor
-      intro n Ψ₁ Ψ₂ HΨ; simp [G]
-      exact OFE.NonExpansive.ne (f := wpi H ∅ ∅ t) <|
-        λ v => BIFUpdate.ne.ne (HΨ v)
-    iapply wpi_iter' G $$ [] [] [] Hwp
-    · iintro !> %Ψ %r HΨ; simp [G]
-      iapply wpi_pure; iframe
-    · iintro !> %Ψ %t >HΨ
-      iapply wpi_tau; iframe
-    · iintro !> %Ψ %i %k >HΨ; simp [G]
-      iapply wpi_vis; imodintro
-      iapply H.ihandle_mono $$ [] [] HΨ
-      · iintro %_ $
-      · iintro !> %_;
-        sorry
-  · let G := λ t (Ψ : R → PROP) =>
-      iprop(∀ Φ, (∀ r, Ψ r -∗ |={∅, Me}=> Φ r) -∗ WPi t @> H;∅,Me {{ Φ }})
-    have : ∀ t, OFE.NonExpansive (G t) := by
-      intro t; constructor
-      intro n Ψ₁ Ψ₂ HΨ; simp [G]
-      refine forall_ne λ Φ => wand_ne.ne ?_ .rfl
-      exact forall_ne λ r => wand_ne.ne (HΨ r) .rfl
-    iapply wpi_iter' G $$ [] [] [] Hwp
-    · iintro !> %Ψ %r >HΨ %Φ Hwand
-      iapply wpi_pure'
-      iapply Hwand $$ HΨ
-    · iintro !> %Ψ %t >HΨ %Φ Hwand
-      iapply wpi_tau
-      iapply HΨ $$ Hwand
-    · iintro !> %Ψ %i %k >HΨ %Φ Hwand
-      iapply wpi_vis
-      imodintro
-      iapply H.ihandle_mono $$ [Hwand] [] HΨ
-      · iintro %_ HG
-        iapply HG $$ Hwand
-      · iintro !> %_ HG
-        iapply HG
-        iintro %_ Hfalse
-        icases Hfalse with ⟨⟩
-    · iintro %r $
+  iintro >Hwp
+  let G := λ t (Ψ : R → PROP) =>
+    iprop(∀ Φ, (∀ r, Ψ r -∗ |={∅, Me}=> Φ r) -∗ WPi t @> H;∅,Me {{ Φ }})
+  have : ∀ t, OFE.NonExpansive (G t) := by
+    intro t; constructor
+    intro n Ψ₁ Ψ₂ HΨ; simp [G]
+    refine forall_ne λ Φ => wand_ne.ne ?_ .rfl
+    exact forall_ne λ r => wand_ne.ne (HΨ r) .rfl
+  iapply wpi_iter' G $$ [] [] [] Hwp
+  · iintro !> %Ψ %r >HΨ %Φ Hwand
+    iapply wpi_pure'
+    iapply Hwand $$ HΨ
+  · iintro !> %Ψ %t >HΨ %Φ Hwand
+    iapply wpi_tau
+    iapply HΨ $$ Hwand
+  · iintro !> %Ψ %i %k >HΨ %Φ Hwand
+    iapply wpi_vis
+    imodintro
+    iapply H.ihandle_mono $$ [Hwand] [] HΨ
+    · iintro %_ HG
+      iapply HG $$ Hwand
+    · iintro !> %_ HG
+      iapply HG
+      iintro %_ Hfalse
+      icases Hfalse with ⟨⟩
+  · iintro %r $
+
+theorem wpi_fupd_empty_1 (Φ : R → PROP) :
+    WPi t @> H; Ms, Me {{ Φ }} ⊢
+    WPi t @> H; Ms, ∅ {{ v, iprop(|={∅, Me}=> Φ v) }}
+     := by
+  iintro >Hwp
+  let G := λ t (Ψ : R → PROP) =>
+    WPi t @> H; ∅,∅ {{ v, iprop(|={∅, Me}=> Ψ v) }}
+  have : ∀ t, OFE.NonExpansive (G t) := by
+    intro t; constructor
+    intro n Ψ₁ Ψ₂ HΨ; simp [G]
+    exact OFE.NonExpansive.ne (f := wpi H ∅ ∅ t) <|
+      λ v => BIFUpdate.ne.ne (HΨ v)
+  iapply wpi_iter' G $$ [] [] [] Hwp
+  · iintro !> %Ψ %r HΨ; simp [G]
+    iapply wpi_pure; iframe
+  · iintro !> %Ψ %t >HΨ
+    iapply wpi_tau; iframe
+  · iintro !> %Ψ %i %k >HΨ; simp [G]
+    iapply wpi_vis; imodintro
+    iapply H.ihandle_mono $$ [] [] HΨ
+    · iintro %_ $
+    · iintro !> %_ _
+      iapply wpi_fupd_empty_2
+      iapply wpi_wand $$ [$]
+      iintro %_ >⟨⟩
+
+theorem wpi_fupd_empty (Φ : R → PROP) :
+    WPi t @> H; Ms, Me {{ Φ }} ⊣⊢
+    WPi t @> H; Ms, ∅ {{ v, iprop(|={∅, Me}=> Φ v) }}
+     := ⟨wpi_fupd_empty_1 _, wpi_fupd_empty_2 _⟩
 
 theorem wpi_fupd (Φ : R → PROP) :
     (WPi t @> H; Ms, Me {{ Φ }}) ⊣⊢
