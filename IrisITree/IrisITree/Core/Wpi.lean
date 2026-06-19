@@ -408,7 +408,6 @@ section wp_itree_invariant
 
 end wp_itree_invariant
 
-
 section wp_itree_translation
 
 -- `f` can interpret each event `E1` as an `itree E2 E1.I`, as a way to
@@ -490,33 +489,31 @@ theorem wpi_inH {R} (t : ITree E1 R) (Φ : R → PROP) :
     iapply H1.ihandle_mono $$ [] [] Hh
     · iintro %a $
     · iintro !> %a $
-  · let emb : (i : E1.I) → ITree E2 (E1.O i) := fun i => E1.trigger i
+  · let emb : (i : E1.I) → ITree E2 (E1.O i) := λ i => E1.trigger i
     let G : ITree E2 R → (R → PROP) → PROP := λ u Ψ =>
       iprop(∀ t', ⌜ITree.interp emb t' = u⌝ -∗ (WPi t' @> H1; ∅ {{ Ψ }}))
-    ihave Hgen : (∀ u Ψ, (WPi u @> H2; ∅ {{ Ψ }}) -∗ G u Ψ) $$ []
-    sorry
-    sorry
-    -- · iapply wpi_iter' G
-    --   · intro u; constructor; intro n Ψ₁ Ψ₂ HΨ
-    --     simp [G]; apply forall_ne; intro t'
-    --     exact wand_ne.ne .rfl <| (wpi_ne ∅ H1 t').ne HΨ
-    --   · iintro !> %Ψ %r HΦ; simp [G]; iintro %t' %Heq
-    --     iapply fupd_wpi; imod HΦ; imodintro
-    --     have Heq' := interp_ret_inv Heq; subst Heq'
-    --     iapply wpi_ret $$ HΦ
-    --   · iintro !> %Ψ %u Hu; simp [G]; iintro %t' %Heq
-    --     iapply fupd_wpi; imod Hu; imodintro
-    --     rcases interp_tau_inv Heq with ⟨t1, rfl, Heq1⟩
-    --     iapply wpi_tau ∅ Ψ t1; iapply Hu $$ %t1 %Heq1
-    --   · iintro !> %Ψ %i %k Hik; simp [G]; iintro %t' %Heq
-    --     rcases interp_vis_inv Heq with ⟨i', k', Ht', Hi, Hk⟩
-    --     subst Ht'; iapply wpi_vis; imod Hik; imodintro
-    --     iapply Hin.is_inH; subst Hi;
-    --     iapply H2.ihandle_mono (Subeffect.map i').fst $$ [] [] Hik
-    --     · iintro %a HG; iapply wpi_fupd; iapply HG;
-    --       ipure_intro; subst Hk; rfl
-    --     · iintro !> %a HG; iapply wpi_atomic_false; iapply HG
-    --       ipure_intro; subst Hk; rfl
-    -- iapply Hgen $$ Hwp %t %rfl
+    have : ∀ t, OFE.NonExpansive (G t) := by
+      intro t; constructor; intro n x₁ x₂ Hx; simp [G]
+      exact forall_ne λ t' => wand_ne.ne .rfl $ OFE.NonExpansive.ne Hx
+    ihave Hgen : (∀ t Ψ, (WPi t @> H2; ∅ {{ Ψ }}) -∗ G t Ψ) $$ []
+    · iapply wpi_iter' G
+      · iintro !> %Φ %r HΦ; simp [G]; iintro %t' %Heq
+        imod HΦ; simp [emb] at Heq
+        have Heq' := interp_ret_inv Heq; subst Heq'
+        iapply wpi_pure $$ HΦ
+      · iintro !> %Ψ %u Hu; simp [G]; iintro %t' %Heq
+        imod Hu; rcases interp_tau_inv Heq with ⟨t1, rfl, Heq1⟩
+        iapply wpi_tau; iapply Hu $$ %t1 %Heq1
+      · iintro !> %Ψ %i %k Hik; simp [G]; iintro %t' %Heq
+        imod Hik; simp [emb] at Heq;
+        rcases interp_vis_inv Heq with ⟨i', k', Ht', Hi, Hk⟩
+        subst Ht'; subst Hi; iapply wpi_vis; imodintro
+        iapply Hin.is_inH
+        iapply H2.ihandle_mono (Subeffect.map i').fst $$ [] [] Hik
+        · iintro %a HG; iapply HG; ipureintro; subst Hk; rfl
+        · iintro !> %a HG; iapply HG; ipureintro; subst Hk; rfl
+    simp [G]; imod Hwp; iapply wpi_fupd_empty
+    ihave Hwp := wpi_fupd_empty $$ Hwp
+    iapply Hgen $$ Hwp; ipureintro; rfl
 
 end wp_itree_inH
