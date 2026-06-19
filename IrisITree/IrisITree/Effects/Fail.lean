@@ -17,13 +17,11 @@ variable {PROP : Type _} [BI PROP]
 def failH : IHandler PROP failE where
   ihandle := λ _ _ _ => iprop(False)
   ihandle_mono := by
-    iintro %i %Φ %Φ' %s %s' HΦwand #Hswand HH
-    icases HH with ⟨⟩
+    iintro %_ %_ %_ %_ %_ _ _ ⟨⟩
 
 instance failH_sequential : Sequential (PROP := PROP) failH := by
   constructor
-  iintro %i %Φ %s Hwand
-  icases Hwand with ⟨⟩
+  iintro %i %Φ %s ⟨⟩
 
 end handler
 
@@ -35,23 +33,16 @@ variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {E : Effect}
 theorem wpi_fail {R} (M : CoPset) (Φ : R → PROP) (s : String) :
     (WPi fail s @> H; M {{ Φ }}) ⊢ |={M}=> iprop(False) := by
   iintro Hwp; simp [fail, Effect.trigger]
-  sorry
-  -- ihave >Hwp := wpi_trigger $$ Hwp
-  -- simp [IHandler.ihandle]
-  -- have key : ∀ (Ψ₁ Ψ₂ : failE.O ({ down := s } : failE.I) → PROP),
-  --     H.ihandle (@Subeffect.map failE E sub ({ down := s } : failE.I)).fst
-  --       (fun a => Ψ₁ ((@Subeffect.map failE E sub ({ down := s } : failE.I)).snd a))
-  --       (fun a => Ψ₂ ((@Subeffect.map failE E sub ({ down := s } : failE.I)).snd a)) ⊢
-  --       iprop(False) := by
-  --   intro Ψ₁ Ψ₂
-  --   refine (Hin.is_inH ({ down := s } : failE.I) Ψ₁ Ψ₂).mpr.trans ?_
-  --   exact false_elim
-  -- -- iapply ((key (fun p => wpi (H := H) (R := R) ∅ (nomatch p)
-  --     -- (fun v => iprop(|={∅,M}=> Φ v)))
-  --   -- (fun p => wpi (H := H) (R := R) ⊤ (nomatch p)
-  --     -- (fun _ => iprop(False)))).trans false_elim)
-  -- sorry
-  -- -- iexact Hwp
+  let e := @Subeffect.map failE E sub ({ down := s } : failE.I)
+  ihave >Hwp := wpi_vis $$ Hwp
+  have Hfalse : H.ihandle e.fst (fun _ => iprop(False)) (fun _ => iprop(False)) ⊢ iprop(False) :=
+    (Hin.is_inH ({ down := s } : failE.I) (fun _ => iprop(False))
+      (fun _ => iprop(False))).mpr.trans false_elim
+  iapply false_elim
+  iapply Hfalse
+  iapply H.ihandle_mono e.fst $$ [] [] Hwp
+  · iintro %a _; cases e.snd a
+  · iintro !> %a _; cases e.snd a
 
 omit Hin in
 theorem wpi_assert {M} (P : Prop) [Decidable P] (Φ : PUnit → PROP) :
@@ -59,7 +50,7 @@ theorem wpi_assert {M} (P : Prop) [Decidable P] (Φ : PUnit → PROP) :
     Φ ⟨⟩ -∗
     WPi FailE.assert P @> H;M {{ Φ }} := by
   intro hP; unfold FailE.assert; simp [hP]
-  iintro HΦ; iapply wpi_pure $$ HΦ
+  iintro HΦ; iapply wpi_pure $$ [$]
 
 end wpi_rules
 
