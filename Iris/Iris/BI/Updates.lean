@@ -267,8 +267,6 @@ instance bupd_sep_homomorphism :
   Algebra.MonoidHomomorphism (M₁ := PROP) sep sep emp emp (flip Entails) bupd where
   rel_refl := .rfl
   rel_trans := flip .trans
-  rel_proper H G := ⟨fun J => (equiv_iff.1 G).mpr.trans (J.trans (equiv_iff.1 H).mp)
-    , fun J => (equiv_iff.1 G).mp.trans (J.trans (equiv_iff.1 H).mpr)⟩
   op_proper := sep_mono
   map_ne := BIUpdate.bupd_ne
   map_op := bupd_sep
@@ -451,11 +449,13 @@ theorem fupd_mask_frame_acc {E E' E1 E2 : CoPset} {P Q : PROP}:
   exact emp_sep.1.trans <| (fupd_mask_frame_right hdisj).trans <| by simp [subset_union_diff hE]
 
 @[rocq_alias fupd_mask_subseteq_emptyset_difference]
-theorem fupd_mask_subseteq_emptyset_difference {E1 E2 : CoPset} :
-    E2 ⊆ E1 → ⊢@{PROP} |={E1,E2}=> |={∅,E1\E2}=> emp :=
-  λ h => by
-    simpa [union_comm, subset_union_diff h] using (fupd_mask_intro_subseteq empty_subset).trans <|
-      fupd_mask_frame_right (P := iprop(|={∅,E1 \ E2}=> (emp : PROP))) (disjoint_symm <| disjoint_diff_right)
+theorem fupd_mask_subseteq_emptyset_difference {E1 E2 : CoPset} (h : E2 ⊆ E1) :
+    ⊢@{PROP} |={E1,E2}=> |={∅,E1\E2}=> emp := by
+  have H : emp ⊢@{PROP} |={E1 \ E2 ∪ E2, ∅ ∪ E2}=> |={∅, E1 \ E2}=> emp :=
+    (fupd_mask_intro_subseteq empty_subset).trans
+    (fupd_mask_frame_right (disjoint_symm disjoint_diff_right))
+  rw [union_comm, subset_union_diff h] at H
+  exact H
 
 @[rocq_alias fupd_trans_frame]
 theorem fupd_trans_frame {E1 E2 E3 : CoPset} {P Q : PROP} :
@@ -468,12 +468,15 @@ instance fupd_sep_homomorphism E :
   Algebra.MonoidHomomorphism (M₁ := PROP) sep sep emp emp (flip Entails) (fupd E E) where
   rel_refl := .rfl
   rel_trans := flip .trans
-  rel_proper H G := ⟨fun J => (equiv_iff.1 G).mpr.trans (J.trans (equiv_iff.1 H).mp)
-    , fun J => (equiv_iff.1 G).mp.trans (J.trans (equiv_iff.1 H).mpr)⟩
   op_proper := sep_mono
   map_ne := BIFUpdate.ne
   map_op := fupd_sep
   map_unit := fupd_intro
+
+@[rocq_alias big_sepM_fupd]
+theorem BigSepM.bigSepM_fupd [LawfulFiniteMap M' K] E (Φ : K → V → PROP) (l : M' V) :
+    ([∗map] k↦x ∈ l, |={E}=> Φ k x) ⊢ |={E}=> [∗map] k↦x ∈ l, Φ k x :=
+    Algebra.BigOpM.bigOpM_hom (R := flip Entails) Φ l
 
 @[rocq_alias big_sepL_fupd]
 theorem BigSepL2.bigSepL_fupd {A : Type _} E (Φ : Nat → A → PROP) l :

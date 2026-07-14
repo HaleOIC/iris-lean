@@ -48,7 +48,7 @@ end Stuckness
 class Wp (PROP Expr : Type _) (Val : outParam (Type _)) (A : Type _) where
   wp : A → CoPset → Expr → (Val → PROP) → PROP
 
-class TotalWP (PROP Expr) (Val : outParam (Type _)) (A : Type _) where
+class TotalWp (PROP Expr) (Val : outParam (Type _)) (A : Type _) where
   totalWp : A → CoPset → Expr → (Val → PROP) → PROP
 
 syntax wpExpr :=
@@ -69,6 +69,16 @@ syntax " ⦃ " wpPostcondInner " ⦄ " : wpPostcond
 syntax " 〖 " wpPostcondInner " 〗 "  : wpPostcond
 
 syntax (name := wp) "WP " wpExpr wpPostcond : term
+
+syntax texanPostcondInner := (ident+ ", ")? " RET " term:min "; " term:min
+declare_syntax_cat texanPostcond
+syntax " {" "{ " texanPostcondInner " }" "} " : texanPostcond
+syntax " ⦃ " texanPostcondInner " ⦄ " : texanPostcond
+declare_syntax_cat texanPrecond
+syntax " {" "{ " term:min " }" "} " : texanPrecond
+syntax " ⦃ " term:min " ⦄ " : texanPrecond
+
+syntax (name := texanTriple) texanPrecond wpExpr texanPostcond : term
 
 open Lean in
 meta def parseWpExpr : Lean.TSyntax ``wpExpr → Lean.MacroM (TSyntax `term × TSyntax `term × TSyntax `term) := fun
@@ -109,9 +119,19 @@ meta def wpMacro : Lean.Macro := fun stx => do
     let (e, s, E) ← parseWpExpr expr
     let (Φ, useTotal?) ← parseWpPostcond postcond
     if useTotal? then
-      `(TotalWP.totalWp $s $E $e $Φ)
+      `(TotalWp.totalWp $s $E $e $Φ)
     else
       `(Wp.wp $s $E $e $Φ)
+  | _ => Lean.Macro.throwUnsupported
+
+@[macro texanTriple]
+meta def wpTexanTriple : Lean.Macro
+  | `(⦃ $P:term ⦄ $wpExpr ⦃ $[$[$xs:ident]* ,]? RET $pat ; $Q:term ⦄)
+  | `({{ $P:term }} $wpExpr {{ $[$[$xs:ident]* ,]? RET $pat ; $Q:term }}) => do
+    let k ← match xs with
+            | some xs => `(∀ $xs*, $Q:term → Φ $pat)
+            | none => `($Q:term → Φ $pat)
+    `(iprop(∀ Φ, $P -∗ ▷ $k -∗ (WP $wpExpr {{ Φ }})))
   | _ => Lean.Macro.throwUnsupported
 
 meta def unexpandWpPostcondInner : TSyntax `term → PrettyPrinter.UnexpandM (TSyntax `wpPostcondInner)
@@ -137,10 +157,12 @@ meta def unexpanderWp : PrettyPrinter.Unexpander
     `(WP $wpExpr {{ $wpPostcondInner }})
   | _ => throw ()
 
-@[app_unexpander TotalWP.totalWp]
+@[app_unexpander TotalWp.totalWp]
 meta def unexpanderTotalWp : PrettyPrinter.Unexpander
   | `($_wp $s $E $e $Φ) => do
     let wpExpr ← makeWpExpr s E e
     let wpPostcondInner ← unexpandWpPostcondInner Φ
     `(WP $wpExpr [{ $wpPostcondInner }])
   | _ => throw ()
+
+-- TODO: Consider adding unexpanders for texan triples

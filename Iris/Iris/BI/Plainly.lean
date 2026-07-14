@@ -417,12 +417,12 @@ instance wand_persistent [Plain P] [Persistent Q] [Absorbing Q] :
     _ ⊢ <pers> (P -∗ Q)   := persistently_mono (wand_mono plain .rfl)
 
 @[rocq_alias limit_preserving_Plain]
-instance limitPreserving_plain {A} [COFE A] (Φ : A → PROP) (Φne : OFE.NonExpansive Φ) :
- LimitPreserving (fun x => Plain (Φ x)) := by
-   letI _ : OFE.NonExpansive fun x => iprop(■ Φ x) := .comp inferInstance Φne
-   refine fun c h => ⟨?_⟩
-   refine LimitPreserving.entails _ (fun x => iprop(■ (Φ x))) _ ?_
-   exact (fun n => h n |>.plain)
+instance limitPreserving_plain {A} [COFE A] (Φ : A → PROP) [Φne : OFE.NonExpansive Φ] :
+  LimitPreserving (fun x => Plain (Φ x)) := by
+    letI _ : OFE.NonExpansive fun x => iprop(■ Φ x) := .comp inferInstance Φne
+    refine fun c h => ⟨?_⟩
+    refine LimitPreserving.entails _ (fun x => iprop(■ (Φ x))) _ ?_
+    exact (fun n => h n |>.plain)
 
 section BigOp
 
@@ -432,7 +432,6 @@ instance plainly_sep_weak_homomorphism [BIPositive PROP][BIAffine PROP] :
     (BIBase.plainly (PROP := PROP)) where
   rel_refl := .rfl
   rel_trans := .trans
-  rel_proper := BIBase.BiEntails.proper
   op_proper aa' bb' := equiv_iff.1 (sep_ne.eqv (equiv_iff.2 aa') (equiv_iff.2 bb'))
   map_ne := inferInstance
   map_op := plainly_sep
@@ -442,7 +441,6 @@ instance plainly_and_weak_homomorphism :
     (BIBase.plainly (PROP := PROP)) where
   rel_refl := .rfl
   rel_trans := .trans
-  rel_proper := BIBase.BiEntails.proper
   op_proper aa' bb' := equiv_iff.1 (and_ne.eqv (equiv_iff.2 aa') (equiv_iff.2 bb'))
   map_ne := inferInstance
   map_op := plainly_and
@@ -452,7 +450,6 @@ instance plainly_or_weak_homomorphism [SbiEmpValidExist PROP] :
     (BIBase.plainly (PROP := PROP)) where
   rel_refl := .rfl
   rel_trans := .trans
-  rel_proper := BIBase.BiEntails.proper
   op_proper aa' bb' := equiv_iff.1 (or_ne.eqv (equiv_iff.2 aa') (equiv_iff.2 bb'))
   map_ne := inferInstance
   map_op := plainly_or
@@ -475,8 +472,6 @@ instance plainly_sep_entails_weak_homomorphism :
       (BIBase.plainly (PROP := PROP)) where
   rel_refl := .rfl
   rel_trans := flip .trans
-  rel_proper H G := ⟨fun J => (equiv_iff.1 G).mpr.trans (J.trans (equiv_iff.1 H).mp),
-                     fun J => (equiv_iff.1 G).mp.trans (J.trans (equiv_iff.1 H).mpr)⟩
   op_proper := sep_mono
   map_ne := inferInstance
   map_op := plainly_sep_2
@@ -487,8 +482,6 @@ instance plainly_sep_entails_homomorphism [BIAffine PROP] :
       (BIBase.plainly (PROP := PROP)) where
   rel_refl := .rfl
   rel_trans := flip .trans
-  rel_proper H G := ⟨fun J => (equiv_iff.1 G).mpr.trans (J.trans (equiv_iff.1 H).mp),
-                     fun J => (equiv_iff.1 G).mp.trans (J.trans (equiv_iff.1 H).mpr)⟩
   op_proper := sep_mono
   map_ne := inferInstance
   map_op := plainly_sep_2
@@ -688,13 +681,6 @@ instance bigSepM_plain {K} [DecidableEq K] {M A} [ι : LawfulFiniteMap M K] (Φ 
     Plain ([∗map] k↦x ∈ m, Φ k x) where
   plain := by
     induction m using Iris.Std.LawfulFiniteMap.induction_on
-    case hequiv m₁ m₂ m₁m₂ H =>
-      have h : iprop([∗map] k ↦ x ∈ m₁, Φ k x) ≡ [∗map] k ↦ x ∈ m₂, Φ k x :=
-          Algebra.BigOpM.bigOpM_eqv_of_perm (M' := M) _ m₁m₂
-      calc iprop([∗map] k ↦ x ∈ m₂, Φ k x)
-        _ ⊣⊢ [∗map] k ↦ x ∈ m₁, Φ k x := BI.equiv_iff.1 h |>.symm
-        _  ⊢ ■ [∗map] k ↦ x ∈ m₁, Φ k x := H
-        _ ⊣⊢ ■ [∗map] k ↦ x ∈ m₂, Φ k x := .ofMono plainly_mono <| BI.equiv_iff.1 h
     case hemp =>
       simp only [Algebra.BigOpM.bigOpM_empty, plain]
     case hins k v m get?_m_k IH=>

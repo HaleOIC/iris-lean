@@ -45,7 +45,6 @@ instance orMonoidOps [BI PROP] : MonoidOps (or (PROP := PROP)) iprop(False) wher
     (hunit : f u₁ ≡ u₂) : MonoidHomomorphism op₁ op₂ u₁ u₂ (· ≡ ·) f where
   rel_refl := .rfl
   rel_trans := .trans
-  rel_proper ha hb := ⟨fun h => ha.symm.trans (h.trans hb), fun h => ha.trans (h.trans hb.symm)⟩
   op_proper ha hb := MonoidOps.op_proper ha hb
   map_ne := hne
   map_op := hop
@@ -58,7 +57,6 @@ instance orMonoidOps [BI PROP] : MonoidOps (or (PROP := PROP)) iprop(False) wher
     WeakMonoidHomomorphism op₁ op₂ u₁ u₂ (· ≡ ·) f where
   rel_refl := .rfl
   rel_trans := .trans
-  rel_proper ha hb := ⟨fun h => ha.symm.trans (h.trans hb), fun h => ha.trans (h.trans hb.symm)⟩
   op_proper ha hb := MonoidOps.op_proper ha hb
   map_ne := hne
   map_op := hop
@@ -106,6 +104,10 @@ open Iris.Algebra Iris.Std OFE BIBase
 abbrev bigSepS [BI PROP] {A : Type _} {S : Type _} [FiniteSet S A] (Φ : A → PROP) (s : S) : PROP :=
   bigOpS sep Φ s
 
+/-- Big separating conjunction over a finite multiset. -/
+abbrev bigSepMS [BI PROP] {A : Type _} {MS : Type _} [FiniteMultiSet MS A] (Φ : A → PROP) (X : MS) : PROP :=
+  bigOpMS sep Φ X
+
 end Set
 
 public meta section
@@ -144,6 +146,9 @@ syntax "[∧map] " ident " ↦ " ident " ∈ " term ", " term : term
 -- Notation for bigSepS
 syntax "[∗set] " ident " ∈ " term ", " term : term
 
+-- Notation for bigSepMS
+syntax "[∗mset] " ident " ∈ " term ", " term : term
+
 macro_rules
   | `([∗list] $x:ident ∈ $l, $P) => `(bigSepL (fun _ $x => $P) $l)
   | `([∗list] $k:ident ↦ $x:ident ∈ $l, $P) => `(bigSepL (fun $k $x => $P) $l)
@@ -158,6 +163,7 @@ macro_rules
   | `([∧map] $x:ident ∈ $m, $P) => `(bigAndM (fun _ $x => $P) $m)
   | `([∧map] $k:ident ↦ $x:ident ∈ $m, $P) => `(bigAndM (fun $k $x => $P) $m)
   | `([∗set] $x:ident ∈ $s, $P) => `(bigSepS (fun $x => $P) $s)
+  | `([∗mset] $x:ident ∈ $X, $P) => `(bigSepMS (fun $x => $P) $X)
 
 -- iprop macro rules
 macro_rules
@@ -174,6 +180,7 @@ macro_rules
   | `(iprop([∧map] $x:ident ∈ $m, $P)) => `(bigAndM (fun _ $x => iprop($P)) $m)
   | `(iprop([∧map] $k:ident ↦ $x:ident ∈ $m, $P)) => `(bigAndM (fun $k $x => iprop($P)) $m)
   | `(iprop([∗set] $x:ident ∈ $s, $P)) => `(bigSepS (fun $x => iprop($P)) $s)
+  | `(iprop([∗mset] $x:ident ∈ $X, $P)) => `(bigSepMS (fun $x => iprop($P)) $X)
 
 /-- Helper to delaborate a bigOpL-shaped lambda body into list notation.
     `opConst` is checked against the `op` argument; `mkWithIdx` / `mkNoIdx` build syntax. -/
@@ -449,8 +456,6 @@ instance bi_persistently_sep_entails_weak_homomorphism [BI PROP] :
     WeakMonoidHomomorphism (sep (PROP := PROP)) sep emp emp (flip Entails) persistently where
   rel_refl := .rfl
   rel_trans := flip .trans
-  rel_proper H G := ⟨fun J => (equiv_iff.1 G).mpr.trans (J.trans (equiv_iff.1 H).mp),
-                     fun J => (equiv_iff.1 G).mp.trans (J.trans (equiv_iff.1 H).mpr)⟩
   op_proper := sep_mono
   map_ne := BI.persistently_ne
   map_op := persistently_sep_mpr
@@ -460,8 +465,6 @@ instance bi_persistently_sep_entails_homomorphism [BI PROP] :
     MonoidHomomorphism (sep (PROP := PROP)) sep emp emp (flip Entails) persistently where
   rel_refl := .rfl
   rel_trans := flip .trans
-  rel_proper H G := ⟨fun J => (equiv_iff.1 G).mpr.trans (J.trans (equiv_iff.1 H).mp),
-                     fun J => (equiv_iff.1 G).mp.trans (J.trans (equiv_iff.1 H).mpr)⟩
   op_proper := sep_mono
   map_ne := BI.persistently_ne
   map_op := persistently_sep_mpr
@@ -472,7 +475,7 @@ end Persistently
 section Tests
 open Iris.Std OFE BIBase
 variable [BI PROP] (P : Nat → PROP) (Q : Nat → Nat → PROP) (l l1 l2 : List Nat)
-(Q' : Nat → Nat → Nat → PROP)
+  (Q' : Nat → Nat → Nat → PROP)
 
 /-! ## Delaborator round-trip tests -/
 

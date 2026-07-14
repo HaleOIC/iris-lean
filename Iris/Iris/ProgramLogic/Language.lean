@@ -46,7 +46,7 @@ theorem toVal_eq_iff_coe (e : Expr) (v : Val) : v = e ↔ toVal e = some v :=
   ⟨(· ▸ toVal_coe v), coe_of_toVal_eq_some⟩
 
 @[rocq_alias of_val_inj]
-instance : ι.ofVal.Injective := by
+theorem TovVal.ofVal_inj : ι.ofVal.Injective := by
   intro x y h
   simpa [toVal_coe] using congrArg (toVal) h
 
@@ -161,6 +161,10 @@ scoped notation (name := ErasedStep) conf:40 " -·->ₜₚ " conf':41 => Languag
 scoped notation (name := erasedStepStar) conf:40 " -·->ₜₚ* " conf':41 =>
   Relation.ReflTransGen Language.ErasedStep conf conf'
 
+/-- A nonempty sequence of `Language.erasedStep`s -/
+scoped notation (name := erasedStepPlus) conf:40 " -·->ₜₚ+ " conf':41 =>
+  Relation.TransGen Language.ErasedStep conf conf'
+
 end Notation
 
 open Notation
@@ -243,6 +247,11 @@ theorem stronglyAtomic_atomic {a} :
   | .StronglyAtomic => id
   | .WeaklyAtomic => fun ⟨h⟩ => ⟨by grind only [not_reducible_iff_irreducible, val_irreducible]⟩
 
+theorem prim_val_stuck (h : (↑ v, σ) -<obs>-> (e', σ', eₜ)) : False := by
+  simpa using val_stuck h
+
+instance val_atomic {a : Atomicity} {v : Val} : Atomic a (Λ.ofVal v) :=
+  ⟨fun h => by simpa using val_stuck h⟩
 
 /-- The function `K` models an evaluation context for the language -/
 @[rocq_alias LanguageCtx]
@@ -396,7 +405,7 @@ scoped notation (name := PureSteps) conf:40 " -ᵖ->ₜₚ* " conf':41 => Langua
 
 end Notation
 
-@[rocq_alias PureExec]
+@[ipm_class, rocq_alias PureExec]
 class PureExec (φ : outParam <| Prop) (n : outParam <| Nat) (e₁ : Expr) (e₂ : outParam <| Expr) : Prop where
   pureExec : φ → e₁ -ᵖ->^[n] e₂
 

@@ -28,6 +28,13 @@ def nclose (N : Namespace) : CoPset :=
 
 instance : CoeOut Namespace CoPset where coe := nclose
 
+def ofName : Lean.Name → Namespace
+  | .anonymous => nroot
+  | .str rest str => ndot (ofName rest) str
+  | .num rest num => ndot (ofName rest) num
+
+instance : Coe Lean.Name Namespace where coe := ofName
+
 infix:80 ".@" => ndot
 
 instance ndisjoint : Iris.Std.Disjoint Namespace where
@@ -97,7 +104,7 @@ theorem fresh_name {S : Type _} [Iris.Std.LawfulFiniteSet S Pos] (E : S) (N : Na
   · exact hiN
 
 open Iris.Std in
-attribute [grind unfold] instDisjoint in
+attribute [local grind unfold] instDisjoint in
 theorem CoPset.difference_difference (X1 X2 X3 Y : CoPset) :
     (X1 \ X2) \ X3 ## Y -> X1 \ (X2 ∪ X3) ## Y := by
   grind [LawfulSet.mem_diff, LawfulSet.mem_union, Disjoint.disjoint]
