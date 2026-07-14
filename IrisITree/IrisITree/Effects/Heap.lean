@@ -51,28 +51,42 @@ notation:50 l:50 " ↦{" dq "} " v:50 => pointsto l (some v) dq
 section handler
 
 variable {GF : BundledGFunctors} {hlc : HasLC} [InvGS_gen hlc GF]
-variable {Loc Val : Type} [Ord Loc] [Std.TransOrd Loc] [Std.LawfulEqOrd Loc]
+variable {Loc Val : Type} [Ord Loc] [Std.TransOrd Loc] [Std.LawfulEqOrd Loc] [DecidableEq Loc]
 variable [G : heapHGS GF Loc Val]
 
+-- Half of the authoritative view of the current heap into an invariant
+-- so that we can know that someone else won't change it while we have control
 def heap_inv : IProp GF :=
   inv (heapH_inv_name (G := G)) iprop(
-    ∃ σ : heapE.T Loc Val,
-      ghost_map_auth (GF := GF) (K := Loc) (V := Option Val)
-        (H := (Std.ExtTreeMap Loc · compare))
-        G.heapH_heap_name
-        (DFrac.own (Qp.half (1 : Qp))) σ
+    ∃ σ, ghost_map_auth (K := Loc) (V := Option Val)
+      G.heapH_heap_name (DFrac.own $ Qp.half 1) σ
   )
 
+instance heap_inv_persistent : Persistent (heap_inv (G := G)) := by
+  unfold heap_inv
+  infer_instance
+
 def stateInterp_heap (σ : heapE.T Loc Val) : IProp GF := iprop(
-  ghost_map_auth (GF := GF) (K := Loc) (V := Option Val)
-      (H := (Std.ExtTreeMap Loc · compare))
-      G.heapH_heap_name
-      (DFrac.own (Qp.half (1 : Qp))) σ ∧
-    heap_inv (G := G)
+  ghost_map_auth (K := Loc) (V := Option Val)
+    G.heapH_heap_name (DFrac.own $ Qp.half 1) σ
+  ∧ heap_inv (G := G)
 )
 
+-- TODO: can we generalize this to `PROP`, maybe we can't
 def heapH : IHandler (IProp GF) (heapE Loc Val) :=
   stateH stateInterp_heap
+
+-- TODO: find way to eliminate the parameter M and use the syntax sugar instead of `bigSepM`
+-- TODO: we need `icases` support fractional destruct
+theorem heapH_init (σ : heapE.T Loc Val) :
+    ⊢ |={∅}=> ∃ G : heapHGS GF Loc Val,
+      heap_inv (G := G) ∗
+      stateInterp_heap σ ∗
+      bigSepM (M := (Std.ExtTreeMap Loc · compare)) (λ k v => k ↦? v) σ := by
+  icases (ghost_map_alloc (K := Loc) (V := Option Val) σ) with Hgmap
+  imod Hgmap; icases Hgmap with ⟨%γ, ⟨⟨Hauth⟩, Hfrag⟩⟩
+  -- icases Hauth with ⟨Hauth, Hauth'⟩
+  sorry
 
 end handler
 
@@ -80,33 +94,34 @@ section wpi_rules
 
 variable {GF : BundledGFunctors} {hlc : HasLC} [InvGS_gen hlc GF]
 variable {Loc Val : Type} [Ord Loc] [Std.TransOrd Loc] [Std.LawfulEqOrd Loc]
-variable [heapHGS GF Loc Val]
+variable [G : heapHGS GF Loc Val]
 variable {E : Effect} {H : IHandler (IProp GF) E}
-variable [heapE Loc Val -< E]
-variable [InH (heapH (GF := GF) (hlc := hlc) (Loc := Loc) (Val := Val)) H]
+variable [heapE Loc Val -< E] [InH (heapH (G := G)) H]
 
-theorem wpi_load_opt M (l : Loc) (v : Val) (dq : DFrac)
-    (Φ : Option Val → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗
-    (pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗ Φ (some v)) -∗
-    WPi (HeapE.load? (E := E) (Loc := Loc) (Val := Val) l) @> H; M {{ Φ }} := by
+-- theorem wpi_load_opt M (l : Loc) (v : Val) (dq : DFrac)
+--     (Φ : Option Val → IProp GF) :
+--     ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
+--     pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗
+--     (pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗ Φ (some v)) -∗
+--     WPi (HeapE.load? (E := E) (Loc := Loc) (Val := Val) l) @> H; M {{ Φ }} := by
+--   sorry
+
+theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    l ↦? v -∗
+    (l ↦? v' -∗ Φ v) -∗
+    WPi (HeapE.storeOpt l v') @> H; M {{ Φ }} := by
+  iintro %Hmask Hpt Hwand; unfold HeapE.storeOpt
+  iapply wpi_bind; iapply wpi_get; unfold stateInterp_heap
+  iintro %σ ⟨Hauth, #Hinv⟩; unfold heap_inv
+  -- TODO: We need `iinv` to continue the work
   sorry
 
-theorem wpi_storeOpt M (l : Loc) (v v' : Option Val)
-    (Φ : Option Val → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    pointsto (GF := GF) (Loc := Loc) (Val := Val) l v (DFrac.own (1 : Qp)) -∗
-    (pointsto (GF := GF) (Loc := Loc) (Val := Val) l v' (DFrac.own (1 : Qp)) -∗ Φ v) -∗
-    WPi (HeapE.storeOpt (E := E) (Loc := Loc) (Val := Val) l v') @> H; M {{ Φ }} := by
-  sorry
-
-theorem wpi_store M (l : Loc) (v : Option Val) (v' : Val)
-    (Φ : Option Val → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    pointsto (GF := GF) (Loc := Loc) (Val := Val) l v (DFrac.own (1 : Qp)) -∗
-    (pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v') (DFrac.own (1 : Qp)) -∗ Φ v) -∗
-    WPi (HeapE.store? (E := E) (Loc := Loc) (Val := Val) l v') @> H; M {{ Φ }} := by
+theorem wpi_store? M (l : Loc) (v : Option Val) (v' : Val) (Φ : Option Val → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    l ↦? v -∗
+    (l ↦ v' -∗ Φ v) -∗
+    WPi (HeapE.store? l v') @> H; M {{ Φ }} := by
   sorry
 
 section fail
