@@ -111,9 +111,9 @@ variable {E : Effect.{u} } {R : Type u} {σ : Type _} [BIAffine PROP]
 theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler PROP E)
     (EH : EHandler E E R σ) [A : EHandlerAdequate (PROP := PROP) H EH]
     (t : ITree E R) (s : σ)
-    (Ms : List (((LeibnizO (ITree E R) → PROP) → PROP)))
+    (Ms : List (((DiscreteO (ITree E R) → PROP) → PROP)))
     (Mss : List (((ITree E R → PROP) → PROP)))
-    (M : (LeibnizO (ITree E R) → PROP) → PROP)
+    (M : (DiscreteO (ITree E R) → PROP) → PROP)
     (C : ITree E R → σ → Prop)
     (Hexec : exec EH t s C)
     (HMs : Ms.Perm (M :: Mss.map (λ M' P => M' (λ t => P ⟨t⟩)))) :

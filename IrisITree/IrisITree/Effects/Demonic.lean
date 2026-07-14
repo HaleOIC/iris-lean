@@ -24,8 +24,9 @@ def demonicH (α : Type _) : IHandler PROP (demonicE α) where
 instance demonicH_sequential {α : Type _} :
     Sequential (PROP := PROP) (demonicH (PROP := PROP) α) := by
   constructor
+  unfold demonicH
   iintro %i %Φ %s H
-  simp [demonicH]
+  iexact H
 
 end handler
 

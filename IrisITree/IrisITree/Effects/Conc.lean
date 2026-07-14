@@ -21,9 +21,12 @@ def concH : IHandler PROP concE where
     | .kill, _, _ => iprop(|={∅, ⊤}=> True)
   ihandle_mono := by
     iintro %i %Φ %Φ' %Φs %Φs' HΦwand #Hswand HH
-    cases i <;> simp
-    · icases HH with ⟨HΦ, HΦs⟩; icases HΦwand $$ [$] with $
-      imod HΦs; imodintro; iapply Hswand $$ [$]
+    cases i <;> dsimp only
+    · icases HH with ⟨HΦ, HΦs⟩
+      ihave HΦ' := HΦwand $$ %ForkResult.parent HΦ
+      isplitl [HΦ']
+      · iexact HΦ'
+      · imod HΦs; imodintro; iapply Hswand; iexact HΦs
     · imod HH; itrivial
     · imod HH; imodintro; imod HH; imodintro; iapply HΦwand $$ [$]
 

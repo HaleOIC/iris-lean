@@ -108,8 +108,8 @@ end bi_mono0
 /-- The functional whose least fixed point is `lfp_tp`. -/
 def lfp_tpF {PROP : Type _} [BI PROP] {α : Type _}
     (F : (α → PROP) → (α → PROP))
-    (rec_tp : LeibnizO (List ((α → PROP) → PROP)) → PROP) :
-    LeibnizO (List ((α → PROP) → PROP)) → PROP :=
+    (rec_tp : DiscreteO (List ((α → PROP) → PROP)) → PROP) :
+    DiscreteO (List ((α → PROP) → PROP)) → PROP :=
   λ Ms => iprop(
     ∀ (i : Nat) (M : (α → PROP) → PROP), ⌜Ms.car[i]? = some M⌝ -∗
       bi_mono0 M λ x => iprop(
@@ -125,14 +125,14 @@ variable {PROP : Type _} [BI PROP] [BIAffine PROP] {α : Type _}
 instance lfp_tpF_ne : NonExpansive (lfp_tpF F) where
   ne {_ _ _} Hfg := by
     intro Ms; unfold lfp_tpF bi_mono0
-    apply forall_ne; intro i; apply forall_ne; intro _
-    apply wand_ne.ne; rfl; apply exists_ne; intro _
-    apply sep_ne.ne; rfl; apply forall_ne; intro _
-    apply wand_ne.ne; rfl; apply exists_ne; intro _
-    apply sep_ne.ne; rfl; apply forall_ne; intro Ms'
-    apply wand_ne.ne; rfl; exact Hfg ⟨Ms' ++ Ms.car.eraseIdx i⟩
+    refine forall_ne λ i => forall_ne λ _ => ?_
+    refine wand_ne.ne .rfl $ exists_ne λ _ => ?_
+    refine sep_ne.ne .rfl $ forall_ne λ _ => ?_
+    refine wand_ne.ne .rfl $ exists_ne λ _ => ?_
+    refine sep_ne.ne .rfl $ forall_ne λ Ms' => ?_
+    exact wand_ne.ne .rfl $ Hfg ⟨Ms' ++ Ms.car.eraseIdx i⟩
 
-theorem lfp_tpF_mono (tp1 tp2 : LeibnizO (List ((α → PROP) → PROP)) → PROP) :
+theorem lfp_tpF_mono (tp1 tp2 : DiscreteO (List ((α → PROP) → PROP)) → PROP) :
     ⊢ □ (∀ Ms, tp1 Ms -∗ tp2 Ms) -∗
       ∀ Ms, lfp_tpF F tp1 Ms -∗ lfp_tpF F tp2 Ms := by
   iintro #Hwand %Ms Htp; unfold lfp_tpF
@@ -173,7 +173,7 @@ theorem lfp_tp_nil : ⊢ (lfp_tp F [] : PROP) := by
   simp only [lfp_tpF]
   iintro %i %M %Hi; simp at Hi
 
-theorem lfp_tp_ind (Φ : LeibnizO (List ((α → PROP) → PROP)) → PROP)
+theorem lfp_tp_ind (Φ : DiscreteO (List ((α → PROP) → PROP)) → PROP)
     [NonExpansive Φ] :
     ⊢ □ (∀ y, lfp_tpF F (λ x => iprop(Φ x ∧ lfp_tp F x.car)) y -∗ Φ y) -∗
       (∀ Ms, lfp_tp F Ms.car -∗ Φ Ms) := by
@@ -213,10 +213,10 @@ theorem perm_pick_erase {β : Type _} {Ms1 Ms2 : List β} {i : Nat} {M : β}
       exact ⟨j₁, Hj₁, List.Perm.trans Hperm₁ Hperm₂⟩
 
 theorem lfp_tpF_perm (Ms1 Ms2 : List ((α → PROP) → PROP))
-    (wp1 wp2 : LeibnizO (List ((α → PROP) → PROP)) → PROP)
+    (wp1 wp2 : DiscreteO (List ((α → PROP) → PROP)) → PROP)
     (h : Ms1.Perm Ms2) :
     lfp_tpF F wp1 ⟨Ms1⟩ ⊢
-    (∀ (Ns1 Ns2 : LeibnizO (List ((α → PROP) → PROP))),
+    (∀ (Ns1 Ns2 : DiscreteO (List ((α → PROP) → PROP))),
       ⌜Ns1.car.Perm Ns2.car⌝ -∗ wp1 Ns1 -∗ wp2 Ns2) -∗
     lfp_tpF F wp2 ⟨Ms2⟩ := by
   iintro Htp Hwp; unfold lfp_tpF; iintro %i %M %Hi
@@ -230,7 +230,7 @@ theorem lfp_tpF_perm (Ms1 Ms2 : List ((α → PROP) → PROP))
   · iapply Hcont $$ HM'
 
 theorem lfp_tpF_perm_close (Ms1 Ms2 : List ((α → PROP) → PROP))
-    (wp : LeibnizO (List ((α → PROP) → PROP)) → PROP)
+    (wp : DiscreteO (List ((α → PROP) → PROP)) → PROP)
     (h : Ms1.Perm Ms2) :
     lfp_tpF F wp ⟨Ms1⟩ ⊢
     lfp_tpF F (bi_close (λ a b => a.car.Perm b.car) wp) ⟨Ms2⟩ := by
@@ -243,7 +243,7 @@ theorem lfp_tpF_perm_close (Ms1 Ms2 : List ((α → PROP) → PROP))
 
 theorem lfp_tp_perm (Ms1 Ms2 : List ((α → PROP) → PROP)) (h : Ms1.Perm Ms2) :
     ⊢ lfp_tp F Ms1 -∗ lfp_tp F Ms2 := by
-  letI : NonExpansive λ (Ms : LeibnizO (List ((α → PROP) → PROP))) =>
+  letI : NonExpansive λ (Ms : DiscreteO (List ((α → PROP) → PROP))) =>
     iprop(∀ Ms2, ⌜Ms.car.Perm Ms2⌝ -∗ lfp_tp F Ms2) := ⟨
       λ n lst1 lst2 Hlst => by
         refine forall_ne (λ lst => ?_)
@@ -258,13 +258,13 @@ theorem lfp_tp_perm (Ms1 Ms2 : List ((α → PROP) → PROP)) (h : Ms1.Perm Ms2)
 
 theorem lfp_tp_app (Ms1 Ms2 : List ((α → PROP) → PROP)) :
     ⊢ lfp_tp F Ms1 -∗ lfp_tp F Ms2 -∗ lfp_tp F (Ms1 ++ Ms2) := by
-  letI : NonExpansive λ (Ms : LeibnizO (List ((α → PROP) → PROP))) =>
+  letI : NonExpansive λ (Ms : DiscreteO (List ((α → PROP) → PROP))) =>
     iprop(∀ Ms2, lfp_tp F Ms2 -∗ lfp_tp F (Ms.car ++ Ms2)) := ⟨
       λ n ls1 lst2 Hlst => by
         refine forall_ne (λ Ms2 => ?_)
         cases Hlst; rfl
     ⟩
-  letI : NonExpansive λ (Ms : LeibnizO (List ((α → PROP) → PROP))) =>
+  letI : NonExpansive λ (Ms : DiscreteO (List ((α → PROP) → PROP))) =>
     iprop(∀ Ms1, lfp_tpF F (λ x => iprop((∀ Ms, lfp_tp F Ms -∗ lfp_tp F (x.car ++ Ms))
       ∧ lfp_tp F x.car)) Ms1 -∗ lfp_tp F (Ms1.car ++ Ms.car)) := ⟨
         λ n lst1 lst2 Hlst => by
@@ -272,14 +272,14 @@ theorem lfp_tp_app (Ms1 Ms2 : List ((α → PROP) → PROP)) :
           cases Hlst; rfl
       ⟩
   -- TODO: Try to remove these two have statements
-  have Hwrap : ⊢ (∀ (Ms1 : LeibnizO (List ((α → PROP) → PROP))),
+  have Hwrap : ⊢ (∀ (Ms1 : DiscreteO (List ((α → PROP) → PROP))),
     iprop(lfp_tp F Ms1.car -∗ ∀ Ms2, iprop(lfp_tp F Ms2 -∗
       lfp_tp F (Ms1.car ++ Ms2)))) -∗
     ∀ (Ms1 : List ((α → PROP) → PROP)), iprop(lfp_tp F Ms1 -∗
       ∀ Ms2, iprop(lfp_tp F Ms2 -∗ lfp_tp F (Ms1 ++ Ms2))) := by
     iintro H %Ms1 Hx1 %Ms2 Hx2
     iapply H $$ %⟨Ms1⟩ Hx1 %Ms2 Hx2
-  have Hwrap2 : ⊢ (∀ (Ms2 : LeibnizO (List ((α → PROP) → PROP))),
+  have Hwrap2 : ⊢ (∀ (Ms2 : DiscreteO (List ((α → PROP) → PROP))),
     iprop(lfp_tp F Ms2.car -∗ ∀ Ms1, iprop(lfp_tpF F (λ x =>
       iprop((∀ Ms, lfp_tp F Ms -∗ lfp_tp F (x.car ++ Ms)) ∧ lfp_tp F x.car)) Ms1 -∗
       lfp_tp F (Ms1.car ++ Ms2.car)))) -∗
@@ -323,12 +323,12 @@ end lfp_tp_lemmas
 
 -- TODO: lack of tactic `iinduction`
 theorem lfp_tp_intro {PROP : Type _} [BI PROP] [BIAffine PROP]
-    {α : Type _} [OFE α] [OFE.Discrete α] [OFE.Leibniz α]
+    {α : Type _} [OFE α] [OFE.Discrete α]
     (G : (α → PROP) → (α → PROP)) [HG : BIMonoPred G] (x : α) :
     ⊢ bi_least_fixpoint G x -∗ lfp_tp G [λ P => P x] := by
   letI : NonExpansive (fun (x : α) => lfp_tp G [λ P => P x] : α → PROP) := ⟨
     fun {n x1 x2} Hx => by
-      have Heq : x1 = x2 := OFE.eq_of_eqv (OFE.Discrete.discrete Hx)
+      have Heq : x1 = x2 := (OFE.Discrete.discrete Hx).to_eq
       subst Heq; rfl
   ⟩
   sorry

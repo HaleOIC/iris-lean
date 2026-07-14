@@ -33,8 +33,8 @@ def wpiF {R} (wpi : CoPset → ITree E R → (R → PROP) → PROP) :
           (λ a => wpi ∅ (k a) (λ _ => iprop(False)))
     )
 
-private def wpiF' {R} (Me : CoPset) (wpi : (LeibnizO CoPset) × ITree E R × (R → PROP) → PROP) :
-    (LeibnizO CoPset) × ITree E R × (R → PROP) → PROP :=
+private def wpiF' {R} (Me : CoPset) (wpi : DiscreteO CoPset × ITree E R × (R → PROP) → PROP) :
+    DiscreteO CoPset × ITree E R × (R → PROP) → PROP :=
   λ ⟨Ms, t, Φ⟩ => wpiF H (λ Ms t Φ => wpi ⟨⟨Ms⟩, t, Φ⟩) Ms.1 Me t Φ
 
 theorem wpiF_mono {R} (wp1 wp2 : CoPset → ITree E R → (R → PROP) → PROP) Me :
@@ -42,13 +42,14 @@ theorem wpiF_mono {R} (wp1 wp2 : CoPset → ITree E R → (R → PROP) → PROP)
     ∀ Ms t Φ, wpiF H wp1 Ms Me t Φ -∗ wpiF H wp2 Ms Me t Φ := by
   iintro #Hwand %Ms %t %Φ Hwp
   unfold wpiF; imod Hwp; imodintro
-  cases t.unfold <;> simp
-  case ret => iexact Hwp
-  case tau t' => iapply Hwand $$ Hwp
-  case vis i k =>
-    iapply H.ihandle_mono $$ [] [] Hwp
+  cases h : t.unfold with
+  | ret => iassumption
+  | tau t' => iapply Hwand; iassumption
+  | vis i k =>
+    iapply H.ihandle_mono
     · iintro %_; iapply Hwand
     · iintro !> %_; iapply Hwand
+    · iassumption
 
 private instance {R Me} : BIMonoPred (wpiF' (R:=R) H Me) where
   mono_pred := by
@@ -217,7 +218,7 @@ theorem wpi_ind_mask (G : CoPset → ITree E R → (R → PROP) → PROP)
     □ (∀ Ms t Φ, wpiF H (λ Ms' t' Ψ => iprop(G Ms' t' Ψ ∧ WPi t' @> H;Ms',Me {{ Ψ }})) Ms Me t Φ -∗ G Ms t Φ) ⊢
     ∀ Ms t Φ, WPi t @> H;Ms,Me {{ Φ }} -∗ G Ms t Φ := by
   iintro #HPre %Ms %t %Φ Hwp; unfold wpi
-  let G' : (LeibnizO CoPset × _ × _) → _ := λ ⟨⟨Ms⟩, t, Φ⟩ => G Ms t Φ
+  let G' : (DiscreteO CoPset × _ × _) → _ := λ ⟨⟨Ms⟩, t, Φ⟩ => G Ms t Φ
   have : OFE.NonExpansive G' := by sorry
   iapply least_fixpoint_ind (wpiF' H Me) G' $$ [] %⟨⟨Ms⟩, t, Φ⟩ Hwp
   iintro !> %p HwpiF

@@ -57,18 +57,18 @@ The `islaris` folder should not be ported, all filenames below are relative to t
   - [x] `Sequential`
 - [ ] `heap.v`
   - `store`, ... functions part of itree library
-  - [ ] `heapGS` and pointsto
+  - [x] `heapGS` and pointsto
   - [ ] wpi rules
   - `heap_irel`, `heap_ifn` and corresponding adequacy: part of trace based adequacy, should not be ported
 - `interpreter.v`: should not be ported at the moment
 - `itree.v`: necessary functionality from this file should be provided by the itree library
-- [ ] `state.v`
+- [x] `state.v`
   - `stateE`: part of itree library
   - [x] `stateH`
-  - [ ] wpi rules (sorry for `wpi_set_state`)
+  - [x] wpi rules (sorry for `wpi_set_state`)
   - `state_irel`, `state_ifn`, `interp_tr_state` and corresponding adequacy: part of trace based adequacy, should not be ported
   - `stateEH`: part of the itree library
-  - [ ] exec adequacy
+  - [x] exec adequacy
 - [ ] `step.v`
   - `stepE`: part of the itree library
   - it is a bit unclear what to do with the rest of this file, should be discussed

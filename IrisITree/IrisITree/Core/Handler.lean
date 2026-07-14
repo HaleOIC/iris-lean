@@ -88,7 +88,10 @@ class InH {E₁ E₂} [Hsub : E₁ -< E₂]
     H1.ihandle i₁ Φ₁ s₁ ⊣⊢ H2.ihandle i₂ Φ₂ s₂
 
 instance {PROP E} [BI PROP] (H : IHandler PROP E) : InH H H := by
-  constructor; intro i Φ s; simp
+  constructor
+  intro i Φ s
+  change H.ihandle i Φ s ⊣⊢ H.ihandle i Φ s
+  exact .rfl
 
 instance {PROP E₁ E₂ E₃} [BI PROP] [f : E₁ -< E₂]
     (H1 : IHandler PROP E₁) (H2 : IHandler PROP E₂) (H3 : IHandler PROP E₃)
@@ -120,9 +123,9 @@ instance {PROP E} [BI PROP] (H : IHandler PROP E) : WandH H H := by
   iexact H
 
 instance {PROP E₁ E₂} [BI PROP]
-    (H1 H1' : IHandler PROP E₁) (H2 H2' : IHandler PROP E₂) :
-  WandH H1 H1' → WandH H2 H2' → WandH (H1 ⊕ₕ H2) (H1' ⊕ₕ H2') := by
-    intro Hwand1 Hwand2
+    (H1 H1' : IHandler PROP E₁) (H2 H2' : IHandler PROP E₂)
+    [Hwand1 : WandH H1 H1'] [Hwand2 : WandH H2 H2'] :
+    WandH (H1 ⊕ₕ H2) (H1' ⊕ₕ H2') := by
     constructor
     iintro %e %Φ %s H
     cases e with

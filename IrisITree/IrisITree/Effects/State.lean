@@ -25,8 +25,9 @@ def stateH {S : Type _} (stateInterp : S → PROP) : IHandler PROP (stateE S) wh
 instance {S : Type _} (stateInterp : S → PROP) :
     Sequential (stateH stateInterp) := by
   constructor
+  unfold stateH
   iintro %i %Φ %s HH
-  simp [stateH]
+  iexact HH
 
 end handler
 
@@ -83,6 +84,6 @@ instance stateEH_adequate :
     simp [stateH, stateEH] at Hhandle ⊢
     iintro Hs Hinv; imod Hs $$ [$] with ⟨_, _⟩
     iintro !>; iexists _, _; iframe
-    ipureintro; apply Hhandle
+    itrivial
 
 end exec

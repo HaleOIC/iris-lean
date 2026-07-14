@@ -22,8 +22,9 @@ def haltH : IHandler PROP haltE where
 
 instance haltH_sequential : Sequential (PROP := PROP) haltH := by
   constructor
+  unfold haltH
   iintro %i %Φ %s HH
-  simp [haltH]
+  iexact HH
 
 end handler
 

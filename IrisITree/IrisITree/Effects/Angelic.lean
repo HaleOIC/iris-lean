@@ -24,8 +24,9 @@ def angelicH (α : Type _) : IHandler PROP (angelicE α) where
 instance angelicH_sequential {α : Type _} :
     Sequential (PROP := PROP) (angelicH (PROP := PROP) α) := by
   constructor
+  unfold angelicH
   iintro %p %Φ %s H
-  simp [angelicH]
+  iexact H
 
 end handler
 

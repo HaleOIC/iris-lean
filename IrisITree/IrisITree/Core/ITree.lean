@@ -8,9 +8,8 @@ public import ITree.Definition
 namespace IrisITree
 open ITree Iris
 
-instance {E R} : COFE (ITree E R) := COFE.ofDiscrete _ Eq_Equivalence
-instance {E R} : OFE.Leibniz (ITree E R) := ⟨(·)⟩
-instance {E R} : OFE.Discrete (ITree E R) := ⟨congrArg id⟩
+instance {E R} : COFE (ITree E R) := COFE.ofDiscrete _
+instance {E R} : OFE.Discrete (ITree E R) := ⟨λ h _ => h⟩
 
 end IrisITree
 
