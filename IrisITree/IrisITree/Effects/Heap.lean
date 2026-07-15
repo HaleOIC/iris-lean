@@ -127,7 +127,7 @@ theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp 
   imod inv_acc_timeless Hmask $$ Hinv with ⟨⟨%σinv, HauthInv⟩, Hclose⟩
   ihave %Heq := ghost_map_auth_agree $$ HauthInv HauthState; subst σinv
   imodintro; isplitl [HauthState]
-  · isplit <;> iassumption
+  · iframe; iframe Hinv
 
   -- look up and insert operations
   ihave %Hlookup := ghost_map_lookup $$ HauthInv Hpt
@@ -203,30 +203,123 @@ theorem wpi_load! M (l : Loc) (v : Val) (dq : DFrac) (Φ : Val → IProp GF) :
 
 end fail
 
+-- TODO: why we use `Int` here instead of `Nat`, given that locations are already monotonically ordered?
+-- TODO: unify the notation for int, `i : Int` and `Int.ofNat i` are different
+-- TODO: upstream?
+class LawfulLoc (Loc : Type) [Ord Loc] extends Zero Loc, HAdd Loc Int Loc where
+  decEq : DecidableEq Loc
+  add_zero (l : Loc) : l + (0 : Int) = l
+  add_nat_inj (l : Loc) : Function.Injective (λ i => l + Int.ofNat i)
+  add_pos_nle (l : Loc) (m : Nat) :
+    ¬(compare (l + (1 : Int) + (m : Int)) l).isLE = true
+
+attribute [reducible, instance] LawfulLoc.decEq
+
+theorem extTreeMap_insertMany_eq_ofList_union {K : Type _} {V : Type _}
+    [Ord K] [Std.TransOrd K] [Std.LawfulEqOrd K] [DecidableEq K]
+    (m : Std.ExtTreeMap K V compare) (entries : List (K × V))
+    (Hnodup : Iris.Std.NoDupKeys entries) :
+    m.insertMany entries = Std.PartialMap.union (M := (Std.ExtTreeMap K · compare))
+      (Std.PartialMap.ofList (M := (Std.ExtTreeMap K · compare)) entries) m := by
+  apply Std.ExtTreeMap.ext_getElem?; intro k
+  simp [Iris.Std.PartialMap.union, Iris.Std.merge]
+  by_cases Hmem : ∃ w, (k, w) ∈ entries
+  · rcases Hmem with ⟨w, Hw⟩
+    rw [Std.ExtTreeMap.getElem?_insertMany_list_of_mem ?_
+      ((List.pairwise_map.mp
+          (List.nodup_iff_pairwise_ne.mp Hnodup)).imp fun Hne Heq =>
+            Hne (Std.LawfulEqOrd.compare_eq_iff_eq.mp Heq)) Hw]
+    change some w = Option.merge _ (Iris.Std.get? (M := (Std.ExtTreeMap K · compare)) _ k) _
+    simp only [Iris.Std.LawfulPartialMap.get?_ofList_some Hw Hnodup]
+    cases m[k]? <;> rfl
+    simp
+  · rw [Std.ExtTreeMap.getElem?_insertMany_list_of_contains_eq_false ?_]
+    change m[k]? = Option.merge _
+      (Iris.Std.get? (M := (Std.ExtTreeMap K · compare)) _ k) _
+    simp only [Iris.Std.LawfulPartialMap.get?_ofList_none Hmem Hnodup]
+    cases m[k]? <;> rfl
+    rw [← Bool.not_eq_true]
+    intro Hcontains
+    rcases List.mem_map.mp (List.contains_iff_mem.mp Hcontains) with
+      ⟨⟨k', w⟩, Hw, Hk⟩
+    apply Hmem; exact ⟨w, Hk ▸ Hw⟩
+
 section alloc
 
 variable [demonicE Loc -< E] [InH (demonicH (PROP := IProp GF) Loc) H]
-variable [Zero Loc] [HAdd Loc Int Loc]
+variable [LawfulLoc Loc]
 
-theorem wpi_allocN M (n : Nat) (v : Val)
-    (hle : ∀ (l : Loc) (m : Nat), ¬(compare (l + (1 : Int) + (m : Int)) l).isLE = true)
-    (Φ : Loc → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    (∀ l : Loc,
-      bigSepL (fun _ (i : Nat) =>
-        pointsto (GF := GF) (Loc := Loc) (Val := Val)
-          (l + (i : Int)) (some v) (DFrac.own (1 : Qp))) (List.range n) -∗ Φ l) -∗
-    WPi (HeapE.allocN (E := E) (Loc := Loc) (Val := Val) n v hle) @> H; M {{ Φ }} := by
-  sorry
+theorem wpi_allocN M (n : Nat) (v : Val) (Φ : Loc → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    (∀ l : Loc, ([∗list] i ∈ .range n, (l + Int.ofNat i) ↦ v) -∗ Φ l) -∗
+    WPi (allocN n v LawfulLoc.add_pos_nle) @> H; M {{ Φ }} := by
+  iintro %Hmask Hwand; unfold allocN
+  iapply wpi_bind' (M \ ↑(heapH_inv_name (G := G))); iapply wpi_get
+  unfold stateInterp_heap heap_inv
+  iintro %σ ⟨Hauth, #Hinv⟩
+  imod inv_acc_timeless Hmask $$ Hinv with ⟨⟨%σinv, HauthInv⟩, Hclose⟩
+  ihave %Heq := ghost_map_auth_agree $$ HauthInv Hauth; subst σinv
+  imodintro; isplitl [Hauth]
+  · iframe; iframe Hinv
+  iapply wpi_bind; iapply wpi_demonic (Hi := inhabited_free_locs σ LawfulLoc.add_pos_nle)
+  iintro %r; rcases r with ⟨l, Hfree⟩; simp only
+  iapply wpi_bind' M; iapply wpi_set
+  unfold stateInterp_heap heap_inv
+  iintro %σ' ⟨Hauth', -⟩
+  ihave %Heq := ghost_map_auth_agree $$ HauthInv Hauth'; subst σ'
+  icombine HauthInv Hauth' as Hauth; rw [Qp.half_add_half (1 : Qp)]
 
-theorem wpi_alloc M (v : Val)
-    (hle : ∀ (l : Loc) (m : Nat), ¬(compare (l + (1 : Int) + (m : Int)) l).isLE = true)
-    (Φ : Loc → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    (∀ l : Loc,
-      pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) (DFrac.own (1 : Qp)) -∗ Φ l) -∗
-    WPi (HeapE.alloc (E := E) (Loc := Loc) (Val := Val) v hle) @> H; M {{ Φ }} := by
-  sorry
+  -- We do not need to care about the orders
+  let entries := (List.range n).map λ m => (l + Int.ofNat m, some v)
+  let σnew := Std.PartialMap.ofList (M := (Std.ExtTreeMap Loc · compare)) entries
+  let σsum := Std.PartialMap.union (M := (Std.ExtTreeMap Loc · compare)) σnew σ
+
+  -- New added entries do not have duplicated elements and the unioned hold the same elements
+  have Hnodup : Std.NoDupKeys entries := by
+    unfold Iris.Std.NoDupKeys entries
+    simp [List.map_map]
+    exact Iris.Std.List.nodup_map_of_injective
+      (LawfulLoc.add_nat_inj l) List.nodup_range
+  have HinsertMany : σ.insertMany entries = σsum := by
+    simpa only [σnew] using extTreeMap_insertMany_eq_ofList_union σ entries Hnodup
+  have HinsertMany' :
+      σ.insertMany ((List.range n).map fun (i : Nat) => (l + (i : Int), some v)) = σsum := by
+    simpa [entries, σsum] using HinsertMany
+
+  imod ghost_map_insert_big σnew $$ Hauth with ⟨Hauth, Hpts⟩
+  · -- Prove σnew ##ₘ σ
+    unfold Std.PartialMap.disjoint; intro k Hk
+    rcases Option.isSome_iff_exists.mp Hk.1 with ⟨w, Hw⟩
+    have Hmem := Iris.Std.LawfulFiniteMap.mem_of_mem_ofList Hw
+    simp only [entries, List.mem_map] at Hmem
+    rcases Hmem with ⟨i, Hi, Hki⟩
+    have Hkey : l + Int.ofNat i = k := congrArg Prod.fst Hki
+    rw [← Hkey] at Hk
+    apply Hfree i $ List.mem_range.mp Hi
+    simpa [Iris.Std.get?] using Hk.2
+  icases Hauth with ⟨HauthInv, HauthState⟩
+  imod Hclose $$ [HauthInv] with -
+  · iexists σ.insertMany entries;
+    rw [HinsertMany]; iassumption
+  imodintro; isplitl [HauthState]
+  · rw [HinsertMany']; iframe; iframe Hinv
+  iapply wpi_pure; iapply Hwand
+  unfold pointsto
+  iapply (equiv_iff.mp (BigSepL.bigSepL_map
+    (Φ := λ _ kv => ghost_map_elem _ _ kv.1 kv.2)
+    (l + Int.ofNat ·, some v)))
+  iapply (BigSepM.bigSepM_ofList (M := (Std.ExtTreeMap Loc · compare))) $$ Hpts
+  exact Hnodup
+
+theorem wpi_alloc M (v : Val) (Φ : Loc → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    (∀ l, l ↦ v -∗ Φ l) -∗
+    WPi (alloc v LawfulLoc.add_pos_nle) @> H; M {{ Φ }} := by
+  iintro %Hmask Hwand; unfold alloc
+  iapply wpi_allocN M 1 v Φ Hmask
+  iintro %l Hpts; simp; icases Hpts with ⟨Hpt, -⟩
+  rw [LawfulLoc.add_zero l]
+  iapply Hwand $$ [$]
 
 end alloc
 
