@@ -38,9 +38,10 @@ variable {PROP : Type _} [BI PROP] [BIFUpdate PROP] {S : Type _}
   {E : Effect} {H : IHandler PROP E}
   [stateE S -< E] [Hin : InH (stateH stateInterp) H]
 
-theorem wpi_stateE_get M (Φ : S → PROP) :
-    (∀ s, stateInterp s ={M}=∗ stateInterp s ∗ Φ s) -∗
-    WPi StateE.get @> H; M {{Φ}} := by
+-- Allow a mask-changing fancy update from `Ms` to `Me` while handling `get`.
+theorem wpi_stateE_get Ms Me (Φ : S → PROP) :
+    (∀ s, stateInterp s ={Ms, Me}=∗ stateInterp s ∗ Φ s) -∗
+    WPi StateE.get @> H; Ms, Me {{Φ}} := by
   iintro Hw; unfold StateE.get StateE.modify
   iapply wpi_trigger
   iapply fupd_mask_intro (by simp); iintro Hm
@@ -48,13 +49,14 @@ theorem wpi_stateE_get M (Φ : S → PROP) :
   imod Hw $$ [$] with ⟨$, $⟩
   iapply fupd_mask_intro (by simp); iintro $
 
-theorem wpi_get M (Φ : S → PROP) :
-    (∀ s, stateInterp s ={M}=∗ stateInterp s ∗ Φ s) -∗
-    WPi get @> H; M {{Φ}} := wpi_stateE_get _ _ _
+theorem wpi_get Ms Me (Φ : S → PROP) :
+    (∀ s, stateInterp s ={Ms, Me}=∗ stateInterp s ∗ Φ s) -∗
+    WPi get @> H; Ms, Me {{Φ}} := wpi_stateE_get _ _ _ _
 
-theorem wpi_stateE_set M s' (Φ : PUnit → PROP) :
-    (∀ s, stateInterp s ={M}=∗ stateInterp s' ∗ Φ ⟨⟩) -∗
-    WPi StateE.set s' @> H; M {{Φ}} := by
+-- Allow a mask-changing fancy update from `Ms` to `Me` while handling `get`.
+theorem wpi_stateE_set Ms Me s' (Φ : PUnit → PROP) :
+    (∀ s, stateInterp s ={Ms, Me}=∗ stateInterp s' ∗ Φ ⟨⟩) -∗
+    WPi StateE.set s' @> H; Ms, Me {{Φ}} := by
   iintro Hw; unfold StateE.set StateE.modify
   iapply wpi_trigger_bind
   iapply fupd_mask_intro (by simp); iintro Hm
@@ -63,9 +65,9 @@ theorem wpi_stateE_set M s' (Φ : PUnit → PROP) :
   iapply fupd_mask_intro (by simp); iintro >_
   iapply wpi_pure $$ [$]
 
-theorem wpi_set M s' (Φ : PUnit → PROP) :
-    (∀ s, stateInterp s ={M}=∗ stateInterp s' ∗ Φ ⟨⟩) -∗
-    WPi set s' @> H; M {{Φ}} := wpi_stateE_set _ _ _ _
+theorem wpi_set Ms Me s' (Φ : PUnit → PROP) :
+    (∀ s, stateInterp s ={Ms, Me}=∗ stateInterp s' ∗ Φ ⟨⟩) -∗
+    WPi set s' @> H; Ms, Me {{Φ}} := wpi_stateE_set _ _ _ _ _
 
 end wpi_rules
 

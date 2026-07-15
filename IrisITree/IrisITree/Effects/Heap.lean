@@ -72,23 +72,39 @@ def stateInterp_heap (σ : heapE.T Loc Val) : IProp GF := iprop(
   ∧ heap_inv (G := G)
 )
 
--- TODO: can we generalize this to `PROP`, maybe we can't
 def heapH : IHandler (IProp GF) (heapE Loc Val) :=
   stateH stateInterp_heap
 
+end handler
+
+section initialization
+
+variable {GF : BundledGFunctors} {hlc : HasLC} [InvGS_gen hlc GF]
+variable {Loc Val : Type} [Ord Loc] [Std.TransOrd Loc] [Std.LawfulEqOrd Loc] [DecidableEq Loc]
+variable [Gpre : heapHGpreS GF Loc Val]
+
 -- TODO: find way to eliminate the parameter M and use the syntax sugar instead of `bigSepM`
--- TODO: we need `icases` support fractional destruct
-theorem heapH_init (σ : heapE.T Loc Val) :
+theorem heapH_init  (σ : heapE.T Loc Val) :
     ⊢ |={∅}=> ∃ G : heapHGS GF Loc Val,
       heap_inv (G := G) ∗
       stateInterp_heap σ ∗
       bigSepM (M := (Std.ExtTreeMap Loc · compare)) (λ k v => k ↦? v) σ := by
   icases (ghost_map_alloc (K := Loc) (V := Option Val) σ) with Hgmap
-  imod Hgmap; icases Hgmap with ⟨%γ, ⟨⟨Hauth⟩, Hfrag⟩⟩
-  -- icases Hauth with ⟨Hauth, Hauth'⟩
-  sorry
+  imod Hgmap; icases Hgmap with ⟨%γ, ⟨⟨Hauth, Hauth'⟩, Hfrag⟩⟩
+  imod (inv_alloc ((nroot.@"heapH").@"") ∅
+    (∃ σ, ghost_map_auth (K := Loc) (V := Option Val) γ (.own $ .half 1) σ)) $$ [Hauth] with #Hinv
+  · inext; iexists σ; iassumption
+  · imodintro; iexists ⟨Gpre, γ, ""⟩
+    unfold heap_inv heapH_inv_name stateInterp_heap pointsto
+    isplitr
+    · iassumption
+    isplitl [Hauth']
+    · isplit; iassumption
+      unfold heap_inv heapH_inv_name
+      iassumption
+    · iframe
 
-end handler
+end initialization
 
 section wpi_rules
 
@@ -98,50 +114,92 @@ variable [G : heapHGS GF Loc Val]
 variable {E : Effect} {H : IHandler (IProp GF) E}
 variable [heapE Loc Val -< E] [InH (heapH (G := G)) H]
 
--- theorem wpi_load_opt M (l : Loc) (v : Val) (dq : DFrac)
---     (Φ : Option Val → IProp GF) :
---     ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
---     pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗
---     (pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗ Φ (some v)) -∗
---     WPi (HeapE.load? (E := E) (Loc := Loc) (Val := Val) l) @> H; M {{ Φ }} := by
---   sorry
-
+-- Note: we can extend the following theorems to `Ms,Me` version by having `|={Ms,Me}=> Φ v`
 theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦? v -∗
     (l ↦? v' -∗ Φ v) -∗
-    WPi (HeapE.storeOpt l v') @> H; M {{ Φ }} := by
-  iintro %Hmask Hpt Hwand; unfold HeapE.storeOpt
-  iapply wpi_bind; iapply wpi_get; unfold stateInterp_heap
-  iintro %σ ⟨Hauth, #Hinv⟩; unfold heap_inv
-  -- TODO: We need `iinv` to continue the work
-  sorry
+    WPi (storeOpt l v') @> H; M {{ Φ }} := by
+  iintro %Hmask Hpt Hwand; unfold pointsto storeOpt
+  iapply wpi_bind' (M \ ↑(heapH_inv_name (G := G))); iapply wpi_get
+  unfold stateInterp_heap heap_inv
+  iintro %σ ⟨HauthState, #Hinv⟩
+  imod inv_acc_timeless Hmask $$ Hinv with ⟨⟨%σinv, HauthInv⟩, Hclose⟩
+  ihave %Heq := ghost_map_auth_agree $$ HauthInv HauthState; subst σinv
+  imodintro; isplitl [HauthState]
+  · isplit <;> iassumption
+
+  -- look up and insert operations
+  ihave %Hlookup := ghost_map_lookup $$ HauthInv Hpt
+  have Hlookup : σ[l]? = some v := by
+    simpa [Iris.Std.get?] using Hlookup
+  have Hinsert : σ.insert l v' = Std.insert (M := (Std.ExtTreeMap Loc · compare)) σ l v'  := by
+    apply Std.ExtTreeMap.ext_getElem?; intro k
+    simp only [Iris.Std.insert, Std.ExtTreeMap.getElem?_alter, Std.ExtTreeMap.getElem?_insert]
+  rw [Hlookup, Hinsert]
+
+  iapply wpi_bind' M; iapply wpi_set
+  unfold stateInterp_heap heap_inv
+  iintro %σ' ⟨HauthState, -⟩
+  ihave %Heq := ghost_map_auth_agree $$ HauthInv HauthState; subst σ'
+  icombine HauthInv HauthState as Hauth; rw [Qp.half_add_half (1 : Qp)]
+  imod ghost_map_update v' $$ Hauth Hpt with ⟨⟨Hauth, Hauth'⟩, Hpt⟩
+  imod Hclose $$ [Hauth'] with -
+  · iexists Std.insert (M := (Std.ExtTreeMap Loc · compare)) σ l v'
+    iexact Hauth'
+  imodintro; isplitl [Hauth]
+  · isplit <;> iassumption
+  iapply wpi_pure; simp only [Option.join_some]
+  iapply Hwand $$ [$]
 
 theorem wpi_store? M (l : Loc) (v : Option Val) (v' : Val) (Φ : Option Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦? v -∗
     (l ↦ v' -∗ Φ v) -∗
-    WPi (HeapE.store? l v') @> H; M {{ Φ }} := by
-  sorry
+    WPi (store? l v') @> H; M {{ Φ }} := by
+  iintro %Hmask Hpt Hwand; unfold store?
+  iapply wpi_storeOpt _ _ _ _ _ Hmask $$ Hpt Hwand
+
+theorem wpi_load? M (l : Loc) (v : Val) (dq : DFrac) (Φ : Option Val → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    l ↦{dq} v -∗
+    (l ↦{dq} v -∗ Φ (some v)) -∗
+    WPi (load? l) @> H; M {{ Φ }} := by
+  iintro %Hmask Hpt Hwand; unfold pointsto load?
+  iapply wpi_bind; iapply wpi_get
+  unfold stateInterp_heap heap_inv
+  iintro %σ ⟨Hauth, #Hinv⟩
+
+  ihave %Hlookup := ghost_map_lookup $$ Hauth Hpt
+  have Hlookup : σ[l]? = some (some v) := by
+    simpa [Iris.Std.get?] using Hlookup
+  rw [Hlookup]; simp only [Option.join_some]
+
+  iframe; iframe Hinv
+  imodintro; iapply wpi_pure
+  iapply Hwand $$ [$]
 
 section fail
 
-variable [failE -< E] [InH (failH (PROP := IProp GF)) H]
+variable [failE -< E]
 
-theorem wpi_load_bang M (l : Loc) (v : Val) (dq : DFrac)
-    (Φ : Val → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗
-    (pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) dq -∗ Φ v) -∗
-    WPi (HeapE.load! (E := E) (Loc := Loc) (Val := Val) l) @> H; M {{ Φ }} := by
-  sorry
+theorem wpi_store! M (l : Loc) (v v' : Val) (Φ : Val → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    l ↦ v -∗
+    (l ↦ v' -∗ Φ v) -∗
+    WPi (store! l v') @> H; M {{ Φ }} := by
+  iintro %Hmask Hpt Hwand; unfold store!
+  iapply wpi_bind; iapply wpi_store? _ _ _ _ _ Hmask $$ Hpt
+  iintro Hpt; iapply wpi_pure; iapply Hwand $$ [$]
 
-theorem wpi_store_bang M (l : Loc) (v v' : Val) (Φ : Val → IProp GF) :
-    ↑(heapH_inv_name (GF := GF) (Loc := Loc) (Val := Val)) ⊆ M →
-    pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v) (DFrac.own (1 : Qp)) -∗
-    (pointsto (GF := GF) (Loc := Loc) (Val := Val) l (some v') (DFrac.own (1 : Qp)) -∗ Φ v) -∗
-    WPi (HeapE.store! (E := E) (Loc := Loc) (Val := Val) l v') @> H; M {{ Φ }} := by
-  sorry
+theorem wpi_load! M (l : Loc) (v : Val) (dq : DFrac) (Φ : Val → IProp GF) :
+    ↑(heapH_inv_name (G := G)) ⊆ M →
+    l ↦{dq} v -∗
+    (l ↦{dq} v -∗ Φ v) -∗
+    WPi (load! l) @> H; M {{ Φ }} := by
+  iintro %Hmask Hpt Hwand; unfold load!
+  iapply wpi_bind; iapply wpi_load? _ _ _ _ _ Hmask $$ Hpt
+  iintro Hpt; iapply wpi_pure; iapply Hwand $$ Hpt
 
 end fail
 

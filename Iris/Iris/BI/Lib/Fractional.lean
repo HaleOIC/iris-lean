@@ -19,7 +19,8 @@ class Fractional [BI PROP] (Φ : Qp → PROP) where
   fractional p q : Φ (p + q) ⊣⊢ Φ p ∗ Φ q
 
 @[rocq_alias AsFractional]
-class AsFractional {PROP : Type u} [BI PROP] (P : PROP) (Φ : Qp → PROP) (q : Qp) where
+class AsFractional {PROP : Type u} [BI PROP] (P : PROP)
+    (Φ : outParam (Qp → PROP)) (q : outParam Qp) where
   as_fractional : P ⊣⊢ Φ q
   as_fractional_fractional : Fractional Φ
 
@@ -56,6 +57,14 @@ theorem fractional_half [hP : AsFractional P Φ q] [hP12 : AsFractional P1 Φ q.
 theorem fractional_merge [Fractional Φ] [hP1 : AsFractional P1 Φ q1] [hP2 : AsFractional P2 Φ q2] :
     P1 ∗ P2 ⊢ Φ (q1 + q2) :=
   (sep_mono hP1.as_fractional.1 hP2.as_fractional.1).trans (Fractional.fractional q1 q2).2
+
+set_option synthInstance.checkSynthOrder false in
+instance (priority := default - 10) combineSepAsFractional
+    [hP1 : AsFractional P1 Φ q1] [hP2 : AsFractional P2 Φ q2] :
+    CombineSepAs P1 P2 (Φ (q1 + q2)) where
+  combine_sep_as :=
+    (sep_mono hP1.as_fractional.1 hP2.as_fractional.1).trans
+      (hP1.as_fractional_fractional.fractional q1 q2).2
 
 set_option synthInstance.checkSynthOrder false in
 @[rocq_alias from_sep_fractional]

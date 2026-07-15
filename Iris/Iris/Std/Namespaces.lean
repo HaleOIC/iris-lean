@@ -8,6 +8,7 @@ module
 public import Iris.Std.CoPset
 public import Iris.Std.Positives
 public import Iris.Std.GenSets
+meta import Iris.Std.DelabRule
 meta import Iris.Std.RocqPorting
 
 @[expose] public section
@@ -27,6 +28,9 @@ def nclose (N : Namespace) : CoPset :=
   CoPset.suffixes ((Pos.flatten N))
 
 instance : CoeOut Namespace CoPset where coe := nclose
+
+delab_rule nclose
+  | `($_ $N) => `(↑$N)
 
 def ofName : Lean.Name → Namespace
   | .anonymous => nroot
