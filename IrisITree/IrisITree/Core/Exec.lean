@@ -296,9 +296,34 @@ theorem lfp_tp_app (Ms1 Ms2 : List ((α → PROP) → PROP)) :
       lfp_tp F (Ms1.car ++ Ms.car))
   repeat clear this
   iintro !> %Ms2 Hx2 %Ms1 Hx1; iapply lfp_tp_unfold; unfold lfp_tpF at ⊢; simp
-  iintro %i %M %Hi
-  -- TODO: write some lemmas for (Ms1.car ++ Ms2.car)[i]? = some M
-  sorry
+  iintro %i %M %Hlookup
+  by_cases Hi : i < Ms1.car.length
+  · -- M appears in Ms1
+    have Hloc := List.getElem?_append_left Hi ▸ Hlookup
+    rw [List.eraseIdx_append_of_lt_length Hi Ms2.car]
+    ispecialize Hx1 $$ %i %M %Hloc; iapply bi_mono0_mono $$ Hx1
+    iintro %x ⟨%G, ⟨HF, Hcont⟩⟩
+    iexists G; iframe
+    iintro %Ms' HMs'; ispecialize Hcont $$ %Ms' HMs'
+    icases Hcont with ⟨Happend, -⟩; iapply Happend
+    iapply (lfp_tp_unfold F Ms2.car).mpr; simp only [lfp_tpF]
+    iintro %j %N %Hj; ispecialize Hx2 $$ %j %N %Hj
+    iapply bi_mono0_mono $$ Hx2
+    iintro %x ⟨%G, ⟨HF, Hcont⟩⟩; iexists G; iframe
+    iintro %Ms' HMs'; ispecialize Hcont $$ %Ms' HMs'
+    iapply Hcont
+  · -- M appears in Ms2
+    have Hi := Nat.le_of_not_gt Hi
+    have Hloc := List.getElem?_append_right Hi ▸ Hlookup
+    rw [List.eraseIdx_append_of_length_le Hi Ms2.car]
+    ispecialize Hx2 $$ %(i - Ms1.car.length) %M %Hloc
+    iapply bi_mono0_mono $$ Hx2
+    iintro %x ⟨%G, ⟨HF, Hcont⟩⟩; iexists G; iframe
+    iintro %Ms' HMs'; ispecialize Hcont $$ %Ms' HMs'
+    icases Hcont with ⟨Happend, -⟩
+    ispecialize Happend $$ %Ms1 Hx1
+    iapply lfp_tp_perm F $$ [$]
+    apply List.perm_append_comm_assoc
 
 theorem lfp_tp_cons (M : (α → PROP) → PROP) (Ms : List ((α → PROP) → PROP)) :
     ⊢ lfp_tp F [M] -∗ lfp_tp F Ms -∗ lfp_tp F (M :: Ms) := by
@@ -319,18 +344,55 @@ theorem lfp_tp_singleton_mod_elim (M : (α → PROP) → PROP) :
     iapply Hwand $$ HQ'
   | succ n => simp at Hi
 
-end lfp_tp_lemmas
+variable {α : Type _} [OFE α] [OFE.Discrete α]
 
--- TODO: lack of tactic `iinduction`
-theorem lfp_tp_intro {PROP : Type _} [BI PROP] [BIAffine PROP]
-    {α : Type _} [OFE α] [OFE.Discrete α]
-    (G : (α → PROP) → (α → PROP)) [HG : BIMonoPred G] (x : α) :
+-- TODO: replace the lean' induction with native tactic `iinduction`
+theorem lfp_tp_intro (G : (α → PROP) → (α → PROP)) (x : α) :
     ⊢ bi_least_fixpoint G x -∗ lfp_tp G [λ P => P x] := by
   letI : NonExpansive (fun (x : α) => lfp_tp G [λ P => P x] : α → PROP) := ⟨
     fun {n x1 x2} Hx => by
       have Heq : x1 = x2 := (OFE.Discrete.discrete Hx).to_eq
       subst Heq; rfl
   ⟩
-  sorry
+
+  have Hlist : ∀ Ms : List ((α → PROP) → PROP),
+      ⊢ ([∗list] M ∈ Ms, M (λ x => lfp_tp G [λ P => P x])) -∗ lfp_tp G Ms := by
+    intro Ms
+    induction Ms with
+    | nil =>
+      iintro -; iapply lfp_tp_nil
+    | cons M Ms ih =>
+      iintro HMs
+      ihave HMs := BigSepL.bigSepL_cons.mp $$ HMs
+      icases HMs with ⟨HM, HMs⟩
+      ihave HM := lfp_tp_singleton_mod_elim G M $$ HM
+      iapply lfp_tp_cons G M Ms $$ HM
+      iapply ih $$ HMs
+  iintro Hlfp; irevert %x Hlfp
+  iapply least_fixpoint_iter
+  clear this
+  iintro !> %x HF; iapply lfp_tp_unfold
+  simp only [lfp_tpF]
+  iintro %i %M %Hi
+  cases i with
+  | zero =>
+    simp at Hi; subst M
+    simp only [List.eraseIdx, List.append_nil]
+    iapply bi_mono0_intro0; simp only []
+    iexists _; isplitl [HF]
+    · iassumption
+    · iintro %Ms HMs; istop
+      induction Ms with
+      | nil => iintro HMs; iapply lfp_tp_nil
+      | cons M Ms IHM =>
+        iintro HMs
+        ihave HMs := BigSepL.bigSepL_cons $$ HMs
+        icases HMs with ⟨HM, HMs⟩
+        ihave HM := lfp_tp_singleton_mod_elim G M $$ HM
+        iapply lfp_tp_cons G M Ms $$ HM
+        iapply IHM $$ [$]
+  | succ i => simp at Hi
+
+end lfp_tp_lemmas
 
 end IrisITree.Core

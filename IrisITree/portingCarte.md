@@ -35,10 +35,10 @@ The `islaris` folder should not be ported, all filenames below are relative to t
 - [ ] `exec.v` (split into `Core/Exec.lean`, `Core/HandlerAdequate.lean`, and `Core/Wpi_exec.lean`)
   - [x] `bi_close`
   - [x] `bi_mono0`
-  - [ ] `lfp_tp`
+  - [x] `lfp_tp`
   - `eHandler`, `seHandler`, `inEH`, `exec`: provided by the itree library
-  - [ ] `(s)eHandlerAdequate` (in `Core/HandlerAdequate.lean`)
-  - [ ] `wpi_tp` (in `Core/Wpi_exec.lean`)
+  - [x] `(s)eHandlerAdequate` (in `Core/Handler.lean`)
+  - [ ] `wpi_tp` (in `Core/WpiExec.lean`)
   - [ ] `wpi_adequate` and `wpi_adequate_pure` (both in `Core/HandlerAdequate.lean`, the later has not been defined)
   - `sumEH`: part of itree library
   - `exec`-tactics: port if necessary
@@ -55,10 +55,10 @@ The `islaris` folder should not be ported, all filenames below are relative to t
   - [x] `inH`
   - [x] `wandH` (unclear if necessary)
   - [x] `Sequential`
-- [ ] `heap.v`
+- [x] `heap.v`
   - `store`, ... functions part of itree library
   - [x] `heapGS` and pointsto
-  - [ ] wpi rules
+  - [x] wpi rules
   - `heap_irel`, `heap_ifn` and corresponding adequacy: part of trace based adequacy, should not be ported
 - `interpreter.v`: should not be ported at the moment
 - `itree.v`: necessary functionality from this file should be provided by the itree library
