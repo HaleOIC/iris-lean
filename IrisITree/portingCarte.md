@@ -38,8 +38,8 @@ The `islaris` folder should not be ported, all filenames below are relative to t
   - [x] `lfp_tp`
   - `eHandler`, `seHandler`, `inEH`, `exec`: provided by the itree library
   - [x] `(s)eHandlerAdequate` (in `Core/Handler.lean`)
-  - [ ] `wpi_tp` (in `Core/WpiExec.lean`)
-  - [ ] `wpi_adequate` and `wpi_adequate_pure` (both in `Core/HandlerAdequate.lean`, the later has not been defined)
+  - [x] `wpi_tp` (in `Core/WpiExec.lean`)
+  - [x] `wpi_adequate` and `wpi_adequate_pure` (both in `Core/HandlerAdequate.lean`, the later has not been defined)
   - `sumEH`: part of itree library
   - `exec`-tactics: port if necessary
 - [x] `halt.v`

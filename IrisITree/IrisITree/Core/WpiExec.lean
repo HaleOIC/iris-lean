@@ -2,6 +2,7 @@ module
 
 public import IrisITree.Core.ITree
 public import IrisITree.Core.Exec
+public import Iris.Instances.Lib.FUpd
 
 @[expose] public section
 
@@ -62,17 +63,6 @@ instance wp_itree_const_mono (H : IHandler PROP E) (Φ : R → PROP) :
 def wpiConst (H : IHandler PROP E) (Φ : R → PROP) : ITree E R → PROP :=
   bi_least_fixpoint (wpiConstF H Φ)
 
-theorem wpiConstF_tau (H : IHandler PROP E) (Φ : R → PROP)
-    (G : ITree E R → PROP) (t : ITree E R) :
-    wpiConstF H Φ G t.tau ⊣⊢ iprop(|={∅}=> G t) := by
-  simp [wpiConstF]
-
-theorem wpiConstF_vis (H : IHandler PROP E) (Φ : R → PROP)
-    (G : ITree E R → PROP) (i : E.I) (k : E.O i → ITree E R) :
-    wpiConstF H Φ G (.vis i k) ⊣⊢
-      iprop(|={∅}=> H.ihandle i (λ a => G (k a)) (λ a => G (k a))) := by
-  simp [wpiConstF]
-
 theorem wpi_const_iter (H : IHandler PROP E) (Φ : R → PROP)
     (P : ITree E R → PROP)  :
     □ (∀ y, wpiConstF H Φ P y -∗ P y) -∗
@@ -89,73 +79,37 @@ def wpi_tp {E : Effect} {R : Type _} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
     (Φ : R → PROP) : PROP :=
   lfp_tp (wpiConstF H Φ) Ms
 
-macro:20 "WPi_tp " ts:term:20 " @ " H:term:20 " {{ " Φ:term:20 " }}" : term => `(wpi_tp $H $ts $Φ)
-macro:20 "WPi_tp " ts:term:20 " @ " H:term:20 " {{ " v:ident " , " Q:term:20 " }}" : term => `(wpi_tp $H $ts (fun $v => $Q))
+macro:20 "WPi_tp " ts:term:20 " @> " H:term:20 " {{ " Φ:term:20 " }}" : term => `(wpi_tp $H $ts $Φ)
+macro:20 "WPi_tp " ts:term:20 " @> " H:term:20 " {{ " v:ident " , " Q:term:20 " }}" : term => `(wpi_tp $H $ts (fun $v => $Q))
 
 section wpi_tp_section
 
 variable {E : Effect} {R : Type _} {PROP : Type _} [BI PROP] [BIFUpdate PROP] [BIAffine PROP]
 
-theorem wpi_wpiConst_step (t : ITree E R) (H : IHandler PROP E) (Φ Ψ : R → PROP) :
-    ⊢ □ (∀ r, Ψ r -∗ Φ r) -∗
-      wpiF H (λ Ms t Ψ => iprop(
-        (□ (∀ r, Ψ r -∗ Φ r) -∗ bi_least_fixpoint (wpiConstF H Φ) t) ∧
-        WPi t @> H; Ms, ∅ {{ Ψ }})) ∅ ∅ t Ψ -∗
-      wpiConstF H Φ (bi_least_fixpoint (wpiConstF H Φ)) t := by
-  iintro #Hpost
-  cases t <;> simp [wpiConstF, wpiF]
-  case ret r =>
-    iintro Hstep; imod Hstep; imod Hstep; imodintro
-    iapply Hpost $$ Hstep
-  case tau t' =>
-    iintro >Hstep; imodintro
-    icases Hstep with ⟨Hconst, -⟩
-    iapply Hconst $$ Hpost
-  case vis i k =>
-    iintro >Hstep; imodintro
-    iapply H.ihandle_mono $$ [] [] Hstep
-    · iintro %a Hk; icases Hk with ⟨Hconst, -⟩
-      iapply Hconst $$ Hpost
-    · iintro !> %a Hk; icases Hk with ⟨Hconst, -⟩
-      iapply Hconst
-      iintro !> %r Hfalse; icases Hfalse with ⟨⟩
-
-theorem wpi_wpiConst_aux (t : ITree E R) (H : IHandler PROP E) (Φ Ψ : R → PROP) :
-    WPi t @> H; ∅ {{ Ψ }} ⊢
-      iprop(□ (∀ r, Ψ r -∗ Φ r) -∗ bi_least_fixpoint (wpiConstF H Φ) t) := by
+theorem wpi_tp_intro (t : ITree E R) (H : IHandler PROP E) (Φ : R → PROP) :
+    WPi t @> H; ∅ {{ Φ }} ⊢ wpi_tp H [λ P => P t] Φ := by
   letI : ∀ t, OFE.NonExpansive (λ Ψ : R → PROP =>
       iprop(□ (∀ r, Ψ r -∗ Φ r) -∗ bi_least_fixpoint (wpiConstF H Φ) t)) :=
     fun _ => ⟨fun _ _ _ HΨ => wand_ne.ne
       (intuitionistically_ne.ne (forall_ne fun r => wand_ne.ne (HΨ r) .rfl)) .rfl⟩
-  iintro Hwpi
-  iapply (wpi_ind (Me := ∅) (λ t Ψ =>
-    iprop(□ (∀ r, Ψ r -∗ Φ r) -∗ bi_least_fixpoint (wpiConstF H Φ) t))) $$ [] %t %Ψ Hwpi
-  iintro !> %t %Ψ Hstep #Hpost
-  ihave Hbody := wpi_wpiConst_step t H Φ Ψ $$ Hpost Hstep
-  iapply least_fixpoint_unfold_mpr (F := wpiConstF H Φ) $$ Hbody
-
-theorem wpi_wpiConst (t : ITree E R) (H : IHandler PROP E) (Φ : R → PROP) :
-    WPi t @> H; ∅ {{ Φ }} ⊢ bi_least_fixpoint (wpiConstF H Φ) t := by
-  iintro Hwpi
-  iapply wpi_wpiConst_aux t H Φ Φ $$ Hwpi []
-  iintro !> %r Hr; iexact Hr
-
-theorem wpi_tp_intro (t : ITree E R) (H : IHandler PROP E) (Φ : R → PROP) :
-    WPi t @> H; ∅ {{ Φ }} ⊢ wpi_tp H [λ P => P t] Φ := by
-  iintro Hwpi
-  unfold wpi_tp
-  ihave Hconst := wpi_wpiConst t H Φ $$ Hwpi
-  iapply lfp_tp_intro (wpiConstF H Φ) t $$ Hconst
-
-theorem wpi_tp_perm (H : IHandler PROP E) (Φ : R → PROP)
-    Ms1 Ms2
-    (h : Ms1.Perm Ms2) :
-    wpi_tp H Ms1 Φ ⊣⊢ wpi_tp H Ms2 Φ := by
-  simp only [wpi_tp]
-  isplit <;> iintro Htp
-  · iapply lfp_tp_perm $$ Htp; assumption
-  · have := h.symm
-    iapply lfp_tp_perm $$ Htp; assumption
+  iintro Hwpi; unfold wpi_tp
+  iapply lfp_tp_intro
+  iapply (wpi_ind (λ t Ψ => iprop(□ (∀ r, Ψ r -∗ Φ r) -∗
+    bi_least_fixpoint (wpiConstF H Φ) t))) $$ [] %t %Φ Hwpi
+  · iintro !> %t %Ψ Hstep #Hpost
+    iapply least_fixpoint_unfold_mpr
+    cases t <;> simp [wpiConstF, wpiF]
+    · imod Hstep; imod Hstep; imodintro
+      iapply Hpost $$ [$]
+    · imod Hstep; imodintro
+      icases Hstep with ⟨Hconst, -⟩
+      iapply Hconst $$ [$]
+    · imod Hstep; imodintro
+      iapply H.ihandle_mono $$ [] [] Hstep
+      · iintro %a ⟨Hconst, -⟩; iapply Hconst $$ [$]
+      · iintro !> %a ⟨Hconst, -⟩
+        iapply Hconst; iintro !> %r ⟨⟩
+  · iintro !> %r $
 
 end wpi_tp_section
 
@@ -164,25 +118,20 @@ section wpi_adequate
 open ITree.Exec
 
 variable {E : Effect.{u} } {R : Type u} {σ : Type _}
-  [BI PROP] [BIFUpdate PROP] [BIAffine PROP]
+variable {PROP} [BI PROP] [BIFUpdate PROP] [BIAffine PROP]
+variable (H : IHandler PROP E) (EH : EHandler E E R σ)
+variable [A : EHandlerAdequate (PROP := PROP) H EH]
 
-theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler PROP E)
-    (EH : EHandler E E R σ) [A : EHandlerAdequate (PROP := PROP) H EH]
-    (t : ITree E R) (s : σ)
-    (Ms Mss : List (((ITree E R → PROP) → PROP)))
-    (M : (ITree E R → PROP) → PROP)
-    (C : ITree E R → σ → Prop)
-    (Hexec : exec EH t s C)
-    (HMs : Ms.Perm (M :: Mss)) :
-    ⊢ wpi_tp H Ms Φ -∗
+theorem wpi_adequate_ind (Φ : R → PROP)
+    (t : ITree E R) (s : σ) (Ms Mss : List (((ITree E R → PROP) → PROP)))
+    (M : (ITree E R → PROP) → PROP) (C : ITree E R → σ → Prop)
+    (Hexec : exec EH t s C) (HMs : Ms.Perm (M :: Mss)) :
+    ⊢ (WPi_tp Ms @> H {{ Φ }}) -∗
       A.inv s Mss -∗
       (∀ P, M P ={∅}=∗ P t) -∗
-      |={∅}=> ∃ t' s' Ms' M',
-        ⌜C t' s'⌝ ∗
-        A.inv s' Ms' ∗
+      |={∅}=> ∃ t' s' Ms' M', ⌜C t' s'⌝ ∗ A.inv s' Ms' ∗
         bi_close Eq (λ t'' => iprop(∀ P, M' P ={∅}=∗ P t'')) t' ∗
         wpi_tp H (M' :: Ms') Φ := by
-  unfold wpi_tp
   letI : OFE.NonExpansive (λ Ms : DiscreteO (List ((ITree E R → PROP) → PROP)) =>
       iprop(∀ (t : ITree E R) (s : σ) (M : (ITree E R → PROP) → PROP)
         (Mss : List ((ITree E R → PROP) → PROP)) (C : ITree E R → σ → Prop),
@@ -193,8 +142,8 @@ theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler PROP E)
           lfp_tp (wpiConstF H Φ) (M' :: Ms'))) := ⟨
     fun _ _ _ HMs => by cases HMs; rfl
   ⟩
-  iintro Htp Hinv Ht
-  irevert %t %s %M %Mss %C %Hexec %HMs Hinv Ht
+  unfold wpi_tp; iintro Htp; irevert %t %s %M %Mss %C %Hexec %HMs
+  -- TODO: Find a way to shorten the `iapply`?
   iapply (lfp_tp_ind (wpiConstF H Φ) (λ Ms => iprop(
     ∀ (t : ITree E R) (s : σ) (M : (ITree E R → PROP) → PROP)
       (Mss : List ((ITree E R → PROP) → PROP)) (C : ITree E R → σ → Prop),
@@ -204,84 +153,88 @@ theorem wpi_adequate_ind (Φ : R → PROP) (H : IHandler PROP E)
         bi_close Eq (λ t'' => iprop(∀ P, M' P ={∅}=∗ P t'')) t' ∗
         lfp_tp (wpiConstF H Φ) (M' :: Ms')))) $$ [] %⟨Ms⟩ Htp
   iintro !> %Ms IH %t %s %M %Mss %C %Hexec %HMs Hinv Ht
-  rw [← exec.fold] at Hexec
+  rw [← exec.fold] at Hexec; clear this
   cases Hexec with
   | stop _ _ _ HC =>
-      imodintro; iexists t, s, Mss, M
-      isplitr
-      · ipureintro; exact HC
-      · iframe
-        isplitl [Ht]
-        · simp only [bi_close]
-          iexists t; isplitr
-          · ipureintro; rfl
-          · iexact Ht
-        · iapply (lfp_tp_unfold (wpiConstF H Φ) (M :: Mss)).mpr
-          iapply lfp_tpF_perm (wpiConstF H Φ) Ms.car (M :: Mss) _ _ HMs $$ IH
-          iintro %Ns1 %Ns2 %Hperm Hrec
-          icases Hrec with ⟨-, Htp⟩
-          iapply lfp_tp_perm (wpiConstF H Φ) Ns1.car Ns2.car Hperm $$ Htp
+    imodintro; iexists t, s, Mss, M
+    isplitr; itrivial; iframe Hinv
+    simp only [bi_close]; isplitl [Ht]
+    · iexists t; iframe; itrivial
+    iapply lfp_tp_unfold; iapply lfp_tpF_perm _ Ms.car _ _ _ HMs $$ [$]
+    iintro %Ns1 %Ns2 %Hperm ⟨-, Htp⟩
+    iapply lfp_tp_perm _ _ _ Hperm $$ [$]
   | tau t _ _ Hexec =>
-      ihave IH := lfp_tpF_perm_close (wpiConstF H Φ) Ms.car (M :: Mss) _ HMs $$ IH
-      have Hlookup : (M :: Mss)[0]? = some M := by simp
-      ihave IH := lfp_tpF_lookup (wpiConstF H Φ) _ (M :: Mss) 0 M Hlookup $$ IH
-      ihave IH := bi_mono0_mono_l M (λ P => iprop(|={∅}=> P t.tau)) _ $$ IH [Ht]
-      · iintro %P HM; iapply Ht $$ %P HM
-      imod bi_mono0_elim $$ IH [] with ⟨%G, Hwpi, Hc⟩
-      · iintro %Q %Q' Hwand HQ'
-        imod HQ'; imodintro; iapply Hwand $$ HQ'
-      ihave >Hwpi := (wpiConstF_tau H Φ G t).mp $$ Hwpi
-      ihave Hspawn := (BigSepL.bigSepL_singleton
-        (x := (λ P : ITree E R → PROP => P t))
-        (Φ := λ _ (N : (ITree E R → PROP) → PROP) => N G)).mpr $$ Hwpi
-      ispecialize Hc $$ %([λ P => P t]) Hspawn
-      simp only [bi_close]
-      icases Hc with ⟨%Ns, %Hperm, Hrec⟩
-      icases Hrec with ⟨Hadequate, -⟩
-      iapply Hadequate $$ %t %s %(λ P => P t) %Mss %C %Hexec %Hperm.symm Hinv []
-      iintro %P HP; imodintro; iexact HP
+    ihave IH := lfp_tpF_perm_close _ _ _ _ HMs $$ IH
+    unfold lfp_tpF; ispecialize IH $$ %0 %M %(by simp)
+    ihave IH := bi_mono0_mono_l M (λ P => iprop(|={∅}=> P t.tau)) $$ IH [Ht]
+    · iframe
+    imod bi_mono0_elim $$ IH [] with ⟨%G, Hwpi, Hc⟩
+    · iintro %Q %Q' Hwand >HQ'; imodintro; iapply Hwand $$ [$]
+    simp [wpiConstF]; imod Hwpi
+    ispecialize Hc $$ %([λ P => P t]) [Hwpi]
+    · simp only [Algebra.BigOpL.bigOpL_cons, Algebra.BigOpL.bigOpL_nil]; iframe
+    simp only [bi_close]; icases Hc with ⟨%Ns, %Hperm, ⟨Hadequate, -⟩⟩
+    iapply Hadequate $$ %t %s %(λ P => P t) %Mss %C %Hexec %Hperm.symm Hinv
+    iintro %_ $
   | step i k _ _ Hhandle =>
-      ihave IH := lfp_tpF_perm_close (wpiConstF H Φ) Ms.car (M :: Mss) _ HMs $$ IH
-      have Hlookup : (M :: Mss)[0]? = some M := by simp
-      ihave IH := lfp_tpF_lookup (wpiConstF H Φ) _ (M :: Mss) 0 M Hlookup $$ IH
-      ihave IH := bi_mono0_mono_l M
-        (λ P => iprop(|={∅}=> P (.vis i k))) _ $$ IH [Ht]
-      · iintro %P HM; iapply Ht $$ %P HM
-      imod bi_mono0_elim $$ IH [] with ⟨%G, Hwpi, Hc⟩
-      · iintro %Q %Q' Hwand HQ'
-        imod HQ'; imodintro; iapply Hwand $$ HQ'
-      ihave >Hwpi := (wpiConstF_vis H Φ G i k).mp $$ Hwpi
-      imod A.adequate G i s Mss (λ t s => exec EH t s C) k Hhandle $$ Hwpi Hinv with
-        ⟨%t', %s', %M', %Ms', %Msn, %HC, %HpermA, Hspawn, Hinv, Hmod⟩
-      ispecialize Hc $$ %Msn Hspawn
-      simp only [bi_close]
-      icases Hc with ⟨%Ns, %HpermClose, Hrec⟩
-      icases Hrec with ⟨Hadequate, -⟩
-      have Hpool : Ns.car.Perm (M' :: Ms') :=
-        (HpermA.trans HpermClose).symm
-      iapply Hadequate $$ %t' %s' %M' %Ms' %C %HC %Hpool Hinv Hmod
+    ihave IH := lfp_tpF_perm_close _ _ _ _ HMs $$ IH
+    unfold lfp_tpF; ispecialize IH $$ %0 %M %(by simp)
+    ihave IH := bi_mono0_mono_l M (λ P => iprop(|={∅}=> P (.vis i k))) $$ IH [Ht]
+    · iframe
+    imod bi_mono0_elim $$ IH [] with ⟨%G, Hwpi, Hc⟩
+    · iintro %Q %Q' Hwand >HQ'; imodintro; iapply Hwand $$ [$]
+    simp [wpiConstF]; imod Hwpi
+    imod A.adequate _ _ _ Mss _ _ Hhandle $$ Hwpi Hinv with
+      ⟨%t', %s', %M', %Ms', %Msn, %HC, %HpermA, Hspawn, Hinv, Hmod⟩
+    ispecialize Hc $$ %Msn Hspawn
+    simp only [bi_close]; icases Hc with ⟨%Ns, %HpermClose, ⟨Hadequate, -⟩⟩
+    iapply Hadequate $$ %t' %s' %M' %Ms' %C %HC [] Hinv Hmod
+    ipureintro; exact HpermA.trans HpermClose |>.symm
 
-theorem wpi_adequate (Φ : R → PROP) (H : IHandler PROP E)
-    (EH : EHandler E E R σ) [A : EHandlerAdequate (PROP := PROP) H EH]
-    (t : ITree E R) (s : σ)
-    (C : ITree E R → σ → Prop) (m : CoPset)
+theorem wpi_adequate (Φ : R → PROP)
+    (t : ITree E R) (s : σ) (C : ITree E R → σ → Prop) (m : CoPset)
     (Hexec : exec EH t s C) :
     ⊢ WPi t @> H;m {{ Φ }} -∗
       A.inv s [] -∗
-      |={m, ∅}=> ∃ t' s' Ms' M',
-      ⌜C t' s'⌝ ∗
-      A.inv s' Ms' ∗
+      |={m, ∅}=> ∃ t' s' Ms' M', ⌜C t' s'⌝ ∗ A.inv s' Ms' ∗
       bi_close Eq (λ t'' => iprop(∀ P, M' P ={∅}=∗ P t'')) t' ∗
       wpi_tp H (M' :: Ms') (λ v => iprop(|={∅,m}=> Φ v)) := by
-  iintro Hwpi Hinv
+  iintro >Hwpi Hinv
   ihave Hwpi := wpi_fupd_empty $$ Hwpi
-  ihave Hwpi := fupd_wpi_empty $$ Hwpi
-  imod Hwpi
-  ihave Htp := wpi_tp_intro t H (λ v => iprop(|={∅,m}=> Φ v)) $$ Hwpi
-  iapply wpi_adequate_ind (λ v => iprop(|={∅,m}=> Φ v)) H EH t s
-    [λ P => P t] [] (λ P => P t) C Hexec (List.Perm.refl _) $$ Htp Hinv []
-  iintro %P HP; imodintro; iexact HP
+  iapply wpi_adequate_ind _ _ _ t s [λ P => P t] []
+    (λ P => P t) C Hexec (by simp) $$ [Hwpi] Hinv []
+  iapply wpi_tp_intro $$ Hwpi
+  iintro %_ $
 
 end wpi_adequate
+
+section wpi_adequate_pure
+
+open ITree.Exec
+
+variable {GF : BundledGFunctors} {E : Effect} {R σ : Type _} [InvGpreS GF]
+
+theorem wpi_adequate_pure (hlc : HasLC) (n : Nat) (m : CoPset)
+    (EH : EHandler E E R σ) (t : ITree E R) (s : σ)
+    (C : ITree E R → σ → Prop) (Ψ : Prop) :
+    exec EH t s C →
+    (∀ (_ : InvGS_gen hlc GF), ⊢ £ n -∗ |={⊤,m}=>
+      ∃ (H : IHandler (IProp GF) E) (A : EHandlerAdequate H EH) (Φ : R → IProp GF),
+        WPi t @> H;m {{ Φ }} ∗ A.inv s [] ∗
+        (∀ t' s' Ms' M', ⌜C t' s'⌝ -∗ A.inv s' Ms' -∗
+          bi_close Eq (λ t'' => iprop(∀ P, M' P ={∅}=∗ P t'')) t' ∗
+            (WPi_tp (M' :: Ms') @> H {{ v, iprop(|={∅,m}=> Φ v) }})={∅}=∗ ⌜Ψ⌝)) →
+    Ψ := by
+  intro Hexec Hwp
+  apply pure_soundness (PROP := IProp GF)
+  apply step_fupdN_soundness (hlc := hlc) 0 n
+  iintro %Hinv Hlc
+  imod Hwp Hinv $$ Hlc with ⟨%H, %A, %Φ, Hwpi, Hs, Hc⟩
+  imod wpi_adequate H EH Φ t s C m Hexec $$ Hwpi Hs with
+    ⟨%t', %s', %Ms', %M', %HC, Hs', Hclose, Htp⟩
+  imod Hc $$ %t' %s' %Ms' %M' %HC Hs' [$Hclose $Htp] with %HΨ
+  imodintro; simp only [Nat.repeat]; itrivial
+
+end wpi_adequate_pure
 
 end IrisITree.Core
