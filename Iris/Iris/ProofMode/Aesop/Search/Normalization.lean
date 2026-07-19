@@ -192,11 +192,10 @@ private def canSplitConjLike {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
   let some p ← checkTypeQ info.p q(Bool) | return false
   let lhs ← mkFreshExprMVarQ prop
   let rhs ← mkFreshExprMVarQ prop
-  match matchBool p with
-  | .inl _ => match ← ProofMode.trySynthInstanceQ q(IntoAnd $p $ty $lhs $rhs) with
-    | .some _ => return true
-    | _ => return false
-  | .inr _ => return false
+  if !isTrue p then return false
+  match ← ProofMode.trySynthInstanceQ q(IntoAnd true $ty $lhs $rhs) with
+  | .some _ => return true
+  | _ => return false
 
 private def canPure {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (info : IrisHypInfo) : MetaM Bool := do

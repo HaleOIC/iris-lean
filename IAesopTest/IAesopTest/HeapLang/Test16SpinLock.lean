@@ -219,5 +219,3 @@ def instLock [HeapLangGS hlc GF] : Lock GF where
 
 end SpinLock
 end
-
-
