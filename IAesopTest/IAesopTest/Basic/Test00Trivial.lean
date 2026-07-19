@@ -34,6 +34,11 @@ example [BI PROP] (P : PROP) : P ⊢ P := by
   -- iaesop baseline
   iaesop
 
+/- Normalization rewrites both the spatial context and target using Lean equalities. -/
+example [BI PROP] (P Q : Nat → PROP) (n m : Nat) (h : n = m) :
+    P n ∗ Q n ⊢ Q m ∗ P m := by
+  iaesop baseline
+
 -- Basic context split test
 example [BI PROP] (P Q R : PROP) : P ∗ Q ∗ R ⊢ R ∗ Q ∗ P:= by
   iaesop baseline
@@ -150,3 +155,10 @@ example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
 end LocalRuleFrontend
 
 
+section specialExamples
+
+example [BI PROP] (A B C D : PROP) (H : A ⊢ B) :
+    A ∗ D ⊢ (B ∨ C) ∗ D := by
+  iaesop baseline
+
+end specialExamples

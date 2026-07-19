@@ -173,10 +173,11 @@ theorem own_unpersist {GF : BundledGFunctors} [MonoNatG GF] (γ : GName) (a : Ma
   iintro H
   imod iOwn_updateP (auth_unpersist _) $$ H with ⟨%a, ⟨%H, H⟩⟩
   obtain ⟨q, Hq⟩ := H
-  imodintro
-  iexists q
-  rw [←Hq]
-  iframe
+  iaesop baseline
+  -- imodintro
+  -- iexists q
+  -- rw [←Hq]
+  -- iframe
 
 end MonoNat
 

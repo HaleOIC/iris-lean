@@ -1,6 +1,7 @@
 module
 
 public meta import Lean.Meta.Tactic.Simp.SimpAll
+public meta import Lean.Meta.Tactic.Rewrite
 public meta import Iris.ProofMode.Aesop.Script.Basic
 public meta import Iris.ProofMode.Aesop.Search.Types
 public meta import Iris.ProofMode.Aesop.Search.Names
@@ -57,6 +58,11 @@ private def mkICasesTactic? (record : Bool) (hyp : Name) (pat : iCasesPat) :
     MetaM (Option (TSyntax `tactic)) :=
   if record then some <$> mkICasesTactic hyp pat else pure none
 
+/-- Build the forward `rw` tactic used to replay a normalization rewrite. -/
+private def mkRewriteTactic (hyp : Name) : MetaM (TSyntax `tactic) := do
+  let hypIdent := mkIdent hyp
+  `(tactic| rw [$hypIdent:term])
+
 private inductive NormStepResult where
   | proved
   | changed (goal : MVarId) (tactic? : Option (TSyntax `tactic))
@@ -74,6 +80,7 @@ private structure NormStepInput where
 private inductive NormStepKind where
   | intro
   | cases
+  | rewrite
   | simp
   deriving Inhabited, BEq, Repr
 
@@ -301,6 +308,40 @@ private def casesNormStep : NormStep where
           return .changed newGoal (← liftM <| mkICasesTactic? input.recordScript hyp intuitPat)
       | none => return .unchanged
 
+/- Rewrite the proof-mode goal with the first applicable local Lean equality.
+
+Only the forward direction is considered. Trying both directions would let successive
+normalization iterations undo each other. Rewriting the complete proof-mode goal also
+rewrites propositions stored in its Iris context, so an equality produced by a pure
+elimination can normalize a spatial hypothesis without a separate forward rule. -/
+private def rewriteNormStep : NormStep where
+  kind := .rewrite
+  run input := do
+    liftM (m := MetaM) do
+      input.goal.withContext do
+        let target ← instantiateMVars (← input.goal.getType)
+        let localDecls := (← getLCtx).decls.toArray
+        for localDecl? in localDecls do
+          let some localDecl := localDecl? | continue
+          if localDecl.isImplementationDetail then continue
+          let fvarId := localDecl.fvarId
+          let type ← instantiateMVars localDecl.type
+          if (← matchEq? type).isNone then continue
+          let preState ← saveState
+          try
+            let result ← input.goal.rewrite target (.fvar fvarId)
+            if !result.mvarIds.isEmpty then
+              preState.restore
+              continue
+            let newGoal ← input.goal.replaceTargetEq result.eNew result.eqProof
+            let tactic? ← if input.recordScript then
+              some <$> mkRewriteTactic localDecl.userName
+            else pure none
+            return .changed newGoal tactic?
+          catch _ =>
+            preState.restore
+        return .unchanged
+
 /- Simplify normalization step -/
 private def simpNormStep : NormStep where
   kind := .simp
@@ -330,7 +371,7 @@ private def simpNormStep : NormStep where
 
 /- [TODO] take NormStep propority into account? -/
 private def normalizationSteps : Array NormStep :=
-  #[introNormStep, casesNormStep, simpNormStep]
+  #[introNormStep, casesNormStep, rewriteNormStep, simpNormStep]
 
 private def runFirstNormStep (input : NormStepInput) :
     ProofModeM NormStepResult := do
