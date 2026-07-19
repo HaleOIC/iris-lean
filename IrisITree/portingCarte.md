@@ -97,13 +97,13 @@ The `islaris` folder should not be ported, all filenames below are relative to t
 ## `src/threadpool`
 
 - `ctrace.v`: part of trace based adequacy, should not be ported
-- [ ] `exec.v`:
+- [x] `exec.v`:
   - `threadpoolEH`: part of itree library (`concEH`)
-  - [ ] exec adequacy
-- [ ] `handler.v`:
+  - [x] exec adequacy
+- [x] `handler.v`:
   - `threadpoolE`: part of itree library (`concE`)
-  - [ ] `threadpoolH`
-  - [ ] wpi rules
+  - [x] `threadpoolH`
+  - [x] wpi rules
 - `scheduler.v`: part of trace based adequacy, should not be ported
 - `interleaving.v`: part of trace based adequacy, should not be ported
 
