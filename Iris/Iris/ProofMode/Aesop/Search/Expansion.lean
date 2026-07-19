@@ -1,5 +1,6 @@
 module
 
+public meta import Lean.Util.Profile
 public meta import Iris.ProofMode.Aesop.Rule.Dispatch
 public meta import Iris.ProofMode.Aesop.Search.Normalization
 public meta import Iris.ProofMode.Aesop.Search.RuleSelection
@@ -33,14 +34,15 @@ private partial def runFirstRule (parentRef : GoalRef) : SearchM Q RuleResult :=
       | .failed => pickLoop queue
 
 def expandGoal (gref : GoalRef) : SearchM Q RuleResult := do
-  if !(← (← gref.get).isNormalized) then
-    trace[iaesop.search.expand] "--- Before the normalization --- "
+  Lean.profileitM Lean.Exception "iaesop expansion" (← Lean.getOptions) do
+    if !(← (← gref.get).isNormalized) then
+      trace[iaesop.search.expand] "--- Before the normalization --- "
+      Search.traceSelectedGoal gref
+      normalizeGoal gref
+    if (← gref.get).normalizationState.isProvenByNorm then
+      return .proved #[]
+    trace[iaesop.search.expand] " **** Start to search rule **** "
     Search.traceSelectedGoal gref
-    normalizeGoal gref
-  if (← gref.get).normalizationState.isProvenByNorm then
-    return .proved #[]
-  trace[iaesop.search.expand] " **** Start to search rule **** "
-  Search.traceSelectedGoal gref
-  runFirstRule gref
+    runFirstRule gref
 
 end Iris.ProofMode.Aesop

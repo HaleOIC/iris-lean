@@ -1,6 +1,6 @@
 module
 
-public meta import Lean.Data.RBMap
+public meta import Std.Data.TreeMap
 public meta import Iris.ProofMode.Aesop.Index.Basic
 
 public meta section
@@ -15,7 +15,7 @@ initialize registerTraceClass `iaesop.ruleIndex
 variable {α : Type}
 
 private abbrev HitMap (α : Type) [Ord α] :=
-  Lean.RBMap (Rule α) (Array IndexMatchLocation)
+  Std.TreeMap (Rule α) (Array IndexMatchLocation)
     Rule.compareByPriorityThenName
 
 private inductive QuerySurface
@@ -61,13 +61,12 @@ private def locationsToSet (locs : Array IndexMatchLocation) :
 
 @[inline]
 private def emptyHitMap [Ord α] : HitMap α :=
-  Lean.mkRBMap (Rule α) (Array IndexMatchLocation)
-    Rule.compareByPriorityThenName
+  Std.TreeMap.empty
 
 @[inline]
 private def insertHit [Ord α] (m : HitMap α) (rule : Rule α)
     (loc : IndexMatchLocation) : HitMap α :=
-  match m.find? rule with
+  match m.get? rule with
   | none => m.insert rule #[loc]
   | some locs => m.insert rule (locs.push loc)
 
@@ -102,7 +101,7 @@ private def collectSurface [Ord α] (idx : Index α)
 @[inline]
 private def hitMapToResults [Ord α] (m : HitMap α) :
     Array (IndexMatchResult (Rule α)) :=
-  let results := m.fold
+  let results := m.foldl
     (λ acc rule locations =>
       acc.push { rule, locations := locationsToSet locations })
     (init := Array.mkEmpty m.size)
