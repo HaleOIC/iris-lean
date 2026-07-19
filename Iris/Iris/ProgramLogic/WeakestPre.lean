@@ -123,7 +123,7 @@ section Wp
 @[rocq_alias wp_unfold]
 theorem wp_unfold {s E} {e : Expr} {Φ : Val → IProp GF} :
     WP e @ s ; E {{ Φ }} ⊣⊢ wp.pre s (Wp.wp (PROP := IProp GF) s) E e Φ :=
-  BI.equiv_iff.1 <| fixpoint_unfold (f := (wp.pre s).toContractiveHom) E e Φ
+  BI.equiv_iff.1 <| fun n => fixpoint_unfold (f := (wp.pre s).toContractiveHom) n E e Φ
 
 @[rocq_alias wp_ne]
 instance wp_ne {s : Stuckness} {E} {e : Expr} :
@@ -158,7 +158,7 @@ instance wp_ne {s : Stuckness} {E} {e : Expr} :
 #rocq_ignore wp_proper "Derivable using NonExpansive.eqv"
 
 @[rocq_alias wp_contractive]
-instance wp_contractive (s : Stuckness) E (e : Expr) (h : toVal e = none) :
+theorem wp_contractive (s : Stuckness) E (e : Expr) (h : toVal e = none) :
     OFE.Contractive (Wp.wp (PROP := IProp GF) s E e) where
   distLater_dist {n Φ₁ Φ₂} HΦ := by
     simp only [wp_unfold.to_eq]
@@ -245,12 +245,14 @@ theorem fupd_wp {s : Stuckness}{E}{e : Expr} {Φ : Val → IProp GF} :
     imod H with H
     iassumption
 
-theorem fupd_wp_iff {s : Stuckness}{E}{e : Expr} {Φ : Val → IProp GF} :
+theorem fupd_wp_iff {s : Stuckness} {E} {e : Expr} {Φ : Val → IProp GF} :
     WP e @ s ; E {{ Φ }} ⊣⊢ (|={E}=> WP e @ s ; E {{ Φ }}) :=
   ⟨fupd_mask_intro_discard LawfulSet.subset_refl, fupd_wp⟩
 
+-- FIXME: Implicits
+
 @[rocq_alias wp_fupd]
-theorem wp_fupd (s : Stuckness) E (e : Expr) (Φ : Val → IProp GF) :
+theorem wp_fupd {s : Stuckness} {E} {e : Expr} {Φ : Val → IProp GF} :
     WP e @ s ; E {{v, |={E}=> Φ v }} ⊢ WP e @ s ; E {{ Φ }} := by
   iintro h
   iapply wp_strong_mono (Std.IsPreorder.le_refl _) LawfulSet.subset_refl $$ h
@@ -327,7 +329,7 @@ theorem wp_credit_access {s : Stuckness} {E : CoPset} {e : Expr} {Φ} {P: IProp 
   icombine Hm Hone as Hm
   dsimp only [Nat.repeat]
   ihave Hwp := Hwp $$ [//] [Hm]
-  · simp [lc_split.to_eq]
+  · simp [lc_split.to_eq]; itrivial
   iapply step_fupd_wand $$ Hwp; iintro Hwp
   iapply step_fupdN_le (n := ι.numLatersPerStep m) (by grind only) LawfulSet.subset_refl
   iapply step_fupdN_wand $$ Hwp; iintro >⟨SI, Hwp, $⟩
@@ -364,7 +366,6 @@ theorem wp_step_fupdN_strong {s : Stuckness} {E1 E2 : CoPset} {e : Expr} {P : IP
       imod Hwp $$ Hσ₁ with ⟨$, H⟩
       iintro !> %e₂ %σ₂ %efs %Hstep Hcred
       icases H $$ %_ %_ %_ %Hstep Hcred with H
-      dsimp only [Nat.repeat]
       imod H; imod Hp
       iintro !> !>
       imod H; imod Hp
@@ -384,62 +385,55 @@ theorem wp_step_fupdN_strong {s : Stuckness} {E1 E2 : CoPset} {e : Expr} {P : IP
         obtain ⟨n0, rfl⟩ : ∃ n0', n0 = n0' + 1 := by cases n0 <;> grind
         dsimp only [Nat.repeat]
         imod Hp; imod H; imodintro; imodintro; imod Hp; imod H; imodintro
-        iapply IH n0 (Nat.le_of_succ_le_succ Hn) $$ [$];
+        -- TODO: remove this once we have iinduction
+        unfold ProofMode.Entails' at IH
+        iapply IH n0 (Nat.le_of_succ_le_succ Hn) $$ [$]
     · icases H with ⟨interp, -⟩
       imod interp $$ Hσ₁ with %h
       grind only
 
-@[rocq_alias wp_bind]
-theorem wp_bind (K : Expr → Expr) [κ : Language.Context K] {s : Stuckness} {E : CoPset} {e : Expr}
+
+theorem wp_bind_iff (K : Expr → Expr) [κ : Language.Context K] {s : Stuckness} {E : CoPset} {e : Expr}
     {Φ : Val → IProp GF} :
     -- TODO: Have `WP` use the correct `Val` type from the `Wp` instance (it should anyways, it's an outParam, no?)
-    WP e @ s ; E {{v, WP (K (↑v : Val)) @ s ; E {{ Φ }} }} ⊢ WP (K e) @ s ; E {{ Φ }} := by
-  iintro H
+    WP e @ s ; E {{v, WP (K (↑v : Val)) @ s ; E {{ Φ }} }} ⊣⊢ WP (K e) @ s ; E {{ Φ }} := by
   iloeb as IH generalizing %E %e %Φ
-  rewrite (occs := [2]) [wp_unfold.to_eq]
+  rewrite (occs := [1]) [wp_unfold.to_eq]
   simp only [wp.pre]
   match h : toVal e with
   | some v =>
-    simp only [ToVal.coe_of_toVal_eq_some h]
-    iapply fupd_wp $$ H
+    dsimp only
+    rw [ToVal.coe_of_toVal_eq_some h]
+    isplit
+    · iintro H; iapply fupd_wp $$ H
+    · iintro $
   | none =>
     rw [wp_unfold.to_eq]
+    dsimp only
     simp only [wp.pre, κ.toVal_eq_none_fill h, Nat.repeat]
-    iintro %σ₁ %step %obs %obs' %n Hσ
-    imod H $$ [$] with ⟨%_, H⟩
-    imodintro
-    isplit
+    isplit <;>
+    (iintro H %σ₁ %step %obs %obs' %n Hσ; imod H $$ [$] with ⟨%_, H⟩; imodintro; isplit)
     · ipureintro; grind only [cases Stuckness, Language.Context.reducible_fill]
     · iintro %e₂ %σ₂ %efs %HKstep Hcred
       obtain ⟨e₂', rfl, Hstep⟩ := κ.primStep_fill_inv h HKstep
       icases H $$ %e₂' %σ₂ %efs %Hstep Hcred with >H; imodintro; imodintro
       imod H; imodintro; iapply step_fupdN_wand $$ H; iintro H
       imod H with ⟨$, H, $⟩; imodintro; iapply IH $$ H
-
-@[rocq_alias wp_bind_inv]
-theorem wp_bind_inv (K : Expr → Expr) [κ : Language.Context K] {s : Stuckness} {E : CoPset} {e : Expr}
-    {Φ : Val → IProp GF} :
-    WP (K e) @ s ; E {{ Φ }} ⊢ WP e @ s ; E {{v, WP (K (↑v : Val)) @ s ; E {{ Φ }} }} := by
-  iintro H
-  iloeb as IH generalizing %E %e %Φ
-  rewrite (occs := [3]) [wp_unfold.to_eq]
-  simp only [wp.pre]
-  match h : toVal e with
-  | some v =>
-    simp only [ToVal.coe_of_toVal_eq_some h]
-    iapply fupd_wp $$ H
-  | none =>
-    rewrite (occs := [2]) [wp_unfold.to_eq]
-    simp only [wp.pre, κ.toVal_eq_none_fill h, Nat.repeat]
-    iintro %σ₁ %step %obs %obs' %n Hσ
-    imod H $$ [$] with ⟨%_, H⟩
-    imodintro
-    isplit
     · ipureintro; grind only [cases Stuckness, Language.Context.reducible_fill_inv]
     · iintro %e₂ %σ₂ %efs %Hstep Hcred
       icases H $$ %(K e₂) %σ₂ %efs %(κ.primStep_fill Hstep) Hcred with >H; imodintro; imodintro
       imod H; imodintro; iapply step_fupdN_wand $$ H; iintro H
       imod H with ⟨$, H, $⟩; imodintro; iapply IH $$ H
+
+@[rocq_alias wp_bind]
+theorem wp_bind (K : Expr → Expr) [κ : Language.Context K] {s : Stuckness} {E : CoPset} {e : Expr}
+    {Φ : Val → IProp GF} :
+    WP e @ s ; E {{v, WP (K (↑v : Val)) @ s ; E {{ Φ }} }} ⊢ WP (K e) @ s ; E {{ Φ }} := (wp_bind_iff K).1
+
+@[rocq_alias wp_bind_inv]
+theorem wp_bind_inv (K : Expr → Expr) [κ : Language.Context K] {s : Stuckness} {E : CoPset} {e : Expr}
+    {Φ : Val → IProp GF} :
+   WP (K e) @ s ; E {{ Φ }} ⊢ WP e @ s ; E {{v, WP (K (↑v : Val)) @ s ; E {{ Φ }} }}  := (wp_bind_iff K).2
 
 /-! ## Derived rules -/
 
@@ -490,6 +484,11 @@ theorem wp_value {s : Stuckness} {E : CoPset} {e : Expr} {v : Val} {Φ : Val →
     Language.IntoVal e v → Φ v ⊢ WP e @ s; E {{ Φ }}
   | ⟨h⟩ => h ▸ wp_value'
 
+@[simp]
+theorem wp_value_iff {s : Stuckness} {E : CoPset} {v : Val} {Φ : Val → IProp GF} :
+    WP (v : Expr) @ s; E {{ Φ }} = iprop(|={E}=> Φ v) := by
+  simp [wp_unfold.to_eq, wp.pre]
+
 @[rocq_alias wp_frame_l]
 theorem wp_frame_l {s : Stuckness} {E : CoPset} {e : Expr} {Φ : Val → IProp GF} {R : IProp GF} :
     R ∗ WP e @ s; E {{ Φ }} ⊢ WP e @ s; E {{ v, R ∗ Φ v }} := by
@@ -524,7 +523,8 @@ theorem wp_step_fupdN {s : Stuckness} {E₁ E₂ : CoPset} {e : Expr} {P : IProp
   iapply fupd_mask_frame LawfulSet.empty_subset
   imod H
   imodintro
-  simp [LawfulSet.diff_empty, ←LawfulSet.diff_subset_decomp E₂E₁, fupd_intro]
+  simp [LawfulSet.diff_empty, ←LawfulSet.diff_subset_decomp E₂E₁]
+  itrivial
 
 @[rocq_alias wp_step_fupd]
 theorem wp_step_fupd {s : Stuckness} {E₁ E₂ : CoPset} {e : Expr} {P : IProp GF} {Φ : Val → IProp GF}
@@ -536,7 +536,7 @@ theorem wp_step_fupd {s : Stuckness} {E₁ E₂ : CoPset} {e : Expr} {P : IProp 
   isplit
   · iintro %σ %ns %obj %nt interp
     iapply fupd_mask_intro_discard LawfulSet.empty_subset $$ [HR]
-    simp [BI.true_intro]
+    itrivial
   · imod HR
     dsimp only [Nat.repeat]
     iframe
@@ -635,8 +635,9 @@ instance isExcept0Wp : IsExcept0 (WP e @ s ; E {{ Φ }}) where
       _ ⊢ |={E}=> _ := BIFUpdate.except0
       _ ⊢ WP e @ s ; E {{ Φ }} := fupd_wp
 
+-- this should have higher priority than elimModalFupdWpAtomic
 @[rocq_alias elim_modal_fupd_wp]
-instance elimModalFupdWp p :
+instance (priority := default + 10) elimModalFupdWp p :
     ElimModal True p false iprop(|={E}=> P) P (WP e @ s ; E {{ Φ }}) (WP e @ s ; E {{ Φ }}) where
   elim_modal := by
     iintro %_ ⟨H, G⟩

@@ -6,6 +6,7 @@ Authors: Zongyuan Liu
 module
 
 public import Iris.Algebra.OFE
+meta import Iris.Std.RocqPorting
 
 public section
 
@@ -21,6 +22,7 @@ open OFE
 
 /-- A commutative monoid on an OFE, used for big operators.
 The operation must be non-expansive, associative, commutative, and have a left identity. -/
+@[rocq_alias Monoid]
 class MonoidOps {M : Type u} [OFE M] (op : M → M → M) (unit : outParam M) where
   /-- The operation is non-expansive in both arguments -/
   op_ne : NonExpansive₂ op
@@ -31,6 +33,9 @@ class MonoidOps {M : Type u} [OFE M] (op : M → M → M) (unit : outParam M) wh
   /-- Left identity up to equivalence -/
   op_left_id : ∀ {a : M}, op unit a ≡ a
 
+#rocq_ignore MonoidOps "Not needed"
+#rocq_ignore monoid_ops "Not needed"
+
 namespace MonoidOps
 
 attribute [simp] op_left_id
@@ -39,11 +44,13 @@ attribute [instance] op_ne
 variable {M : Type u} [OFE M] {unit : M} {op : M → M → M}
 
 /-- The operation is proper with respect to equivalence. -/
+@[rocq_alias monoid_proper]
 theorem op_proper [MonoidOps op unit] (ha : a ≡ a') (hb : b ≡ b') :
     op a b ≡ op a' b' := NonExpansive₂.eqv ha hb
 
 /-- Right identity follows from commutativity and left identity. -/
-@[simp] theorem op_right_id [MonoidOps op unit] : op a unit ≡ a :=
+@[simp, rocq_alias monoid_right_id]
+theorem op_right_id [MonoidOps op unit] : op a unit ≡ a :=
   op_comm.trans op_left_id
 
 /-- Congruence on the left argument. -/
@@ -81,6 +88,7 @@ end MonoidOps
 /-! ## Monoid Homomorphisms -/
 
 /-- A weak monoid homomorphism preserves the operation but not necessarily the unit. -/
+@[rocq_alias WeakMonoidHomomorphism]
 class WeakMonoidHomomorphism {M₁ : Type u} {M₂ : Type v} [OFE M₁] [OFE M₂]
     (op₁ : M₁ → M₁ → M₁) (op₂ : M₂ → M₂ → M₂) (unit₁ : M₁) (unit₂ : M₂)
     [MonoidOps op₁ unit₁] [MonoidOps op₂ unit₂]
@@ -89,8 +97,6 @@ class WeakMonoidHomomorphism {M₁ : Type u} {M₂ : Type v} [OFE M₁] [OFE M�
   rel_refl : ∀ {a : M₂}, R a a
   /-- The relation is transitive -/
   rel_trans : ∀ {a b c : M₂}, R a b → R b c → R a c
-  /-- The relation is proper with respect to equivalence -/
-  rel_proper : ∀ {a a' b b' : M₂}, a ≡ a' → b ≡ b' → (R a b ↔ R a' b')
   /-- The operation is proper with respect to R -/
   op_proper : ∀ {a a' b b' : M₂}, R a a' → R b b' → R (op₂ a b) (op₂ a' b')
   /-- The function is non-expansive -/
@@ -98,7 +104,23 @@ class WeakMonoidHomomorphism {M₁ : Type u} {M₂ : Type v} [OFE M₁] [OFE M�
   /-- The homomorphism property -/
   map_op : ∀ {x y}, R (f (op₁ x y)) (op₂ (f x) (f y))
 
+theorem WeakMonoidHomomorphism.rel_proper {M₁ : Type u} {M₂ : Type v}
+  [OFE M₁] [OFE M₂] {a a' b b' : M₂}
+  {op₁ : M₁ → M₁ → M₁} {op₂ : M₂ → M₂ → M₂} {unit₁ : M₁} {unit₂ : M₂}
+  [MonoidOps op₁ unit₁] [MonoidOps op₂ unit₂]
+  {R : M₂ → M₂ → Prop} {f : M₁ → M₂}
+  [WeakMonoidHomomorphism op₁ op₂ unit₁ unit₂ R f] : a ≡ a' → b ≡ b' → (R a b ↔ R a' b') := by
+    intro Heq1 Heq2
+    rw [Heq1.to_eq, Heq2.to_eq]
+
+@[rocq_alias weak_monoid_homomorphism_proper]
+theorem weak_monoid_homomorphism_equiv [ OFE M₁] [OFE M₂]
+  [MonoidOps op₁ unit₁] [MonoidOps op₂ unit₂] (f : M₁ → M₂)
+  [h : WeakMonoidHomomorphism op₁ op₂ unit₁ unit₂ R f] {x y} :
+    (x ≡ y) → f x ≡ f y := fun e => h.map_ne.eqv e
+
 /-- A monoid homomorphism preserves both the operation and the unit. -/
+@[rocq_alias MonoidHomomorphism]
 class MonoidHomomorphism {M₁ : Type u} {M₂ : Type v} [OFE M₁] [OFE M₂]
     (op₁ : M₁ → M₁ → M₁) (op₂ : M₂ → M₂ → M₂) (unit₁ : M₁) (unit₂ : M₂)
     [MonoidOps op₁ unit₁] [MonoidOps op₂ unit₂]

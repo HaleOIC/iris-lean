@@ -33,6 +33,8 @@ class EctxItemLanguage (Expr : Type _) (EctxItem State Obs Val : outParam (Type 
     (fillItem Ki e, σ) -<obs>->ᵇ (e', σ', eₜ) →
     (toVal e).isSome
 
+export EctxItemLanguage (fillItem)
+
 -- attribute [rocq_alias fill_item] EctxItemLanguage.fillItem
 attribute [rocq_alias fill_item_inj] EctxItemLanguage.fillItem_inj
 attribute [rocq_alias fill_item_val] EctxItemLanguage.fillItem
@@ -50,7 +52,7 @@ variable [Λ : EctxItemLanguage Expr EctxItem State Obs Val]
 abbrev Ectx [EctxItemLanguage Expr EctxItem State Obs Val] := List EctxItem
 
 @[grind, rocq_alias ectxi_lang_ctx_item]
-instance [Λ : EctxItemLanguage Expr EctxItem State Obs Val] : EvContext Expr Λ.Ectx where
+instance instEvContext [Λ : EctxItemLanguage Expr EctxItem State Obs Val] : EvContext Expr Λ.Ectx where
   comp x y := y ++ x
   empty := []
   fill K e := K.foldl (fun x y => fillItem y x) e
@@ -79,6 +81,15 @@ theorem fill_append (K₁ K₂ : Λ.Ectx) (e : Expr) : fill (K₁ ++ K₂) e = f
 theorem fill_val {K} {e : Expr} : (toVal (fill K e)).isSome = true → (toVal e).isSome = true := by
   induction K generalizing e <;> grind [fillItem_val]
 
+theorem baseStep_fill_eq_val_absurd {K : Ectx} {e e' : Expr} {σ σ' : State}
+    {obs : List Obs} {efs : List Expr} {v : Val}
+    (hbase : (e, σ) -<obs>->ᵇ (e', σ', efs))
+    (heq : (v : Expr) = fill K e) : False := by
+  have hfill_isval : (toVal (fill K e)).isSome := heq ▸ by simp
+  have h_e_val : (toVal e).isSome := fill_val hfill_isval
+  rw [val_stuck hbase] at h_e_val
+  simp at h_e_val
+
 -- NOTE: Would it be worth having an `isVal` predicate for `Expr`, basically defined
 -- as `toVal e |>.isSome`, so that we could rephrase all instances of `(toVal e).isSome`
 -- as `isVal e` and `toVal e = none` as `¬ isVal e`. That way tactics like `grind` would
@@ -86,7 +97,7 @@ theorem fill_val {K} {e : Expr} : (toVal (fill K e)).isSome = true → (toVal e)
 -- which means `toVal e = none` is not as well supported.
 
 @[rocq_alias EctxLanguageOfEctxi]
-instance : EctxLanguage Expr Λ.Ectx State Obs Val where
+instance instEctxLanguage : EctxLanguage Expr Λ.Ectx State Obs Val where
   fill_val K e := fill_val
   step_by_val {K K' e₁ e₁' σ₁ obs e₂ σ₂ eₜ} hfill hred hstep := by
     induction K using List.reverseRec generalizing K' e₁ e₂ with

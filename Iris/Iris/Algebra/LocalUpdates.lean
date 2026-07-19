@@ -24,17 +24,13 @@ section CMRA
 
 variable [CMRA α]
 
--- Global Instance local_update_proper :
--- Proper ((≡) ==> (≡) ==> iff) (@local_update SI A).
--- Proof. unfold local_update. by repeat intro; setoid_subst. Qed.
-
 theorem LocalUpdate.id (x : α × α) : x ~l~> x := fun _ _ vx e => ⟨vx, e⟩
 
 theorem LocalUpdate.equiv_left {x y : α × α} (z : α × α) (h : x ≡ y) : x ~l~> z → y ~l~> z := by
   intro u n mw v e
-  refine u n mw ((OFE.Dist.validN h.1.dist.symm).mp v) ?_
+  refine u n mw ((OFE.Dist.validN (OFE.equiv_fst h).dist.symm).mp v) ?_
   calc
-    x.fst ≡{n}≡ y.fst       := h.1.dist
+    x.fst ≡{n}≡ y.fst       := (OFE.equiv_fst h).dist
     _     ≡{n}≡ y.snd •? mw := e
     _     ≡{n}≡ x.snd •? mw := CMRA.opM_left_dist mw (OFE.equiv_snd h).dist.symm
 
@@ -47,8 +43,10 @@ theorem LocalUpdate.equiv_right (x : α × α) {y z : α × α} (h : y ≡ z) : 
     _     ≡{n}≡ y.snd •? mw := e
     _     ≡{n}≡ z.snd •? mw := h.dist.2.opM .rfl
 
--- Global Instance local_update_preorder : PreOrder (@local_update SI A).
--- Proof. split; unfold local_update; red; naive_solver. Qed.
+@[rocq_alias local_update_proper]
+theorem LocalUpdate.equiv {x x' : α × α} {y y' : α × α} (h1 : x ≡ x') (h2 : y ≡ y') : x ~l~> y ↔ x' ~l~> y' :=
+  ⟨fun u => equiv_right _ h2 (equiv_left _ h1 u),
+   fun u => equiv_right _ h2.symm (equiv_left _ h1.symm u)⟩
 
 @[rocq_alias exclusive_local_update]
 theorem LocalUpdate.exclusive [CMRA.Exclusive y] {x x' : α}
@@ -133,7 +131,7 @@ theorem LocalUpdate.valid [CMRA.Discrete α] {x y x' y' : α}
 @[rocq_alias local_update_total_valid0]
 theorem LocalUpdate.total_valid0 [CMRA.IsTotal α] {x y x' y' : α}
     (h : ✓{0} x → ✓{0} y → y ≼{0} x → (x, y) ~l~> (x', y')) : (x, y) ~l~> (x', y') :=
-  .valid0 fun vx0 vy0 mz => h vx0 vy0 (Option.some_incN_some_iff_isTotal.mp mz)
+  .valid0 fun vx0 vy0 mz => h vx0 vy0 (Option.some_incN_some_iff_is_total.mp mz)
 
 @[rocq_alias local_update_total_valid]
 theorem LocalUpdate.total_valid [CMRA.IsTotal α] [CMRA.Discrete α] {x y x' y' : α}
@@ -170,17 +168,17 @@ theorem local_update_unital_discrete [CMRA.Discrete α] (x y x' y' : α) :
 
 @[rocq_alias cancel_local_update_unit]
 theorem cancel_local_update_unit (x y : α) [CMRA.Cancelable x] : (x • y, x) ~l~> (y, CMRA.unit) :=
-  have e : (x • y, x • CMRA.unit) ≡ (x • y, x) := ⟨.rfl, CMRA.unit_right_id⟩
+  have e : (x • y, x • CMRA.unit) ≡ (x • y, x) := OFE.equiv_prod_ext .rfl CMRA.unit_right_id
   .equiv_left _ e (.cancel x y CMRA.unit)
 
 /-- Necessary and sufficient condition for a local update on a unital discrete leibniz CMRA
   with trivial validity predicate -/
-theorem leibniz_discrete_unital_triv_local_update [OFE.Leibniz α] [CMRA.Discrete α]
+theorem discrete_unital_triv_local_update [CMRA.Discrete α]
     (Hv : ∀ x : α, ✓ x)
     (H : ∀ {z : α}, x = y • z → x' = y' • z) :
     (x,y) ~l~> (x', y') := by
   refine (local_update_unital_discrete x y x' y').mpr fun _ _ He => ?_
-  refine ⟨Hv _, .of_eq <| H <| OFE.leibniz.mp He⟩
+  refine ⟨Hv _, .of_eq <| H <| He.to_eq⟩
 
 end UCMRA
 

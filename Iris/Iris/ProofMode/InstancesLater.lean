@@ -289,7 +289,7 @@ instance intoExcept0_later [BI PROP] (P : PROP) [Timeless P] : IntoExcept0 iprop
 @[rocq_alias into_except_0_later_if]
 instance intoExcept0_laterIf [BI PROP] p (P : PROP) [Timeless P] : IntoExcept0 iprop(▷?p P) P where
   into_except0 := match p with
-                  | true => Timeless.timeless
+                  | true => Timeless.timeless (P := P)
                   | false => except0_intro
 
 @[rocq_alias into_except_0_affinely]
@@ -369,7 +369,6 @@ instance intoLaterN_or [BI PROP] n (P1 P2 Q1 Q2 : PROP)
     [h1 : IntoLaterN false n P1 Q1] [h2 : IntoLaterN false n P2 Q2] :
     IntoLaterN false n iprop(P1 ∨ P2) iprop(Q1 ∨ Q2) where
   into_laterN := (or_mono h1.1 h2.1).trans (laterN_or n).2
-
 
 @[rocq_alias into_later_affinely]
 instance intoLaterN_affinely [BI PROP] n (P Q : PROP)

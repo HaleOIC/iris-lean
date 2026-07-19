@@ -194,7 +194,7 @@ def SubredexesAreValues (e : Expr) :=
   ∀ {K : Ectx} {e'}, e = fill K e' → toVal e' = none → K = empty
 
 @[rocq_alias LanguageOfEctx]
-instance : Language Expr State Obs Val where
+instance instLanguage : Language Expr State Obs Val where
   val_stuck {e σ obs e' σ' eₜ} primStep := by
     rcases primStep with ⟨bstep⟩
     grind only [val_stuck, fill_not_val]
@@ -208,11 +208,13 @@ def BaseAtomic (a : Language.Atomicity) (e : Expr) : Prop :=
 
 variable {e e' e₁ e₂ : Expr} {σ σ' σ₁ σ₂ : State}
 variable {K K' K₁ K₂ : Ectx} {obs obs' : List Obs}
-variable {eₜ eₜ : List Expr}
+variable {eₜ : List Expr}
+
+-- FIXME: Implicits
 
 open EvContext in
 @[rocq_alias base_redex_unique]
-theorem base_redex_unique K K' (e e' : Expr) σ σ' (heq : fill K e = fill K' e') :
+theorem base_redex_unique (heq : fill K e = fill K' e') :
     BaseStep.Reducible (e, σ) → BaseStep.Reducible (e', σ') →
     K = comp K' empty ∧ e = e' := by
   rintro ⟨obs, e₂, σ₂, eₜ, bstep⟩ ⟨obs', e₂', σ₂', eₜ', bstep'⟩
@@ -226,7 +228,9 @@ theorem base_redex_unique K K' (e e' : Expr) σ σ' (heq : fill K e = fill K' e'
 @[rocq_alias base_prim_step]
 theorem primStep_of_baseStep {e₁ : Expr} {σ₁ obs e₂ σ₂ eₜ}
     (h : (e₁, σ₁) -<obs>->ᵇ (e₂, σ₂, eₜ)) : (e₁, σ₁) -<obs>-> (e₂, σ₂, eₜ) := by
-  simpa only [EvContext.fill_empty] using ContextStep.ofBaseStep empty h
+  let base := ContextStep.ofBaseStep empty h
+  simp only [EvContext.fill_empty] at base
+  exact base
 
 theorem baseStep_of_primStep {e₁ : Expr} {σ₁ obs e₂ σ₂ eₜ}
     (pstep : (e₁, σ₁) -<obs>-> (e₂, σ₂, eₜ)) (hsr : SubredexesAreValues e₁) :
@@ -250,7 +254,8 @@ theorem fill_primStep (K : Ectx) {e : Expr} {σ obs e' σ' eₜ} :
     (e, σ) -<obs>-> (e', σ', eₜ) → (fill K e, σ) -<obs>-> (fill K e', σ', eₜ) := by
   rintro ⟨pstep⟩
   rename_i K₁
-  simpa only [EvContext.fill_comp] using ContextStep.ofBaseStep (comp K K₁) pstep
+  simp only [EvContext.fill_comp]
+  exact ContextStep.ofBaseStep (comp K K₁) pstep
 
 @[rocq_alias fill_reducible]
 theorem fill_reducible (K : Ectx) {e : Expr} {σ} :
@@ -302,8 +307,8 @@ theorem primStep_stuck_of_baseStep_stuck :
     BaseStep.Stuck (e, σ) → SubredexesAreValues e → PrimStep.Stuck (e, σ) :=
   fun ⟨toVal_none, irr⟩ hsr => ⟨toVal_none, primStep_irreducible_of_baseStep_irreducible irr hsr⟩
 
-@[rocq_alias ectx_language_atomic, implicit_reducible]
-def Atomic.ofBaseAtomic (a : Language.Atomicity) :
+@[rocq_alias ectx_language_atomic]
+theorem Atomic.ofBaseAtomic (a : Language.Atomicity) :
     BaseAtomic a e →
     SubredexesAreValues e →
     Language.Atomic a e := fun _ _ => ⟨by grind [BaseAtomic]⟩
@@ -329,7 +334,7 @@ theorem baseStep_of_primStep_of_baseStep_reducible (bred : Reducible (e₁, σ�
   heq ▸ (EvContext.fill_empty e₂' |>.symm ▸ bstep)
 
 @[rocq_alias ectx_lang_ctx]
-instance (K : Ectx) : Language.Context (fill (Expr := Expr) K) where
+instance instContextFill (K : Ectx) : Language.Context (fill (Expr := Expr) K) where
   toVal_eq_none_fill := fill_not_val K _
   primStep_fill {e σ obs e' σ' eₜ} := fun ⟨bstep⟩ => by
     rename_i e₁ e₂ K'

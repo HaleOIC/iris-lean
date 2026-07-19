@@ -23,11 +23,11 @@ theorem rewrite_tac [Sbi PROP] {P P' Q : PROP} {A : Type _} [OFE A] {a b : A} {p
     (h1 : P ⊢ P' ∗ □?p Q)
     : P ⊢ <pers> (Ψ a ∗-∗ Ψ b) :=
   calc P
-  _ ⊢ P' ∗ internalEq a b := h1.trans (sep_mono_right (intuitionisticallyIf_elim.trans heq.1))
-  _ ⊢ internalEq a b := sep_elim_right
-  _ ⊢ internalEq (Ψ a) (Ψ b) := internalEq.of_internalEquiv_ne Ψ
-  _ ⊢ <pers> internalEq (Ψ a) (Ψ b) := persistent
-  _ ⊢ <pers> <affine> internalEq (Ψ a) (Ψ b) := persistently_affinely.2
+  _ ⊢ P' ∗ a ≡ b := h1.trans (sep_mono_right (intuitionisticallyIf_elim.trans heq.1))
+  _ ⊢ a ≡ b := sep_elim_right
+  _ ⊢ Ψ a ≡ Ψ b := internalEq.of_internalEquiv_ne Ψ
+  _ ⊢ <pers> (Ψ a ≡ Ψ b) := persistent
+  _ ⊢ <pers> <affine> Ψ a ≡ Ψ b := persistently_affinely.2
   _ ⊢ <pers> (Ψ a ∗-∗ Ψ b) := persistently_mono (affinely_internalEq_wandIff _ _)
 
 theorem rewrite_tac_symm [Sbi PROP] {P P' Q : PROP} {A : Type _} [OFE A] {a b : A} {p}
@@ -179,7 +179,17 @@ def iRewriteHyp {prop : Q(Type u)} {bi : Q(BI $prop)}
     | throwError "irewrite: cannot find hyp" -- should never happen
   return r
 
-elab "irewrite" cfg:optConfig "[" rules:(IRewrite.irwRule),* "]" loc:(location)? : tactic => do
+/--
+  `irewrite [rules] at loc` applies a sequence `rules` of internal equalities
+  (`≡`) to the locations (`loc`). The locations `loc` may contain hypothesis
+  names and/or the goal, represented by `⊢`.
+
+  Each rule is a proof mode term, optionally prefixed with `←` for
+  right-to-left rewriting.
+
+  Optionally, one can use `irewrite (occs := …) [rules] at H` to specify the occurrences.
+-/
+elab "irewrite " cfg:optConfig " [" rules:(IRewrite.irwRule),* "] " loc:(location)? : tactic => do
   let config ← IRewrite.elabIRewriteConfig cfg
   let location ← IRewrite.Location.parse loc
   let rules ← liftMacroM <| IRewrite.Rule.parse rules.getElems

@@ -46,7 +46,7 @@ theorem toVal_eq_iff_coe (e : Expr) (v : Val) : v = e ↔ toVal e = some v :=
   ⟨(· ▸ toVal_coe v), coe_of_toVal_eq_some⟩
 
 @[rocq_alias of_val_inj]
-instance : ι.ofVal.Injective := by
+theorem TovVal.ofVal_inj : ι.ofVal.Injective := by
   intro x y h
   simpa [toVal_coe] using congrArg (toVal) h
 
@@ -78,12 +78,15 @@ def Reducible : Expr × State → Prop
 def ReducibleNoObs [PrimStep Expr State (List Obs)] : Expr × State → Prop
   | (e, σ) => ∃ e' σ' eₜ, (e, σ) -<[]>-> (e', σ', eₜ)
 
+@[rocq_alias irreducible]
 def Irreducible : Expr × State → Prop
   | (e, σ) => ∀ obs e' σ' eₜ, ¬ (e, σ) -<obs>-> (e', σ', eₜ)
 
+@[rocq_alias stuck]
 def Stuck [ToVal Expr Val] : Expr × State → Prop
   | (e, σ) => toVal e = none ∧ Irreducible (e, σ)
 
+@[rocq_alias not_stuck]
 def NotStuck [ToVal Expr Val] : Expr × State → Prop
   | (e, σ) => (toVal e).isSome ∨ Reducible (e, σ)
 
@@ -122,7 +125,7 @@ end Notation
 
 open Notation
 
-def Step.of_primStep {e σ} {obs : List Obs} {e'} {σ' : State} {eₜ}
+theorem Step.of_primStep {e σ} {obs : List Obs} {e'} {σ' : State} {eₜ}
     (H : (e, σ) -<obs>-> (e', σ', eₜ)) {t₁ t₂: List Expr} :
     Step (t₁ ++ e :: t₂, σ) obs (t₁ ++ e' :: t₂ ++ eₜ, σ') :=
   atomic H ..
@@ -157,6 +160,10 @@ scoped notation (name := ErasedStep) conf:40 " -·->ₜₚ " conf':41 => Languag
 /-- A sequence of `Language.erasedStep`s -/
 scoped notation (name := erasedStepStar) conf:40 " -·->ₜₚ* " conf':41 =>
   Relation.ReflTransGen Language.ErasedStep conf conf'
+
+/-- A nonempty sequence of `Language.erasedStep`s -/
+scoped notation (name := erasedStepPlus) conf:40 " -·->ₜₚ+ " conf':41 =>
+  Relation.TransGen Language.ErasedStep conf conf'
 
 end Notation
 
@@ -240,6 +247,11 @@ theorem stronglyAtomic_atomic {a} :
   | .StronglyAtomic => id
   | .WeaklyAtomic => fun ⟨h⟩ => ⟨by grind only [not_reducible_iff_irreducible, val_irreducible]⟩
 
+theorem prim_val_stuck (h : (↑ v, σ) -<obs>-> (e', σ', eₜ)) : False := by
+  simpa using val_stuck h
+
+instance val_atomic {a : Atomicity} {v : Val} : Atomic a (Λ.ofVal v) :=
+  ⟨fun h => by simpa using val_stuck h⟩
 
 /-- The function `K` models an evaluation context for the language -/
 @[rocq_alias LanguageCtx]
@@ -290,7 +302,7 @@ theorem reducibleNoObs_fill_inv ⦃e : Expr⦄ ⦃σ : State⦄ (toVal_none : to
     have ⟨e₂, _, red⟩ := primStep_fill_inv toVal_none K_red
     ⟨e₂, σ', eₜ, red⟩
 
--- @[rocq_alias irrreducible_fill]
+@[rocq_alias irreducible_fill]
 theorem irreducible_fill ⦃e : Expr⦄ ⦃σ : State⦄ (hv : toVal e = none) (irr : Irreducible (e, σ)) :
     Irreducible (K e, σ) :=
   not_reducible_iff_irreducible.1 fun red =>
@@ -386,8 +398,6 @@ end Notation
 
 abbrev PureSteps (t₁ t₂ : List Expr) := List.Forall₂ (· -ᵖ->* ·) t₁ t₂
 
-#rocq_concept program_logic "pure_steps_tp" ported "Implemented as an abbreviation"
-
 namespace Notation
 
 /-- `e₁ -ᵖ->ₜₚ* e₂` represents a sequence of some number of pure steps taken from `e₁` up to `e₂`. -/
@@ -395,8 +405,8 @@ scoped notation (name := PureSteps) conf:40 " -ᵖ->ₜₚ* " conf':41 => Langua
 
 end Notation
 
-@[rocq_alias PureExec]
-class PureExec (φ : Prop) (n : outParam <| Nat) (e₁ : Expr) (e₂ : outParam <| Expr) : Prop where
+@[ipm_class, rocq_alias PureExec]
+class PureExec (φ : outParam <| Prop) (n : outParam <| Nat) (e₁ : Expr) (e₂ : outParam <| Expr) : Prop where
   pureExec : φ → e₁ -ᵖ->^[n] e₂
 
 variable (K : Expr → Expr) [Context K]
