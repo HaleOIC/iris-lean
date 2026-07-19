@@ -30,12 +30,12 @@ abbrev PosSet := Std.ExtTreeSet Pos compare
 
 abbrev InvMap (x : Type _) := Std.ExtTreeMap Pos x compare
 
-abbrev InvMapF := HeapViewURF (F := PNat) (H := InvMap) (AgreeRF (LaterOF IdOF))
+abbrev InvMapF := HeapViewURF (H := InvMap) (AgreeRF (LaterOF IdOF))
 
 /-- Wsat inclusion typeclass (`GF` contains the necessary functors for wsat) -/
 class WsatGpreS (GF : BundledGFunctors) where
   inv : ElemG GF InvMapF
-  enabled : ElemG GF (constOF (DisjointLeibnizSet CoPset))
+  enabled : ElemG GF (constOF CoPsetDisjL)
   disabled : ElemG GF (constOF (DisjointLeibnizSet PosSet))
 
 attribute [reducible, instance] WsatGpreS.inv
@@ -97,7 +97,7 @@ theorem ownE_empty : ⊢ |==> ownE (W := W) ∅ := iOwn_unit (ε := UCMRA.unit)
 @[iaesop backward]
 theorem ownE_op {E1 E2} (Hdisj : E1 ## E2) : ownE (E1 ∪ E2) ⊣⊢@{IProp GF} ownE E1 ∗ ownE E2 := by
   refine .trans (.of_eq ?_) iOwn_op
-  rw [disj_op_union Hdisj]
+  rw [(disj_op_union Hdisj).to_eq]
   rfl
 
 @[iaesop backward]
@@ -107,7 +107,7 @@ theorem ownE_disjoint {E1 E2} : ownE E1 ∗ ownE E2 ⊢@{IProp GF} ⌜E1 ## E2�
   · unfold ownE
     isplitl [H1] <;> iassumption
   ihave H := iOwn_cmraValid $$ H
-  icases internalCmraValid_discrete (A := DisjointLeibnizSet CoPset) $$ H with %H
+  icases internalCmraValid_discrete (A := CoPsetDisjL) $$ H with %H
   ipureintro
   exact valid_op_iff_disj.mp H
 
@@ -142,7 +142,7 @@ theorem ownD_empty : ⊢@{IProp GF} |==> ownD ∅ := iOwn_unit (ε := UCMRA.unit
 @[iaesop backward]
 theorem ownD_op {E1 E2} (Hdisj : E1 ## E2) : ownD (E1 ∪ E2) ⊣⊢@{IProp GF} ownD E1 ∗ ownD E2 := by
   refine .trans (.of_eq ?_) iOwn_op
-  rw [disj_op_union Hdisj]
+  rw [(disj_op_union Hdisj).to_eq]
   rfl
 
 @[iaesop backward]
@@ -187,7 +187,7 @@ theorem invariant_lookup (I : InvMap (IProp GF)) (i : Pos) (P : IProp GF) :
   iintro H
   ihave H := iOwn_cmraValid_op $$ H
   ihave ⟨%v', %dp', %Hdp, %Hlookup, H1, H2⟩ :=
-    (auth_op_frag_validI_total (F := PNat)
+    (auth_op_frag_validI_total
       (own 1) (map toAgree (map invariant_unfold I))) $$ H
   simp only [get?_map, Option.map_map, Option.map_eq_some_iff, Function.comp_apply] at Hlookup
   have ⟨Q', Hget, Hagree⟩ := Hlookup
@@ -279,9 +279,7 @@ theorem ownI_alloc [W : WsatGS GF] (φ : Pos → Prop) (P : IProp GF)
     · suffices Hi : insert (liftInv I) j (toAgree (invariant_unfold P)) = liftInv (insert I j P) by
         rw [Hi]
         iexact Hown
-      refine ExtensionalPartialMap.equiv_iff_eq.mp fun k => ?_
-      simp only [get?_insert, get?_map, Option.map_map]
-      by_cases h : j = k <;> simp [h]
+      simp only [liftInv, map_insert]
     · iapply bigSepM_insert (x := P) Hget $$ [Hmap HProp HD]
       isplitl [HProp HD]
       · rw [HEQ]
@@ -321,9 +319,7 @@ theorem ownI_alloc_open [W : WsatGS GF] (φ : Pos → Prop) (P : IProp GF)
     · suffices Hi : Std.insert (liftInv I) j (toAgree (invariant_unfold P)) = liftInv (Std.insert I j P) by
         rw [Hi]
         iexact Hown
-      refine ExtensionalPartialMap.equiv_iff_eq.mp fun k => ?_
-      simp only [get?_insert, get?_map, Option.map_map]
-      by_cases h : j = k <;> simp [h]
+      simp only [liftInv, map_insert]
     · iapply bigSepM_insert (x := P) Hget $$ [Hmap HE]
       isplitl [HE]
       · iright; iassumption
@@ -332,7 +328,7 @@ theorem ownI_alloc_open [W : WsatGS GF] (φ : Pos → Prop) (P : IProp GF)
 
 theorem wsat_alloc [WP : WsatGpreS GF] :
     ⊢ |==> ∃ (W : WsatGS GF), wsat (W := W) ∗ ownE ⊤ := by
-  imod (iOwn_alloc (E := WP.inv) (Auth (.own 1) empty) auth_one_valid) with ⟨%γ, H⟩
+  imod (iOwn_alloc (E := WP.inv) (Auth (.own 1) ∅) auth_one_valid) with ⟨%γ, H⟩
   imod (iOwn_alloc (E := WP.enabled) (valid ⊤) ⟨⟩) with ⟨%γe, He⟩
   imod (iOwn_alloc (E := WP.disabled) (valid ∅) ⟨⟩) with ⟨%γd, Hd⟩
   imodintro
@@ -347,16 +343,15 @@ theorem wsat_alloc [WP : WsatGpreS GF] :
   iexists W
   isplitr [He]
   · unfold wsat
-    iexists empty
+    iexists ∅
     isplitl
     · iclear Hd
-      have H : liftInv (empty : InvMap (IProp GF)) = empty := by
-        refine ExtensionalPartialMap.equiv_iff_eq.mp fun _ => ?_
-        simp [get?_map, get?_empty]
+      have H : liftInv (∅ : InvMap (IProp GF)) = ∅ := by
+        simp only [liftInv, map_empty]
       rw [invMap, H]
       iassumption
     · iapply bigSepM_empty
-      simp
+      itrivial
   · unfold ownE
     iexact He
 

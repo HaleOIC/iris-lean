@@ -7,11 +7,11 @@ module
 
 public import Iris.ProofMode
 public import Iris.Instances.IProp.Instance
+public import Iris.Instances.Lib.FUpd
+public import Iris.Instances.Lib.Invariants
 public import Iris.Algebra.LeibnizSet
 public import Iris.Std.Namespaces
 public import Iris.Std.CoPset
-public import Iris.Tests.Test4Fupd
-public import Iris.Tests.Test5Invariants
 
 @[expose] public section
 
@@ -20,11 +20,14 @@ namespace Iris
 open BI CMRA OFE Iris Std LawfulSet DisjointLeibnizSet COFE
 
 abbrev NaInvF : OFunctorPre :=
-  ProdOF (constOF (DisjointLeibnizSet CoPset)) (constOF (DisjointLeibnizSet PosSet))
+  ProdOF (constOF CoPsetDisjL) (constOF (DisjointLeibnizSet PosSet))
 
 @[rocq_alias na_invG]
 class NaInvG (GF : BundledGFunctors) where
   inv : ElemG GF NaInvF
+
+#rocq_ignore «na_invΣ» "Superseded by the `NaInvG` typeclass on `BundledGFunctors`."
+#rocq_ignore «subG_na_invG» "Superseded by Lean's direct `ElemG` typeclass synthesis."
 
 attribute [reducible, instance] NaInvG.inv
 
@@ -32,15 +35,14 @@ attribute [reducible, instance] NaInvG.inv
 abbrev NaInvPoolName := GName
 
 instance instNaInvF_discreteE {α β : Type _} (x : DisjointLeibnizSet α) (y : DisjointLeibnizSet β) :
-    DiscreteE (x, y) :=
-  prod.is_discrete (inst_disjointLeibnizSet_DiscreteE _) (inst_disjointLeibnizSet_DiscreteE _)
+    DiscreteE (x, y) := by infer_instance
 
 instance coreId_valid_empty_empty : CoreId ((valid (∅ : CoPset), valid (∅ : PosSet))) where
   core_id := by rfl
 
 instance isUnit_valid_empty_empty : IsUnit ((valid (∅ : CoPset), valid (∅ : PosSet))) where
   unit_valid := ⟨trivial, trivial⟩
-  unit_left_id := ⟨unit_left_id, unit_left_id⟩
+  unit_left_id := NonExpansive₂.eqv unit_left_id unit_left_id
   pcore_unit := coreId_valid_empty_empty.core_id
 
 namespace NonAtomicInvariant
@@ -58,8 +60,7 @@ nonrec def inv (p : NaInvPoolName) (N : Namespace) (P : IProp GF) : IProp GF :=
 
 @[rocq_alias na_own_timeless]
 instance instTimeless_own (p : NaInvPoolName) (E : CoPset) : Timeless (own (GF := GF) p E) := by
-  unfold own
-  infer_instance
+  unfold own; infer_instance
 
 @[rocq_alias na_inv_contractive]
 instance instContractive_inv (p : NaInvPoolName) (N : Namespace) :
@@ -76,46 +77,42 @@ instance instNonExpansive_inv (p : NaInvPoolName) (N : Namespace) : NonExpansive
 @[rocq_alias na_inv_persistent]
 instance instPersistentInv (p : NaInvPoolName) (N : Namespace) (P : IProp GF) :
     Persistent (inv p N P) := by
-  unfold inv
-  infer_instance
+  unfold inv; infer_instance
 
 @[rocq_alias na_own_empty_persistent]
 instance instPersistent_own (p : NaInvPoolName) : Persistent (own (GF := GF) p ∅) := by
-  unfold own
-  infer_instance
+  unfold own; infer_instance
 
--- [TODO]: Maybe we can accelerate this process
 @[rocq_alias na_inv_iff]
 nonrec theorem inv_iff {p : NaInvPoolName} {N : Namespace} {P Q : IProp GF} :
     ⊢ inv p N P -∗ ▷ □ (P ↔ Q) -∗ inv p N Q := by
   unfold inv
   iintro ⟨%i, %Hin, HI⟩ #HPQ
   iexists i
-  isplit; (· ipureintro; assumption)
+  isplit; (· itrivial)
   iapply inv_iff $$ HI
-  iaesop baseline
-  -- inext
-  -- imodintro; isplit
-  -- · iintro (⟨HP, Ho⟩ | Htok)
-    -- · ileft
-    --   isplitr [Ho]
-    --   · icases HPQ with ⟨HPQm, _⟩
-    --     iapply HPQm $$ HP
-    --   · iassumption
-    -- · iright; iassumption
-  -- · iintro (⟨HQ, Ho⟩ | Htok)
-    -- · ileft
-    --   isplitr [Ho]
-    --   · icases HPQ with ⟨_, HQPm⟩
-    --     iapply HQPm $$ HQ
-    --   · iassumption
-    -- · iright; iassumption
+  inext; imodintro
+  isplit
+  · iintro (⟨HP, Ho⟩ | Htok)
+    · ileft
+      isplitr [Ho]
+      · icases HPQ with ⟨HPQm, _⟩
+        iapply HPQm $$ HP
+      · iassumption
+    · iright; iassumption
+  · iintro (⟨HQ, Ho⟩ | Htok)
+    · ileft
+      isplitr [Ho]
+      · icases HPQ with ⟨_, HQPm⟩
+        iapply HQPm $$ HQ
+      · iassumption
+    · iright; iassumption
 
 @[rocq_alias na_alloc]
 theorem alloc : ⊢@{IProp GF} |==> ∃ p : NaInvPoolName, own p ⊤ :=
   iOwn_alloc (E := W.inv) (.valid (⊤ : CoPset), .valid (∅ : PosSet)) ⟨trivial, trivial⟩
 
-@[rocq_alias na_own_disjoint, iaesop backward]
+@[rocq_alias na_own_disjoint]
 theorem own_disjoint {p : NaInvPoolName} {E1 E2 : CoPset} :
     ⊢ own (GF := GF) p E1 -∗ own p E2 -∗ ⌜E1 ## E2⌝ := by
   unfold own
@@ -127,7 +124,7 @@ theorem own_disjoint {p : NaInvPoolName} {E1 E2 : CoPset} :
   ipureintro
   exact valid_op_iff_disj.mp H.1
 
-@[rocq_alias na_own_union, iaesop backward]
+@[rocq_alias na_own_union]
 theorem own_union {p : NaInvPoolName} {E1 E2 : CoPset} (Hdisj : E1 ## E2) :
     own (GF := GF) p (E1 ∪ E2) ⊣⊢ own p E1 ∗ own p E2 := by
   refine .trans ?_ iOwn_op
@@ -145,8 +142,7 @@ theorem own_acc {E2 E1 : CoPset} {tid : NaInvPoolName} (Hsub : E2 ⊆ E1) :
   isplitl [H1]; iassumption
   iintro H1
   iapply (own_union disjoint_diff_right).mpr
-  iaesop baseline
-  -- isplitl [H1] <;> iassumption
+  isplitl [H1] <;> iassumption
 
 @[rocq_alias na_own_empty]
 theorem own_empty (p : NaInvPoolName) : ⊢@{IProp GF} |==> own p ∅ := iOwn_unit (E := W.inv)
@@ -163,14 +159,14 @@ nonrec theorem inv_alloc {p : NaInvPoolName} {E : CoPset} {N : Namespace} {P : I
   imod iOwn_updateP Hupd $$ Hempty with ⟨%y, %Hy, Hown⟩
   obtain ⟨i, rfl, Hi⟩ := Hy
   unfold inv
-  imod inv_alloc N E iprop( P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [HP Hown] with HI
-  all_goals
-    iaesop baseline
-  -- · inext; ileft; isplitl [HP] <;> iassumption
-  -- iexists i
-  -- isplitr
-  -- · ipureintro; assumption
-  -- · iassumption
+  imod inv_alloc N E iprop( P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [HP Hown]
+    with HI
+  · inext; ileft; isplitl [HP] <;> iassumption
+  imodintro
+  iexists i
+  isplit
+  · ipureintro; assumption
+  · iassumption
 
 @[rocq_alias na_inv_acc]
 nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : IProp GF}
@@ -186,7 +182,7 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
     iassumption
   icases (own_union disjoint_diff_right).mp $$ [HtokN] with ⟨Htoki, HtokNdi⟩
   · rw [← HNminusi]; iassumption
-  imod inv_acc _ _ _ HNE $$ Hinv with ⟨Hcontent, Hclose⟩
+  imod inv_acc HNE $$ Hinv with ⟨Hcontent, Hclose⟩
   icases Hcontent with (⟨HP, >Hdis⟩ | >Htoki2)
   · ihave Hreturn : ▷ (P ∗ iOwn (E := W.inv) p (.valid ∅, .valid {i}) ∨ own p {i}) $$ [Htoki]
     · inext; iright; iassumption
@@ -195,7 +191,7 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
     isplitl [HP]; iassumption
     isplitl [HtokRest]; iassumption
     iintro ⟨HPret, HtokFret⟩
-    imod inv_acc _ _ _ HNE $$ Hinv with ⟨Hcontent2, Hclose2⟩
+    imod inv_acc HNE $$ Hinv with ⟨Hcontent2, Hclose2⟩
     icases Hcontent2 with (⟨_HPconflict, >Hdis2⟩ | >Htoki_back)
     · iexfalso
       ihave Hk := iOwn_op (E := W.inv) $$ [Hdis Hdis2]
@@ -211,20 +207,17 @@ nonrec theorem inv_acc {p : NaInvPoolName} {E F : CoPset} {N : Namespace} {P : I
       ihave HtokN_new : own p ((↑N : CoPset)) $$ [Htoki_back HtokNdi]
       · conv => rhs; rw [HNminusi]
         iapply (own_union disjoint_diff_right).mpr
-        iaesop baseline
-        -- isplitl [Htoki_back]
-        -- · iexact Htoki_back
-        -- · iexact HtokNdi
+        isplitl [Htoki_back]
+        · iexact Htoki_back
+        · iexact HtokNdi
       conv => rhs; rw [← subset_union_diff HNF]
       iapply (own_union disjoint_diff_right).mpr
-      iaesop baseline
-      -- isplitl [HtokN_new]
-      -- · iexact HtokN_new
-      -- · iexact HtokFret
+      isplitl [HtokN_new]
+      · iexact HtokN_new
+      · iexact HtokFret
   · iexfalso
     ihave Hbad : ⌜({i} : CoPset) ## {i}⌝ $$ [Htoki Htoki2]
-    · iaesop baseline
-      -- iapply own_disjoint $$ Htoki Htoki2
+    · iapply own_disjoint $$ Htoki Htoki2
     icases Hbad with %Hbad
     exact Hbad i ⟨mem_singleton.mpr rfl, mem_singleton.mpr rfl⟩ |>.elim
 
