@@ -58,11 +58,10 @@ theorem wp_landinsKnot (P : Val → IProp GF) (Q : Val → Val → IProp GF) (F 
   imod inv_acc $$ Hinv with ⟨Hr, Hcl⟩
   simp only [CoPset.subseteq_top]
   imodintro
-  set_option trace.iaesop.backward true in
   iapply wp_load $$ Hr
+  iintro !> Hr
+  imod Hcl $$ Hr
   iaesop? baseline with [backward wp_load]
---   iintro !> Hr
---   imod Hcl $$ Hr
 --   iapply H $$ [HP] [$]
 --   iframe HP
 --   iintro %v3 !> %Φ HP HQ

@@ -1,10 +1,18 @@
 name = "IAesopTest"
-defaultTargets = ["IAesopTest"]
+defaultTargets = ["IAesopTest", "IrisITree"]
 
 [[require]]
 name = "iris"
 path = "../Iris"
 
+[[require]]
+name = "Coinductive"
+scope = "ISTA-PLV"
+rev = "d1aeffe87ec7bd4bd13ed92fdc00ef6c5d58f800"
+
 [[lean_lib]]
 name = "IAesopTest"
 globs = ["IAesopTest.*"]
+
+[[lean_lib]]
+name = "IrisITree"
