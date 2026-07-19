@@ -125,7 +125,7 @@ end Notation
 
 open Notation
 
-def Step.of_primStep {e σ} {obs : List Obs} {e'} {σ' : State} {eₜ}
+theorem Step.of_primStep {e σ} {obs : List Obs} {e'} {σ' : State} {eₜ}
     (H : (e, σ) -<obs>-> (e', σ', eₜ)) {t₁ t₂: List Expr} :
     Step (t₁ ++ e :: t₂, σ) obs (t₁ ++ e' :: t₂ ++ eₜ, σ') :=
   atomic H ..
@@ -160,6 +160,10 @@ scoped notation (name := ErasedStep) conf:40 " -·->ₜₚ " conf':41 => Languag
 /-- A sequence of `Language.erasedStep`s -/
 scoped notation (name := erasedStepStar) conf:40 " -·->ₜₚ* " conf':41 =>
   Relation.ReflTransGen Language.ErasedStep conf conf'
+
+/-- A nonempty sequence of `Language.erasedStep`s -/
+scoped notation (name := erasedStepPlus) conf:40 " -·->ₜₚ+ " conf':41 =>
+  Relation.TransGen Language.ErasedStep conf conf'
 
 end Notation
 
@@ -243,6 +247,11 @@ theorem stronglyAtomic_atomic {a} :
   | .StronglyAtomic => id
   | .WeaklyAtomic => fun ⟨h⟩ => ⟨by grind only [not_reducible_iff_irreducible, val_irreducible]⟩
 
+theorem prim_val_stuck (h : (↑ v, σ) -<obs>-> (e', σ', eₜ)) : False := by
+  simpa using val_stuck h
+
+instance val_atomic {a : Atomicity} {v : Val} : Atomic a (Λ.ofVal v) :=
+  ⟨fun h => by simpa using val_stuck h⟩
 
 /-- The function `K` models an evaluation context for the language -/
 @[rocq_alias LanguageCtx]
