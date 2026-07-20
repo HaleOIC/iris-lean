@@ -38,11 +38,11 @@ instance BUpdPlain_ne : NonExpansive (BUpdPlain (PROP := PROP)) where
 
 theorem BUpdPlain_intro {P : PROP} : P ⊢ BUpdPlain P := by
   unfold BUpdPlain
-  iaesop? baseline
+  iaesop?
 
 theorem BUpdPlain_mono {P Q : PROP} : (P ⊢ Q) → (BUpdPlain P ⊢ BUpdPlain Q) := by
   unfold BUpdPlain
-  iaesop? baseline
+  iaesop?
   -- iintro R %HQR Hp
   -- iapply R
   -- iintro HP
@@ -51,7 +51,7 @@ theorem BUpdPlain_mono {P Q : PROP} : (P ⊢ Q) → (BUpdPlain P ⊢ BUpdPlain Q
 
 theorem BUpdPlain_idemp {P : PROP} : BUpdPlain (BUpdPlain P) ⊢ BUpdPlain P := by
   unfold BUpdPlain
-  iaesop? baseline
+  iaesop?
   -- iintro Hp %R H
   -- iapply Hp
   -- iintro Hp
@@ -59,7 +59,7 @@ theorem BUpdPlain_idemp {P : PROP} : BUpdPlain (BUpdPlain P) ⊢ BUpdPlain P := 
 
 theorem BUpdPlain_frame_r {P Q : PROP} : BUpdPlain P ∗ Q ⊢ (BUpdPlain iprop(P ∗ Q)) := by
   unfold BUpdPlain
-  iaesop? baseline
+  iaesop?
   -- iintro ⟨Hp, Hq⟩ %R H
   -- iapply Hp
   -- iintro Hp
@@ -70,7 +70,7 @@ theorem BUpdPlain_frame_r {P Q : PROP} : BUpdPlain P ∗ Q ⊢ (BUpdPlain iprop(
 
 theorem BUpdPlain_plainly {P : PROP} : BUpdPlain iprop(■ P) ⊢ (■ P) := by
   unfold BUpdPlain
-  iaesop? baseline
+  iaesop?
   -- iintro H
   -- iapply H
   -- iapply wand_rfl
@@ -78,7 +78,7 @@ theorem BUpdPlain_plainly {P : PROP} : BUpdPlain iprop(■ P) ⊢ (■ P) := by
 /- BiBUpdPlainly entails the alternative definition -/
 theorem BUpd_BUpdPlain [BIUpdate PROP] [BIBUpdateSbi PROP] [BIAffine PROP] {P : PROP} : (|==> P) ⊢ BUpdPlain P := by
   unfold BUpdPlain
-  iaesop? baseline
+  iaesop?
   -- iintro HP %_ Hx
   -- imod HP
   -- iapply Hx $$ HP
@@ -92,7 +92,7 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
   (Hup : x ~~>: Φ) :
     own x ⊢ BUpdPlain iprop(∃ y, ⌜Φ y⌝ ∧ own y) := by
   unfold BUpdPlain
-  iaesop? baseline pureBy assumption
+  iaesop? pureBy assumption
   -- iintro Hx
   -- iintro %R H
   -- iapply own_updateP_plainly x Φ R Hup
@@ -108,5 +108,3 @@ theorem own_updateP [UCMRA M] {own : M → PROP} {x : M} {Φ : M → Prop}
 
 end BupdPlainDef
 end BUpdPlain
-
-

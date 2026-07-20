@@ -68,14 +68,14 @@ theorem isLock_contractive γ v : OFE.Contractive (lk.isLock N γ v) := by
     iintro !> !>
     irewrite [HEQ]
     · exact ⟨fun _ _ _ h => wandIff_ne.ne h .rfl⟩
-    · iaesop baseline
+    · iaesop
       -- iapply equiv_wandIff; exact .rfl
   · iintro #H
     iapply Lock.isLock_iff $$ H
     iintro !> !>
     irewrite [HEQ]
     · exact ⟨fun _ _ _ h => wandIff_ne.ne .rfl h⟩
-    · iaesop baseline
+    · iaesop
       -- iapply equiv_wandIff; exact .rfl
 
 instance is_lock_ne γ v : OFE.NonExpansive (lk.isLock N γ v) :=
@@ -88,7 +88,7 @@ theorem newlock_spec R :
     WP hl(&lk.newlock #()) {{ Φ }} := by
   iintro %Φ
   ihave H := lk.newlock_spec_delay_init $$ %(λ v => iprop(|={⊤}=> Φ v))
-  iaesop? baseline with [backward wp_fupd]
+  iaesop? with [backward wp_fupd]
   -- iintro !> HR HΦ
   -- iapply wp_fupd
   -- iapply lk.newlock_spec_delay_init (N := N) $$ %(fun v => iprop(|={⊤}=> Φ v))

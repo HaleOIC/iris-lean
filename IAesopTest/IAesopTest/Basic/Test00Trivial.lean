@@ -31,101 +31,101 @@ example [BI PROP] (P : PROP) : P ⊢ P := by
   iaesop breadthFirst normAll
 
 example [BI PROP] (P : PROP) : P ⊢ P := by
-  -- iaesop baseline
+  -- iaesop
   iaesop
 
 /- Normalization rewrites both the spatial context and target using Lean equalities. -/
 example [BI PROP] (P Q : Nat → PROP) (n m : Nat) (h : n = m) :
     P n ∗ Q n ⊢ Q m ∗ P m := by
-  iaesop baseline
+  iaesop
 
 -- Basic context split test
 example [BI PROP] (P Q R : PROP) : P ∗ Q ∗ R ⊢ R ∗ Q ∗ P:= by
-  iaesop baseline
+  iaesop
 
 -- Multiple context split test
 example [BI PROP] [BIAffine PROP] (P Q R S T: PROP) :
     T -∗ P -∗ Q -∗ R -∗ S -∗ P ∗ Q ∗ R ∗ S := by
-  iaesop baseline
+  iaesop
 
 example [BI PROP] [BIAffine PROP] (P Q R S : PROP) :
     P -∗ Q  -∗ (P -∗ Q -∗ R) -∗ (P -∗ R)  -∗ (Q -∗ P -∗ S) -∗ (Q -∗ S) -∗ (R ∗ S) := by
   iintro HP HQ H1 H2 H3 H4
-  iaesop baseline
+  iaesop
 
 /- Nested context split test -/
 example [BI PROP] (P Q R S : PROP) :
     P -∗ Q -∗ R -∗ ((P ∗ Q) -∗ R -∗ S) -∗ S := by
-  iaesop baseline
+  iaesop
 
 example [BI PROP] (P Q R S : PROP) :
     Q -∗ R -∗ (P -∗ Q -∗ S) -∗ (R ∗ (P -∗ S)) := by
-  iaesop baseline
+  iaesop
 
 example [BI PROP] (P Q R : PROP) :
     P ∗ (∀ x, P -∗ ⌜x = 0⌝ -∗ (Q ∗ (True -∗ R))) ⊢ R ∗ Q := by
-  iaesop baseline pureBy trivial
+  iaesop pureBy trivial
 
 /-- Tests `iapply` with two wands and subgoals -/
 @[iaesop forward 100% backward 100%]
 example [BI PROP] (P Q : Nat → PROP) :
     (P 1 -∗ P 2 -∗ Q 1) ⊢ □ P 1 -∗ P 2 -∗ Q 1 := by
-  iaesop baseline
+  iaesop
 
 /-- Tests `ispecialize` with named subgoal -/
 @[iaesop backward 100%]
 example [BI PROP] (Q : PROP) (φ : Prop) (hφ : φ):
     P ⊢ (⌜φ⌝ -∗ P -∗ ⌜True⌝ -∗ Q) -∗ Q := by
-  iaesop baseline pureBy grind
+  iaesop pureBy grind
 
 /-- Tests `ispecialize` with mixed forall and wand specialization -/
 -- A very useful example: we can identify the iprop in the target proposition
 @[iaesop forward 100%]
 example [BI PROP] (Q : Nat → PROP) :
     ⊢ □ P1 -∗ P2 -∗ (□ P1 -∗ (∀ x, P2 -∗ Q x)) -∗ Q y := by
-  iaesop baseline
+  iaesop
 
 /- Tests `applyHyps` can parse Lean hypothesis to apply -/
 example [BI PROP] (P Q : Nat → PROP) (H : ∀ x, ⊢ P x -∗ Q x) :
     P 1 -∗ Q 1 := by
-  iaesop baseline
+  iaesop
 
 /-- Tests `iapply` with forall specialization -/
 example [BI PROP] (P Q : α → PROP) (a b : α) :
     P a ∗ (∀ x, ∀ y, P x -∗ Q y) ⊢ Q b := by
-  iaesop baseline
+  iaesop
 
 /-- One more example for iaesop, context refill -/
 example [BI PROP] (P Q R : α → PROP) (a b c : α)
     (H : ⊢ ∀ x, ∀ y, ∀ z, P x -∗ Q y -∗ R z) : P a ∗ Q b ⊢ R c := by
-  iaesop baseline
+  iaesop
 
 /-- Tests `iexact` with fupd -/
 example [BI PROP] [BIUpdate PROP] [BIFUpdate PROP] [BIUpdateFUpdate PROP]
     (E : CoPset) (P : PROP) : P ⊢ |={E}=> P := by
-  iaesop baseline
+  iaesop
 
 /-- Tests `iapply` with intuitionistic forall from Lean -/
 example [BI PROP] (P Q : α → PROP) (a b : α) (H : ⊢ □ ∀ x, ∀ y, P x -∗ Q y) : P a ⊢ Q b := by
-  iaesop baseline
+  iaesop
 
 example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> |==> P ⊢ |==> P := by
-  iaesop baseline
+  iaesop
 
 example [BI PROP] [BIAffine PROP] (P Q R S : PROP) :
     S -∗ (P ∨ Q) -∗ (P -∗ R) -∗ (Q -∗ S -∗ R) -∗ (Q -∗ R) -∗ (R ∗ S) := by
-  iaesop baseline
+  iaesop
 
 example [BI PROP] (P Q : α → PROP) (R : PROP) :
     P a -∗ □ (∀ x, (P x -∗ Q x) ∧ R) -∗ Q a := by
-  iaesop baseline
+  iaesop
 
 /-- Tests `iexists` with anonymous metavariable -/
 example [BI PROP] : ⊢@{PROP} ∃ x, ⌜x = 42⌝ := by
-  iaesop baseline pureBy grind
+  iaesop pureBy grind
 
 example [BI PROP] (P : α → PROP) : P a ⊢ ∃ x, P x := by
-  iaesop baseline
+  iaesop
 
 section LocalRuleFrontend
 
@@ -134,7 +134,7 @@ theorem local_rule_added_test [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
   exact And.intro True.intro True.intro
 
 example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
-  iaesop baseline with [backward local_rule_added_test 75%]
+  iaesop with [backward local_rule_added_test 75%]
 
 theorem removable_rule_test [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
   ipureintro
@@ -147,18 +147,18 @@ error: unsolved goals
 -/
 #guard_msgs (substring := true) in
 example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
-  iaesop baseline without [backward removable_rule_test]
+  iaesop without [backward removable_rule_test]
 
 example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
-  iaesop baseline
+  iaesop
 
 end LocalRuleFrontend
-
 
 section specialExamples
 
 example [BI PROP] (A B C D : PROP) (H : A ⊢ B) :
     A ∗ D ⊢ (B ∨ C) ∗ D := by
-  iaesop baseline
+  iaesop
+
 
 end specialExamples

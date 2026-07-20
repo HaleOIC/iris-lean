@@ -17,12 +17,6 @@ private meta def parseNormMode (stx : Syntax) : TermElabM (Bool × Bool) := do
   | `(iaesopNormMode| normAll) => pure (true, true)
   | _ => throwUnsupportedSyntax
 
-private meta def parseRuleSet (stx : Syntax) : TermElabM Bool := do
-  match stx with
-  | `(iaesopRuleSet| builtin) => pure false
-  | `(iaesopRuleSet| baseline) => pure true
-  | _ => throwUnsupportedSyntax
-
 private meta def parseStrategy (stx : Syntax) : TermElabM Strategy := do
   match stx with
   | `(iaesopStrategy| bestFirst) => pure .bestFirst
@@ -97,7 +91,6 @@ private meta def parseRuleEdits (edits : Array (TSyntax `iaesopRuleEdit)) :
 
 private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesopStrategy))
     (normModeStx? : Option (TSyntax `iaesopNormMode))
-    (ruleSetStx? : Option (TSyntax `iaesopRuleSet))
     (pureSolverStx? : Option (TSyntax `iaesopPureSolver))
     (ruleEdits : Array (TSyntax `iaesopRuleEdit)) : TermElabM SearchConfig := do
   let strategy ← match strategyStx? with
@@ -106,9 +99,6 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
   let (enableSimp, enableUnfold) ← match normModeStx? with
     | none => pure (false, false)
     | some normModeStx => parseNormMode normModeStx
-  let useBaseline ← match ruleSetStx? with
-    | none => pure false
-    | some ruleSetStx => parseRuleSet ruleSetStx
   let pureSolver ← match pureSolverStx? with
     | none => pure defaultPureSolver
     | some pureSolverStx => parsePureSolver pureSolverStx
@@ -118,7 +108,6 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
     strategy := strategy
     enableSimp? := enableSimp
     enableUnfold? := enableUnfold
-    baseline? := useBaseline
     pureSolver
     localTheoremRules
     erasedTheoremRules
@@ -129,13 +118,13 @@ meta def parse (stx : Syntax) : TermElabM SearchConfig := do
   withRef stx do
     match stx with
     | `(tactic| iaesop $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
-        $[$ruleSet:iaesopRuleSet]? $[$pureSolver:iaesopPureSolver]?
+        $[$pureSolver:iaesopPureSolver]?
         $[$ruleEdits:iaesopRuleEdit]*) =>
-        mkConfig false strategy normMode ruleSet pureSolver ruleEdits
+        mkConfig false strategy normMode pureSolver ruleEdits
     | `(tactic| iaesop? $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
-        $[$ruleSet:iaesopRuleSet]? $[$pureSolver:iaesopPureSolver]?
+        $[$pureSolver:iaesopPureSolver]?
         $[$ruleEdits:iaesopRuleEdit]*) =>
-        mkConfig true strategy normMode ruleSet pureSolver ruleEdits
+        mkConfig true strategy normMode pureSolver ruleEdits
     | _ =>
         throwUnsupportedSyntax
 

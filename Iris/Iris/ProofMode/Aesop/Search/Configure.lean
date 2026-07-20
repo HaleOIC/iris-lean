@@ -49,8 +49,6 @@ structure SearchConfig where
   enableSimp? : Bool := false
   /- whether enable unfold during normalization stage (default: false) -/
   enableUnfold? : Bool := false
-  /- whether select the baseline version (default: false) -/
-  baseline? : Bool := false
   /- Solver run on pure Lean goals produced by `ipureintro`. -/
   pureSolver : Syntax := defaultPureSolver
   /- Extra theorem rules added only for this `iaesop` invocation. -/

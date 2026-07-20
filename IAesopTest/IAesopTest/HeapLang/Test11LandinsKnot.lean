@@ -61,7 +61,7 @@ theorem wp_landinsKnot (P : Val → IProp GF) (Q : Val → Val → IProp GF) (F 
   iapply wp_load $$ Hr
   iintro !> Hr
   imod Hcl $$ Hr
-  iaesop? baseline with [backward wp_load]
+  iaesop? with [backward wp_load]
 --   iapply H $$ [HP] [$]
 --   iframe HP
 --   iintro %v3 !> %Φ HP HQ

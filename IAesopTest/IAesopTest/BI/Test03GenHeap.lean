@@ -213,7 +213,7 @@ theorem metaToken_union_1 {l : L} {E1 E2 : CoPset} (he : E1 ## E2) :
   -- TODO: why do we need to destruct in a second step?
   icases (iOwn_ne.eqv (ReservationMap.token_union he).symm) $$ Hm with Hm
   icases Hm with ⟨Hm1, Hm2⟩
-  iaesop? baseline
+  iaesop?
   -- isplitl [Hm1]
   -- · iexists γm
   --   iframe Hγm Hm1
@@ -232,8 +232,9 @@ theorem metaToken_union_2 {l : L} {E1 E2 : CoPset} :
   iexists γm1
   iframe Hγm1
   iapply (equiv_iff.mp (iOwn_ne.eqv (ReservationMap.token_union hdisj))).mpr
-  iapply iOwn_op
-  iframe
+  iaesop
+  -- iapply iOwn_op
+  -- iframe
 
 @[rocq_alias meta_token_union]
 theorem metaToken_union {l : L} {E1 E2 : CoPset} (he : E1 ## E2) :

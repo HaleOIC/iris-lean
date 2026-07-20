@@ -16,11 +16,6 @@ syntax "unfold" : iaesopNormMode
 syntax "simp" : iaesopNormMode
 syntax "normAll" : iaesopNormMode
 
-/- Specify the rule set used by iaesop. -/
-declare_syntax_cat iaesopRuleSet
-syntax "builtin" : iaesopRuleSet
-syntax "baseline" : iaesopRuleSet
-
 /- Optional pure Lean solver run after `ipureintro` exposes a pure goal. -/
 declare_syntax_cat iaesopPureSolver
 syntax "pureBy" tactic : iaesopPureSolver
@@ -41,8 +36,8 @@ syntax "with" "[" iaesopLocalRule,* "]" : iaesopRuleEdit
 syntax "without" "[" iaesopErasedRule,* "]" : iaesopRuleEdit
 
 syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
-  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
+  (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
 syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
-  (ppSpace iaesopRuleSet)? (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
+  (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
 
 end Iris.ProofMode.Aesop

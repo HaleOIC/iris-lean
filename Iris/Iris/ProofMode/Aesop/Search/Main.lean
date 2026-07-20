@@ -3,9 +3,7 @@ module
 public meta import Iris.ProofMode.Aesop.Search.Configure
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Expansion
-public meta import Iris.ProofMode.Aesop.Search.Propogation
 public meta import Iris.ProofMode.Aesop.Search.Settlement
-public meta import Iris.ProofMode.Aesop.Search.Finalization
 public meta import Iris.ProofMode.Aesop.Search.Replay
 public meta import Iris.ProofMode.Aesop.Rule.Backward.Index
 
@@ -67,8 +65,6 @@ private meta def expandNextGoal : SearchM Q Bool := do
     return (← r.get).state.isProven
   then Baseline.settleFromRapp rref
 
-  if (← gref.get).state.isProven && !(← readThe SearchM.Context).config.baseline? then
-    propogateFromGoal gref
   return true
 
 private meta def Goal.currentMVar? (g : Goal) : Option MVarId :=
@@ -138,10 +134,7 @@ private meta def checkRootProven : SearchM Q Bool := do
   let rootRef := ← getRootGoal
   if (← rootRef.get).state.isProven then
     traceTreeBeforeReplay
-    if (← readThe SearchM.Context).config.baseline? then
-      Baseline.replayProof
-    else
-      finalizeProof
+    Baseline.replayProof
     let config := (← readThe SearchM.Context).config
     unless config.generateScript? do return true
     let rootRef ← getRootGoal

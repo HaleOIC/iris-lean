@@ -3,7 +3,6 @@ module
 public meta import Iris.ProofMode.Aesop.Search.SearchM
 public meta import Iris.ProofMode.Aesop.Search.Types
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Baseline
-public meta import Iris.ProofMode.Aesop.Rule.Commit.Builtin
 public meta import Iris.ProofMode.Aesop.Rule.Types.Runner
 
 public meta section
@@ -46,11 +45,7 @@ def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)
   let mut rappRefs := #[]
   let mut goalsToEnqueue := #[]
   for spec in output.rappSepcs do
-    let (rappRef, goalRefs) ←
-      if (← readThe SearchM.Context).config.baseline? then
-        Baseline.mkRappSpec gref usedRule spec
-      else
-        Rule.Commit.Builtin.mkRappSpec gref usedRule spec
+    let (rappRef, goalRefs) ← Baseline.mkRappSpec gref usedRule spec
     rappRefs := rappRefs.push rappRef
     goalsToEnqueue := goalsToEnqueue ++ goalRefs
 
