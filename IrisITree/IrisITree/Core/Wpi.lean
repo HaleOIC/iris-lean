@@ -1,6 +1,7 @@
 module
 
 import Iris.BI.Lib.Fixpoint
+public import Iris.BI.WeakestPre
 public import Iris.ProofMode.Classes
 import Iris.ProofMode
 public import ITree.Definition
@@ -81,20 +82,29 @@ instance {R Ms Me} {t : ITree E R} : OFE.NonExpansive (wpi H Ms Me t) := by
 
 end wp_itree_def
 
--- TODO: This turns }} into a token. Can we somehow prevent this?
-macro:max "WPi " t:term:20 " @> " H:term:20 ";" Ms:term:20 "," Me:term:20 " {{ " Φ:term:20 " }}" : term => `(wpi (H := $H) $Ms $Me $t $Φ)
-macro:max "WPi " t:term:20 " @> " H:term:20 ";" Ms:term:20 "," Me:term:20 " {{ " v:ident " , " Q:term:20 " }}" : term => `(wpi (H := $H) $Ms $Me $t <| λ $v => $Q)
+syntax (name := wpiNotation) "WPi " term:20 " @> " term:20 "; " term:max
+  ("," term:max)? wpPostcond : term
 
-macro:max "WPi " t:term:20 " @> " H:term:20 ";" M:term:20 " {{ " Φ:term:20 " }}" : term => `(wpi (H := $H) $M $M $t $Φ)
-macro:max "WPi " t:term:20 " @> " H:term:20 ";" M:term:20 " {{ " v:ident " , " Q:term:20 " }}" : term => `(wpi (H := $H) $M $M $t <| λ $v => $Q)
+@[macro wpiNotation]
+meta def wpiMacro : Lean.Macro := fun stx => do
+  match stx with
+  | `(WPi $t:term @> $H:term; $Ms:term, $Me:term $postcond:wpPostcond) =>
+    let (Φ, _) ← Iris.parseWpPostcond postcond
+    `(wpi (H := $H) $Ms $Me $t $Φ)
+  | `(WPi $t:term @> $H:term; $M:term $postcond:wpPostcond) =>
+    let (Φ, _) ← Iris.parseWpPostcond postcond
+    `(wpi (H := $H) $M $M $t $Φ)
+  | _ => Lean.Macro.throwUnsupported
 
 delab_rule wpi
-  | `($_ $H $Ms $Me $t (fun $v:ident => $Q)) =>
-    if Ms == Me then `(WPi $t @> $H;$Ms {{ $v, $Q }})
-    else `(WPi $t @> $H;$Ms,$Me {{ $v, $Q }})
-  | `($_ $H $Ms $Me $t $Φ) =>
-    if Ms == Me then `(WPi $t @> $H;$Ms {{ $Φ }})
-    else `(WPi $t @> $H;$Ms, $Me {{ $Φ }})
+  | `($_ $H $Ms $Me $t (fun $v:ident => $Q)) => do
+    let inner ← Iris.unexpandWpPostcondInner (← `(fun $v => $Q))
+    if Ms == Me then `(WPi $t @> $H;$Ms {{ $inner }})
+    else `(WPi $t @> $H;$Ms,$Me {{ $inner }})
+  | `($_ $H $Ms $Me $t $Φ) => do
+    let inner ← Iris.unexpandWpPostcondInner Φ
+    if Ms == Me then `(WPi $t @> $H;$Ms {{ $inner }})
+    else `(WPi $t @> $H;$Ms, $Me {{ $inner }})
 
 section wpi_unfold
 

@@ -79,8 +79,15 @@ def wpi_tp {E : Effect} {R : Type _} {PROP : Type _} [BI PROP] [BIFUpdate PROP]
     (Φ : R → PROP) : PROP :=
   lfp_tp (wpiConstF H Φ) Ms
 
-macro:20 "WPi_tp " ts:term:20 " @> " H:term:20 " {{ " Φ:term:20 " }}" : term => `(wpi_tp $H $ts $Φ)
-macro:20 "WPi_tp " ts:term:20 " @> " H:term:20 " {{ " v:ident " , " Q:term:20 " }}" : term => `(wpi_tp $H $ts (fun $v => $Q))
+syntax:20 (name := wpiTpNotation) "WPi_tp " term:20 " @> " term:max wpPostcond : term
+
+@[macro wpiTpNotation]
+meta def wpiTpMacro : Lean.Macro := fun stx => do
+  match stx with
+  | `(WPi_tp $ts:term @> $H:term $postcond:wpPostcond) =>
+    let (Φ, _) ← Iris.parseWpPostcond postcond
+    `(wpi_tp $H $ts $Φ)
+  | _ => Lean.Macro.throwUnsupported
 
 section wpi_tp_section
 
