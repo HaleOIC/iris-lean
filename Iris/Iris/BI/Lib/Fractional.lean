@@ -59,6 +59,7 @@ theorem fractional_merge [Fractional Φ] [hP1 : AsFractional P1 Φ q1] [hP2 : As
   (sep_mono hP1.as_fractional.1 hP2.as_fractional.1).trans (Fractional.fractional q1 q2).2
 
 set_option synthInstance.checkSynthOrder false in
+@[ipm_backtrack]
 instance (priority := default - 10) combineSepAsFractional
     [hP1 : AsFractional P1 Φ q1] [hP2 : AsFractional P2 Φ q2] :
     CombineSepAs P1 P2 (Φ (q1 + q2)) where
