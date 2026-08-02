@@ -9,3 +9,10 @@ Standalone Lake package for evaluating the local `iaesop` tactic from
 
 Running `lake build` builds both libraries. `IrisITree` additionally uses the
 `ISTA-PLV/Coinductive` package at the revision recorded in `lake-manifest.json`.
+
+## Synthetic benchmarks
+
+The deterministic synthetic benchmark framework is documented in
+[`BENCHMARK_FRAMEWORK.md`](BENCHMARK_FRAMEWORK.md), with generator and runner
+instructions in [`benchmarks/README.md`](benchmarks/README.md). Its checked-in
+smoke cases are part of the `IAesopTest.Benchmark` module.
