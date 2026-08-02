@@ -106,9 +106,11 @@ theorem nil_spec (Φ : Val → IProp GF) :
   wp_pures
   imodintro
   iapply Hl
+  iaesop pureBy simp with [backward isList_nil]
   iapply isList_nil
   itrivial
 
+@[iaesop backward 50%]
 theorem cons_spec x l ls Φ :
     isList (GF:=GF) l ls -∗
     (∀ v, isList v (x :: ls) -∗ Φ v) -∗
@@ -125,6 +127,7 @@ theorem cons_spec x l ls Φ :
   iexists _, _; iframe
   itrivial
 
+@[iaesop backward 50%]
 theorem append_spec l1 ls1 l2 ls2 Φ :
     isList (GF:=GF) l1 ls1 -∗
     isList l2 ls2 -∗
@@ -251,33 +254,19 @@ theorem quicksort_spec l ls Φ :
     iapply cons_spec $$ Hl2
     iintro %_ _
     wp_pures
-    iapply append_spec $$ [$] [$]
-    iintro %_ _
-    iapply HΦ $$ [$]
-    · ipureintro
-      have : ls2'.all (head < ·) := by grind
+    iaesop pureStop
+    -- iapply append_spec $$ [$] [$]
+    -- iintro %_ _
+    · have : ls2'.all (head < ·) := by grind
       grind [pairwise_cons]
-    · ipureintro
+    · have : ls2'.all (head < ·) := by grind
       grind [filter_append_perm]
-
--- example (l l1 l2 : List Int) x :
---   Perm (l.filter (· ≤ x)) l1 →
---   Perm (l.filter (x < ·)) l2 →
---   Perm (x :: l) (l1 ++ x :: l2) := by
---     intro h1 h2
---     have : Perm l (l.filter (· ≤ x) ++ l.filter (x < ·)) := by
---       grind [filter_append_perm]
---     grind
-
--- example (l l1 l2 : List Int) x :
---   Perm (l.filter (· ≤ x)) l1 →
---   Pairwise LE.le l1 →
---   Pairwise LE.le l2 →
---   Perm (l.filter (x < ·)) l2 →
---   Pairwise LE.le (l1 ++ x :: l2) := by
---     intro h1 h2 h3 h4
---     have : l2.all (x < ·) := by grind [Perm.mem_iff]
---     grind [pairwise_cons]
+    -- iapply HΦ $$ [$]
+    -- · ipureintro
+    --   have : ls2'.all (head < ·) := by grind
+    --   grind [pairwise_cons]
+    -- · ipureintro
+    --   grind [filter_append_perm]
 
 theorem wp_makeList (l : List Int) (Φ : Val → IProp GF) :
     (∀ v, isList v l -∗ Φ v) -∗
@@ -311,9 +300,10 @@ theorem wp_checkSorted (v vacc : Val) (l : List Int) (Φ : Val → IProp GF) :
   | nil =>
     icases isList_nil $$ H with %heq; subst heq
     wp_pures
-    imodintro
-    iapply HΦ $$ H
-    itrivial
+    iaesop pureBy simp
+    -- imodintro
+    -- iapply HΦ $$ H
+    -- itrivial
   | cons hd tl =>
     icases isList_cons $$ H with ⟨%loc, %tlv, %heq, Hpt, Htl⟩
     subst heq
@@ -328,9 +318,8 @@ theorem wp_checkSorted (v vacc : Val) (l : List Int) (Φ : Val → IProp GF) :
       iintro %bv Hl %hb
       iapply HΦ $$ [Hpt Hl]
       · rw [isList]
-        iexists loc, tlv
-        iframe
-        itrivial
+        iaesop simp pureStop
+        simp
       itrivial
     · wp_pures
       rw [decide_eq_true (hva hd List.mem_cons_self)]
@@ -340,10 +329,13 @@ theorem wp_checkSorted (v vacc : Val) (l : List Int) (Φ : Val → IProp GF) :
       iintro %bv Hl %hb
       iapply HΦ $$ [Hpt Hl]
       · rw [isList]
-        iexists loc, tlv
-        iframe
-        itrivial
-      itrivial
+        iaesop simp pureStop
+        simp
+        -- iexists loc, tlv
+        -- iframe
+        -- itrivial
+      iaesop simp pureBy simp
+      -- itrivial
 
 end Specs
 
@@ -366,9 +358,10 @@ theorem wp_sortAndCheck [HeapLangGS hlc GF] (l : List Int) :
   iapply quicksort_spec $$ Hv
   iintro %v %l' Hv %Hsorted %Heqv
   wp_pures
-  iapply wp_checkSorted $$ Hv %Hsorted %(Or.inl rfl)
-  iintro %bv Hv' %hbv
-  itrivial
+  iaesop pureBy simp [*] with [backward wp_checkSorted]
+  -- iapply wp_checkSorted $$ Hv %Hsorted %(Or.inl rfl)
+  -- iintro %bv Hv' %hbv
+  -- itrivial
 
 /-- Full application of adequacy: sortAndCheck is safe in any state and only ever return true. -/
 theorem sortAndCheckAdequate (l : List Int) (σ : State) :

@@ -50,7 +50,8 @@ theorem wp_landinsKnot (P : Val → IProp GF) (Q : Val → Val → IProp GF) (F 
   iintro !> Hr
   imod inv_alloc landinN ⊤ _ $$ Hr with #Hinv
   ihave HQ : ▷ (∀ u, Q u v1 -∗ Φ u) $$ [HQ]
-  · inext; iexact HQ
+  · iaesop
+    -- inext; iexact HQ
   iloeb as IH generalizing %v1 %Φ
   wp_rec
   wp_bind !_
@@ -60,7 +61,7 @@ theorem wp_landinsKnot (P : Val → IProp GF) (Q : Val → Val → IProp GF) (F 
   imodintro
   iapply wp_load $$ Hr
   iintro !> Hr
-  imod Hcl $$ Hr
+  ihave H' := Hcl $$ Hr
   iaesop? with [backward wp_load]
 --   iapply H $$ [HP] [$]
 --   iframe HP

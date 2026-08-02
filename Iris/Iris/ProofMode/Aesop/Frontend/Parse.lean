@@ -24,9 +24,10 @@ private meta def parseStrategy (stx : Syntax) : TermElabM Strategy := do
   | `(iaesopStrategy| breadthFirst) => pure .breadthFirst
   | _ => throwUnsupportedSyntax
 
-private meta def parsePureSolver (stx : Syntax) : TermElabM Syntax := do
+private meta def parsePureSolver (stx : Syntax) : TermElabM (Bool × Syntax) := do
   match stx with
-  | `(iaesopPureSolver| pureBy $solver:tactic) => pure solver.raw
+  | `(iaesopPureSolver| pureBy $solver:tactic) => pure (false, solver.raw)
+  | `(iaesopPureSolver| pureStop) => pure (true, defaultPureSolver)
   | _ => throwUnsupportedSyntax
 
 private meta def parseSuccessProbability (p : Syntax) : TermElabM Percent := do
@@ -99,8 +100,8 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
   let (enableSimp, enableUnfold) ← match normModeStx? with
     | none => pure (false, false)
     | some normModeStx => parseNormMode normModeStx
-  let pureSolver ← match pureSolverStx? with
-    | none => pure defaultPureSolver
+  let (pureStop?, pureSolver) ← match pureSolverStx? with
+    | none => pure (false, defaultPureSolver)
     | some pureSolverStx => parsePureSolver pureSolverStx
   let (localTheoremRules, erasedTheoremRules) ← parseRuleEdits ruleEdits
   return {
@@ -109,6 +110,7 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
     enableSimp? := enableSimp
     enableUnfold? := enableUnfold
     pureSolver
+    pureStop?
     localTheoremRules
     erasedTheoremRules
   }

@@ -183,7 +183,9 @@ theorem resolve_proph [DecidableEq P] (p : P) (v : V) (pvs : ProphValList P V) (
   · itrivial
   iexists (insert R p (prophListResolves pvs p))
   iframe Hauth
-  ipureintro
+  iaesop pureStop
+
+  -- ipureintro
   refine ⟨fun q ws HEq => ?_, fun q hq => ?_⟩
   · by_cases h : p = q
     · subst h

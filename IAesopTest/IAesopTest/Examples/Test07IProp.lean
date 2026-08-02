@@ -149,11 +149,13 @@ example (e e' : Expr) Φ (Hstep : ∀ {s : State}, @step _ _ Value _ (e, s) = (e
     wp e' Φ ⊢ wp e Φ := by
   iintro Hspec
   iapply wp_unfold
-  iright
-  iintro %s Hs
-  iexists e', s
-  iframe
-  itrivial
+  iaesop pureStop
+  exact Hstep
+  -- iright
+  -- iintro %s Hs
+  -- iexists e', s
+  -- iframe
+  -- itrivial
 
 /- The pattern of rules for stateful steps, for example, writing to a piece of memory.
    This style of rule applies when ownership over a resource P (eg. k ↦[γ] v) ensures that the state
@@ -171,13 +173,15 @@ example (e e' : Expr) (P P' : IProp GF) Φ
   ihave ⟨%s', %Hstep, Hupd⟩ := Hstep s $$ [HP Hs]
   . iframe
   iexists e', s'
+  -- set_option trace.iaesop.search.expand true in
   isplitr
   · itrivial
-  iintro !>
-  imod Hupd with ⟨HP', Hs⟩
-  iintro !>
-  iframe
-  iapply Hspec $$ HP'
+  iaesop
+  -- iintro !>
+  -- imod Hupd with ⟨HP', Hs⟩
+  -- iintro !>
+  -- iframe
+  -- iapply Hspec $$ HP'
 
 /- Looping programs, by Löb induction -/
 example (e : Expr) Φ (Hloop : ∀ σ : State, step Value (e, σ) = (e, σ)) :
@@ -185,14 +189,16 @@ example (e : Expr) Φ (Hloop : ∀ σ : State, step Value (e, σ) = (e, σ)) :
   iapply loeb_weak
   iintro HLöb
   iapply wp_unfold
-  iright
-  iintro %s Hs
-  iexists e, s
-  isplitr
-  · itrivial
-  iintro !> !>
-  iframe
+  iaesop pureStop
+  · exact Hloop s
   · exact true_intro
+  -- iright
+  -- iintro %s Hs
+  -- iexists e, s
+  -- isplitr
+  -- · itrivial
+  -- iintro !> !>-- iframe
+  -- · exact true_intro
 
 end Example3
 

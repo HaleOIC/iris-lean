@@ -23,18 +23,22 @@ variable {PROP : Type _} [BI PROP] [BIAffine PROP] {α : Type} (R : α → α �
 
 theorem bi_close_mono (P1 P2 : α → PROP) (a : α) :
     bi_close R P1 a ⊢ (∀ y, P1 y -∗ P2 y) -∗ bi_close R P2 a := by
-  iintro Hclose Hwand; simp [bi_close]
-  icases Hclose with ⟨%a', %HR, HP1⟩
-  iexists a'; isplitr
-  · ipureintro; exact HR
-  · iapply Hwand $$ HP1
+  simp [bi_close]
+  iaesop
+  -- iintro Hclose Hwand;
+  -- icases Hclose with ⟨%a', %HR, HP1⟩
+  -- iexists a'; isplitr
+  -- · ipureintro; exact HR
+  -- · iapply Hwand $$ HP1
 
 theorem bi_close_intro (P : α → PROP) (a : α) [Href : Reflexive R] :
     P a ⊢ bi_close R P a := by
-  iintro HP; simp [bi_close]
-  iexists a; isplitr
-  · ipureintro; exact Href.refl
-  · iexact HP
+  simp [bi_close]
+  iaesop pureBy exact Href.refl
+  -- iintro HP
+  -- iexists a; isplitr
+  -- · ipureintro; exact Href.refl
+  -- · iexact HP
 
 theorem bi_close_respect (P : α → PROP) [Hsym : Symm R] [Htran : Trans R R R] :
     ∀ {x y : α}, R x y → bi_close R P x ⊣⊢ bi_close R P y := by
@@ -61,47 +65,53 @@ variable {PROP : Type _} [BI PROP] {α : Type _}
 theorem bi_mono0_intro0 (P : (α → PROP) → PROP) (Q : α → PROP) :
     P Q ⊢ bi_mono0 P Q := by
   iintro HP; simp only [bi_mono0]
-  iexists Q; isplitl [HP]
-  · iexact HP
-  · iintro %x HQ; iexact HQ
+  iaesop
+  -- iexists Q; isplitl [HP]
+  -- · iexact HP
+  -- · iintro %x HQ; iexact HQ
 
 theorem bi_mono0_mono (P : (α → PROP) → PROP) (Q1 Q2 : α → PROP) :
     bi_mono0 P Q1 ⊢ (∀ x, Q1 x -∗ Q2 x) -∗ bi_mono0 P Q2 := by
   iintro Hm HQ; simp only [bi_mono0]
-  icases Hm with ⟨%Q', HP, HQ1⟩
-  iexists Q'; isplitl [HP]
-  · iexact HP
-  · iintro %x HQ'; iapply HQ; iapply HQ1; iapply HQ'
+  iaesop
+  -- icases Hm with ⟨%Q', HP, HQ1⟩
+  -- iexists Q'; isplitl [HP]
+  -- · iexact HP
+  -- · iintro %x HQ'; iapply HQ; iapply HQ1; iapply HQ'
 
 theorem bi_mono0_mono_l (P1 P2 : (α → PROP) → PROP) (Q : α → PROP) :
     bi_mono0 P1 Q ⊢ (∀ Q, P1 Q -∗ P2 Q) -∗ bi_mono0 P2 Q := by
   iintro Hm HP; simp only [bi_mono0]
-  icases Hm with ⟨%Q', HP1, HQ1⟩
-  iexists Q'; isplitl [HP HP1]
-  · iapply HP $$ %Q' HP1
-  · iexact HQ1
+  iaesop
+  -- icases Hm with ⟨%Q', HP1, HQ1⟩
+  -- iexists Q'; isplitl [HP HP1]
+  -- · iapply HP $$ %Q' HP1
+  -- · iexact HQ1
 
 theorem bi_mono0_elim (P : (α → PROP) → PROP) (Q : α → PROP) :
     bi_mono0 P Q ⊢ (∀ Q Q', (∀ x, Q' x -∗ Q x) -∗ P Q' -∗ P Q) -∗ P Q := by
   iintro Hm HP; simp only [bi_mono0]
-  icases Hm with ⟨%Q', HPQ', HQ1⟩
-  iapply HP $$ %Q %Q' HQ1 HPQ'
+  iaesop
+  -- icases Hm with ⟨%Q', HPQ', HQ1⟩
+  -- iapply HP $$ %Q %Q' HQ1 HPQ'
 
 theorem bi_mono0_dup (P : (α → PROP) → PROP) (Q : α → PROP) :
     bi_mono0 (bi_mono0 P) Q ⊢ bi_mono0 P Q := by
   iintro H; simp only [bi_mono0]
-  icases H with ⟨%Q', Houter, HQw⟩
-  icases Houter with ⟨%Q'', HP, HQw'⟩
-  iexists Q''; isplitl [HP]
-  · iexact HP
-  · iintro %x HQ''; iapply HQw; iapply HQw' $$ HQ''
+  iaesop
+  -- icases H with ⟨%Q', Houter, HQw⟩
+  -- icases Houter with ⟨%Q'', HP, HQw'⟩
+  -- iexists Q''; isplitl [HP]
+  -- · iexact HP
+  -- · iintro %x HQ''; iapply HQw; iapply HQw' $$ HQ''
 
 theorem bi_mono0_intro (P : (α → PROP) → PROP) (Q Q' : α → PROP) :
     P Q' ⊢ (∀ x, Q' x -∗ Q x) -∗ bi_mono0 P Q := by
   iintro HP HQ; simp only [bi_mono0]
-  iexists Q'; isplitl [HP]
-  · iexact HP
-  · iexact HQ
+  iaesop
+  -- iexists Q'; isplitl [HP]
+  -- · iexact HP
+  -- · iexact HQ
 
 end bi_mono0
 
@@ -138,16 +148,17 @@ theorem lfp_tpF_mono (tp1 tp2 : DiscreteO (List ((α → PROP) → PROP)) → PR
   iintro #Hwand %Ms Htp; unfold lfp_tpF
   iintro %i %M %Hi; ispecialize Htp $$ %i %M %Hi
   iapply bi_mono0_mono $$ Htp
-  iintro %x ⟨%G, HF, HMS⟩; iexists G; isplitl [HF]
-  · iexact HF
-  · iintro %Ms HM'; iapply Hwand; iapply HMS $$ HM'
+  iaesop
+  -- iintro %x ⟨%G, HF, HMS⟩; iexists G; isplitl [HF]
+  -- · iexact HF
+  -- · iintro %Ms HM'; iapply Hwand; iapply HMS $$ HM'
 
 instance : BIMonoPred (lfp_tpF (PROP := PROP) F) where
   mono_pred := by
     iintro %Φ %Ψ %HneΦ %HneΨ #Hwand %Ms HΦ
-    iapply lfp_tpF_mono F Φ Ψ $$ [] [HΦ]
-    · iexact Hwand
-    · iexact HΦ
+    iapply lfp_tpF_mono F Φ Ψ $$ [] [HΦ] <;> iaesop
+    -- · iexact Hwand
+    -- · iexact HΦ
   mono_pred_ne.ne n Φ Φ' Hdist := by
     cases Hdist; rfl
 

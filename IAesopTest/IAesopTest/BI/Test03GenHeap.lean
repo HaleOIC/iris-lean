@@ -130,6 +130,7 @@ theorem pointsTo_cmraValid : l ↦{dq} v ⊢@{IProp GF} ⌜✓ dq⌝ := by
   unfold pointsTo
   iintro H
   ihave %_ := ghost_map_elem_valid $$ H
+  -- iaesop with [backtrack 100 ghost_map_elem_valid]
   itrivial
 
 @[rocq_alias pointsto_valid_2]

@@ -67,6 +67,9 @@ The proof mode maintains three contexts: the *pure* (Lean) context, the *intuiti
 
 ## Solving Simple Goals
 
+- `iaesop pureStop` — Run `iaesop`, but stop at pure Iris goals after applying
+  `ipureintro`, returning the resulting Lean goals to the user instead of
+  running a pure solver.
 - `ipureintro` — Turn a goal of the form `⌜φ⌝` into the Lean goal `φ`.
 - `iempintro` — Solve an `emp` goal, requiring the spatial context to be affine.
 - `iexfalso` — Change the goal to `False`.

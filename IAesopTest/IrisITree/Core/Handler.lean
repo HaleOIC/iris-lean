@@ -36,9 +36,10 @@ instance {PROP E} [BI PROP] (H : IHandler PROP E) (i : E.I) :
   intro n Φ₁ Φ₂ HΦ s₁ s₂ Hs
   have Hmon : ∀ Φ s, H.ihandle i Φ s ≡ iprop(∃ Φ' s', (∀ a, Φ' a -∗ Φ a) ∗ □ (∀ a, s' a -∗ s a) ∗ H.ihandle i Φ' s') := by
     iintro %Φ %s; isplit
-    · iintro Hwand; iexists Φ, s; isplitr;
-      · iintro %a H; iexact H
-      · isplitr; imodintro; iintro %a H; iexact H; iexact Hwand
+    · iaesop
+      -- iintro Hwand; iexists Φ, s; isplitr;
+      -- · iintro %a H; iexact H
+      -- · isplitr; imodintro; iintro %a H; iexact H; iexact Hwand
     · iintro ⟨%Φ', ⟨%s', ⟨HmonΦ, ⟨Hmons, HH⟩⟩⟩⟩
       iapply H.ihandle_mono $$ HmonΦ Hmons HH
   apply (Hmon Φ₁ s₁).dist.trans
@@ -119,8 +120,9 @@ class WandH {PROP E} [BI PROP] (H1 : IHandler PROP E) (H2 : IHandler PROP E) whe
 
 instance {PROP E} [BI PROP] (H : IHandler PROP E) : WandH H H := by
   constructor
-  iintro %i %Φ %s H
-  iexact H
+  iaesop
+  -- iintro %i %Φ %s H
+  -- iexact H
 
 instance {PROP E₁ E₂} [BI PROP]
     (H1 H1' : IHandler PROP E₁) (H2 H2' : IHandler PROP E₂)

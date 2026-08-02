@@ -28,4 +28,3 @@ theorem proof_example_1 [BI PROP] (P Q R : PROP) (Φ : α → PROP) :
   -- · iexact HQ
 
 end Iris.Examples
-

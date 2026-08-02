@@ -37,17 +37,17 @@ private def tryCloseByPureSolver (goal : MVarId) (solver : Syntax) : ProofModeM 
 /- Keep enough failure detail for replay diagnostics while letting search treat every
 unsuccessful probe as "this rule does not apply here". -/
 private inductive PureIntroResult where
-  | success (postState : Meta.SavedState)
+  | success (postState : Meta.SavedState) (remainingGoals : Array MVarId)
   | notIrisGoal
   | notPure
   | pureGoalUnproved
   | nonAffineContext
   | stuckPurityFlag
 
-/- Shared implementation for search and replay: synthesize `FromPure`, solve the
-extracted Lean proposition locally, then assign the proof-mode goal. -/
+/- Shared implementation for search and replay: synthesize `FromPure`, optionally
+solve the extracted Lean proposition locally, then assign the proof-mode goal. -/
 private def tryAssignPureIntro (goal : MVarId)
-    (pureSolver : Syntax) : ProofModeM PureIntroResult := do
+    (pureSolver? : Option Syntax) : ProofModeM PureIntroResult := do
   goal.withContext do
     let goalType ← instantiateMVars (← goal.getType)
     let some { e, goal := target, .. } := parseIrisGoal? goalType
@@ -57,8 +57,9 @@ private def tryAssignPureIntro (goal : MVarId)
     let .some (h, _) ← trySynthInstanceProbeQ q(FromPure $b $target .out $φ)
       | return .notPure
     let proof : Q($φ) ← mkFreshExprMVar (← instantiateMVars φ)
-    unless ← tryCloseByPureSolver proof.mvarId! pureSolver do
-      return .pureGoalUnproved
+    if let some pureSolver := pureSolver? then
+      unless ← tryCloseByPureSolver proof.mvarId! pureSolver do
+        return .pureGoalUnproved
     let h : Q(FromPure $b $target .out $φ) := h
     match ← whnf b with
     | .const ``true _ =>
@@ -71,23 +72,27 @@ private def tryAssignPureIntro (goal : MVarId)
       goal.assign q(pure_intro_spatial (P := $e) (Q := $target) $h $proof)
     | _ =>
       return .stuckPurityFlag
-    return .success (← liftM (m := MetaM) saveState)
+    let remainingGoals := if pureSolver?.isNone then #[proof.mvarId!] else #[]
+    return .success (← liftM (m := MetaM) saveState) remainingGoals
 
 /- Search for the possibility of `ipureintro` applications -/
 def run (input : RuleInput) : SearchM Q RuleOutput := do
   let goal := input.goal
-  let pureSolver := (← readThe SearchM.Context).config.pureSolver
-  let .success postState ← liftM (m := ProofModeM) do
+  let config := (← readThe SearchM.Context).config
+  let pureSolver? := if config.pureStop? then none else some config.pureSolver
+  let .success postState _ ← liftM (m := ProofModeM) do
     input.state.restore
-    tryAssignPureIntro goal pureSolver
+    tryAssignPureIntro goal pureSolver?
     -- During search, a failed pure-intro attempt simply means "try another rule".
     | return {}
   return RuleOutput.ofEffect postState { action := some .closeGoal }
 
 /- [Note] Make sure you are in the correct context -/
 def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
-  match ← tryAssignPureIntro input.goal input.config.pureSolver with
-  | .success _ => return #[]
+  let pureSolver? :=
+    if input.config.pureStop? then none else some input.config.pureSolver
+  match ← tryAssignPureIntro input.goal pureSolver? with
+  | .success _ remainingGoals => return remainingGoals
   | .notIrisGoal =>
     throwError "iaesop(baseline): ipureIntro replay expected an Iris goal"
   | .notPure =>

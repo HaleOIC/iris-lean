@@ -130,26 +130,26 @@ mutual
 end
 
 /-- Check tree status function set -/
-private meta def checkRootProven : SearchM Q Bool := do
+private meta def checkRootProven : SearchM Q (Option (Array MVarId)) := do
   let rootRef := ← getRootGoal
   if (← rootRef.get).state.isProven then
     traceTreeBeforeReplay
-    Baseline.replayProof
+    let remainingGoals ← Baseline.replayProof
     let config := (← readThe SearchM.Context).config
-    unless config.generateScript? do return true
+    unless config.generateScript? do return some remainingGoals
     let rootRef ← getRootGoal
     let root ← rootRef.get
     let script ← extractScriptFromGoal rootRef
     let tacs ← liftM <| script.render root.preNormGoal
     liftM <| Script.addTryThisTacticSeqSuggestion (← getRef) tacs
-    return true
+    return some remainingGoals
   else
-    return false
+    return none
 
 /- [Note] Release the restriction from depth factor -/
 private meta partial def searchLoop : SearchM Q (Array MVarId) := do
   checkSystem "iaesop"
-  if ← checkRootProven then return #[]
+  if let some remainingGoals ← checkRootProven then return remainingGoals
   if ← expandNextGoal then
     incrementIteration
     searchLoop

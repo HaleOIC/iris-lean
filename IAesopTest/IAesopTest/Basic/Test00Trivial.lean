@@ -161,4 +161,9 @@ example [BI PROP] (A B C D : PROP) (H : A ⊢ B) :
   iaesop
 
 
+example [BI PROP] (P Q R : α → PROP)
+    (H₁ : ∀ x, P x ⊢ Q x) (H₂ : ∀ x, Q x ⊢ R x) :
+    P a ⊢ R a := by
+  iaesop
+
 end specialExamples

@@ -51,6 +51,8 @@ structure SearchConfig where
   enableUnfold? : Bool := false
   /- Solver run on pure Lean goals produced by `ipureintro`. -/
   pureSolver : Syntax := defaultPureSolver
+  /- Stop search at pure Iris goals and expose their Lean propositions. -/
+  pureStop? : Bool := false
   /- Extra theorem rules added only for this `iaesop` invocation. -/
   localTheoremRules : Array LocalTheoremRule := #[]
   /- Rule declarations removed only for this `iaesop` invocation. -/

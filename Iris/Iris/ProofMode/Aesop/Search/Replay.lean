@@ -25,6 +25,8 @@ private structure ReplayM.State where
   focus : MVarId
   /- Generated replay metavariables, keyed by source context split and case. -/
   pendingByCase : Std.HashMap (ObunId × CaseId) MVarId
+  /- Pure Lean goals deliberately exposed by `pureStop`. -/
+  remainingGoals : Array MVarId
   deriving Inhabited
 
 private abbrev ReplayM :=
@@ -60,8 +62,11 @@ private def mkReplayTactic (rapp : Rapp) (obun : Obun) (config : SearchConfig) :
       let decl := mkIdent rapp.appliedRule.id.name
       mkIApplyTactic decl obun
   | .tactic .ipureIntro =>
-      let solver : TSyntax `tactic := ⟨config.pureSolver⟩
-      `(tactic| (ipureintro; $solver:tactic))
+      if config.pureStop? then
+        `(tactic| ipureintro)
+      else
+        let solver : TSyntax `tactic := ⟨config.pureSolver⟩
+        `(tactic| (ipureintro; $solver:tactic))
   | .tactic .iexist => `(tactic| iexists _)
   | .tactic .icases =>
       match rapp.usedHyp? >>= appliedHypTacticIdent? with
@@ -177,9 +182,22 @@ private partial def assignProof (gref : GoalRef) : ReplayM Unit := do
   let obun ← rapp.children.get
   liftM <| Search.traceReplayStep goalMVarId (toString rapp.appliedRule.info.builder)
   let preState ← liftM (show MetaM SavedState from saveState)
-  let goalMVarIds ← liftM <|
+  let replayGoalMVarIds ← liftM <|
     rapp.appliedRule.info.builder.replay { goal := goalMVarId, rapp, config }
-  recordScriptStep rref obun preState goalMVarId goalMVarIds
+  recordScriptStep rref obun preState goalMVarId replayGoalMVarIds
+
+  /- `pureStop` deliberately leaves the Lean goal returned by `ipureintro`
+  open. Record it for the caller, but treat this search branch as closed while
+  replay continues through any pending Iris siblings. -/
+  let isPureStop :=
+    config.pureStop? && rapp.appliedRule.info.builder == .tactic .ipureIntro
+  let goalMVarIds ←
+    if isPureStop then
+      modifyThe ReplayM.State λ state =>
+        { state with remainingGoals := state.remainingGoals ++ replayGoalMVarIds }
+      pure #[]
+    else
+      pure replayGoalMVarIds
 
   /- The replayed rule closed the focused metavariable and produced no children. -/
   if goalMVarIds.isEmpty && obun.goals.isEmpty then
@@ -249,7 +267,7 @@ private partial def assignProof (gref : GoalRef) : ReplayM Unit := do
   assignProof nextGoalRef
 
 /- (Baseline) Replay proof entry point -/
-public meta def replayProof : SearchM Q Unit := do
+public meta def replayProof : SearchM Q (Array MVarId) := do
   let config := (← readThe SearchM.Context).config
   let rootRef ← getRootGoal
   let rootGoal ← rootRef.get
@@ -259,7 +277,10 @@ public meta def replayProof : SearchM Q Unit := do
   /- Make sure goal's mvarId has not been assigned -/
   let rootMVarId := rootGoal.normalizationState.normalizedGoal?.getD rootGoal.preNormGoal
   let assigned ← liftM (m := MetaM) rootMVarId.isAssignedOrDelayedAssigned
-  if assigned then return
+  /- A root-level `pureStop` application may have assigned the speculative
+  search goal directly. Restore and replay it so we can return the newly
+  exposed pure Lean metavariable to the tactic frontend. -/
+  if assigned && !config.pureStop? then return #[]
 
   /- Enter the replay context -/
   rootGoal.preNormState.restore
@@ -267,6 +288,8 @@ public meta def replayProof : SearchM Q Unit := do
     ReaderT.run (assignProof rootRef) { config } |>.run {
       focus := rootGoal.preNormGoal
       pendingByCase := {}
+      remainingGoals := #[]
     }
   if !replayState.pendingByCase.isEmpty then
     throwError "iaesop(baseline): replay finished with pending split cases"
+  return replayState.remainingGoals

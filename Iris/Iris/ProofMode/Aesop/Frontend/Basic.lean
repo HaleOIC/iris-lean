@@ -16,9 +16,10 @@ syntax "unfold" : iaesopNormMode
 syntax "simp" : iaesopNormMode
 syntax "normAll" : iaesopNormMode
 
-/- Optional pure Lean solver run after `ipureintro` exposes a pure goal. -/
+/- Pure-goal behavior: either run a solver or stop after `ipureintro`. -/
 declare_syntax_cat iaesopPureSolver
 syntax "pureBy" tactic : iaesopPureSolver
+syntax "pureStop" : iaesopPureSolver
 
 /- Local rule edits for one `iaesop` invocation. -/
 declare_syntax_cat iaesopRuleDirection
