@@ -73,7 +73,7 @@ private partial def collectFromIris
     return #[{
       goals := #[child],
       postState
-      successPossibility := .hundred
+      successPossibility := .high
       effect := { generatedSpatialHyps := generatedHyps, usedHyps := #[usedHyp], action := none }
     }]
 

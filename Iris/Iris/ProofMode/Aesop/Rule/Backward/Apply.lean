@@ -2,6 +2,30 @@ module
 
 public meta import Iris.ProofMode.Aesop.Rule.Backward.Shape
 public meta import Iris.ProofMode.Aesop.Rule.Tactic.ApplyHyps
+public import Iris.ProofMode.InstancesMake
+
+public section
+
+namespace Iris.ProofMode.Aesop.Rule.Backward
+
+open Iris BI
+open Iris.ProofMode
+
+/- A Lean proposition parameter is affine proof information, not a spatial
+resource.  Keep this conversion local to backward rules: changing the global
+`AsEmpValid` instance would also change the semantics of `istart`. -/
+theorem empValid_affinePure_wand [BI PROP] {φ : Prop} {P Q : PROP}
+    [hA : MakeAffinely iprop(⌜φ⌝) P] [Affine P]
+    (h : φ → ⊢ Q) : ⊢ P -∗ Q :=
+  entails_wand <| pure_elim φ
+    (hA.make_affinely.mpr.trans affinely_elim)
+    (λ hp => Affine.affine.trans <| h hp)
+
+theorem have_empValid [BI PROP] {P Q : PROP} (h : ⊢ P) : Q ⊢ Q ∗ □ P :=
+  sep_emp.2.trans <| sep_mono_right <|
+    intuitionistically_emp.2.trans <| intuitionistically_mono h
+
+end Iris.ProofMode.Aesop.Rule.Backward
 
 public meta section
 
@@ -20,20 +44,57 @@ private structure BackwardExpansion where
   fullContextIrisSubgoals : Array IrisGoal
   postState : SavedState
 
+/- Convert a theorem value into the Iris proposition used by a backward rule.
+Ordinary proposition-valued parameters are recursively exposed as affine pure
+wand premises.  The terminal proposition still uses the ordinary
+`AsEmpValid` bridge. -/
+private partial def mkBackwardHypFromValue?
+    {prop : Q(Type u)} (bi : Q(BI $prop)) (value type : Expr) :
+    MetaM (Option ((hyp : Q($prop)) × Q(⊢ $hyp))) := do
+  let type ← instantiateMVars type
+  if let .forallE name domain body binderInfo := type then
+    if ← Meta.isProp domain then
+      have domain : Q(Prop) := domain
+      return ← withLocalDecl name binderInfo domain fun hp => do
+        let body := body.instantiate1 hp
+        let some ⟨inner, innerProof⟩ ←
+            mkBackwardHypFromValue? bi (mkApp value hp) body
+          | return none
+        if inner.containsFVar hp.fvarId! then return none
+        let innerProofFn ← mkLambdaFVars #[hp] innerProof
+        have innerProofFn : Q($domain → ⊢ $inner) := innerProofFn
+        let premise ← mkFreshExprMVarQ prop
+        let .some (hA, _) ← trySynthInstanceProbeQ
+            q(MakeAffinely iprop(⌜$domain⌝) $premise)
+          | return none
+        let premise : Q($prop) ← instantiateMVars premise
+        let hA : Q(MakeAffinely iprop(⌜$domain⌝) $premise) := hA
+        let .some (hAffine, _) ← trySynthInstanceProbeQ q(Affine $premise)
+          | return none
+        let _hAffine : Q(Affine $premise) := hAffine
+        let hyp : Q($prop) := q(iprop($premise -∗ $inner))
+        let proof : Q(⊢ $hyp) :=
+          q(empValid_affinePure_wand (hA := $hA) (h := $innerProofFn))
+        return some ⟨hyp, proof⟩
+  if !(← Meta.isProp type) then return none
+  have type : Q(Prop) := type
+  have value : Q($type) := value
+  let hyp ← mkFreshExprMVarQ prop
+  let .some (inst, _) ← trySynthInstanceProbeQ
+      q(AsEmpValid .into $type .in $prop .in $bi $hyp)
+    | return none
+  let hyp : Q($prop) ← instantiateMVars hyp
+  let _inst : Q(AsEmpValid .into $type .in $prop .in $bi $hyp) := inst
+  return some ⟨hyp, q(asEmpValid_1 $hyp $value)⟩
+
 /-- Bridge a theorem proof into the current Iris BI as an intuitionistic proposition. -/
 private def mkBackwardHyp? {prop : Q(Type u)} (bi : Q(BI $prop))
     (decl : Name) : MetaM (Option (Q($prop) × Expr)) := do
-  let (_, _, body) ← instantiateTheorem decl
-  if !(← Meta.isProp body) then
-    return none
-  have body : Q(Prop) := body
-  let hyp ← mkFreshExprMVarQ prop
-  match ← trySynthInstanceProbeQ q(AsEmpValid .into $body .in $prop .in $bi $hyp) with
-  | .none | .undef => return none
-  | .some _ =>
-    let hyp : Q($prop) ← instantiateMVars hyp
-    let body ← instantiateMVars body
-    return some (hyp, body)
+  let (value, _, body) ← instantiateTheorem decl
+  let some ⟨hyp, _⟩ ← mkBackwardHypFromValue? bi value body
+    | trace[iaesop.backward] "backward rejected {decl}: cannot convert theorem parameters"
+      return none
+  return some (hyp, ← instantiateMVars body)
 
 /-- Build a search expansion when a backward theorem directly proves the target. -/
 private def mkCloseExpansion?
@@ -112,17 +173,9 @@ private def synthAuxInstances (mvars : Array Expr) : MetaM Unit := do
 private def mkBackwardProof {prop : Q(Type u)} {bi : Q(BI $prop)} {e : Q($prop)}
     (decl : Name) : ProofModeM ((hyp : Q($prop)) × Q($e ⊢ $e ∗ □ $hyp) × Array Expr) := do
   let (value, mvars, body) ← instantiateTheorem decl
-  if !(← Meta.isProp body) then
-    throwError m!"iaesop(baseline): backward replay theorem {decl} is not a proposition"
-  have body : Q(Prop) := body
-  let hyp ← mkFreshExprMVarQ prop
-  let some inst ← ProofModeM.trySynthInstanceQ q(AsEmpValid .into $body .in $prop .in $bi $hyp)
+  let some ⟨hyp, proof⟩ ← mkBackwardHypFromValue? bi value body
     | throwError m!"iaesop(baseline): backward replay cannot bridge theorem {decl} into Iris"
-  let hyp : Q($prop) ← instantiateMVars hyp
-  let body : Q(Prop) ← instantiateMVars body
-  let value : Q($body) ← instantiateMVars value
-  let inst : Q(AsEmpValid .into $body .in $prop .in $bi $hyp) := inst
-  return ⟨hyp, q(have_asEmpValid (P := $hyp) (Q := $e) (h1 := $inst) $value), mvars⟩
+  return ⟨hyp, q(have_empValid (Q := $e) $proof), mvars⟩
 
 /-- Replay a close-goal backward theorem application. -/
 private def replayClose (decl : Name) (goalMVarId : MVarId) :

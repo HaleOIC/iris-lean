@@ -20,6 +20,27 @@ private structure ICasesExpansion where
   fullContextIrisSubgoals : Array IrisGoal
   postState : SavedState
 
+private structure ICasesFalseExpansion where
+  usedHyp : AppliedHyp
+  postState : SavedState
+
+private def mkFalseHypExpansion?
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
+    (name : Name) (ivar : IVarId) (p : Q(Bool)) (hypType : Q($prop)) :
+    MetaM (Option ICasesFalseExpansion) := do
+  let hypType : Q($prop) ← instantiateMVars hypType
+  /- Recognition must not solve an unknown proposition metavariable by
+  unifying it with `False`; that would create a search path which replay
+  cannot justify once another branch fixes the metavariable differently. -/
+  unless (← getMVars hypType).isEmpty do return none
+  if let .defEq _ ← isDefEqQ hypType q(iprop(False)) then
+    return some {
+      usedHyp := if isTrue p then .intuitionistic { name, ivar }
+        else .spatial { name, ivar }
+      postState := ← saveState
+    }
+  return none
+
 private def mkHypExpansion?
     {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (irisGoal : IrisGoal) (tag : Name)
@@ -75,6 +96,21 @@ private partial def collectFromIris
     baseState.restore
     return expansion?.toArray
 
+private partial def collectFalseFromIris
+    {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
+    (baseState : SavedState) :
+    ∀ {e}, Hyps bi e → MetaM (Array ICasesFalseExpansion)
+  | _, .emp _ => return #[]
+  | _, .sep _ _ _ _ lhs rhs => do
+    let lhsExpansions ← collectFalseFromIris baseState lhs
+    let rhsExpansions ← collectFalseFromIris baseState rhs
+    return lhsExpansions ++ rhsExpansions
+  | _, .hyp _ name ivar p ty _ => do
+    baseState.restore
+    let expansion? ← mkFalseHypExpansion? (bi := bi) name ivar p ty
+    baseState.restore
+    return expansion?.toArray
+
 def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
   let expansions ← liftM do
@@ -98,6 +134,28 @@ def run (input : RuleInput) : CoreM Q RuleOutput := do
       }
     }
   return RuleOutput.ofRappSpecs specs
+
+/- Close a goal by destructing an Iris `False` hypothesis with the empty
+`icases` pattern. -/
+def runFalse (input : RuleInput) : CoreM Q RuleOutput := do
+  let goal := input.goal
+  let expansions ← liftM do
+    restoreState input.state
+    goal.withContext do
+      let goalType ← instantiateMVars (← goal.getType)
+      let some irisGoal := parseIrisGoal? goalType
+        | throwError "iaesop: icasesFalse rule search must work in iris proof-mode context"
+      collectFalseFromIris (← saveState) irisGoal.hyps
+  if expansions.isEmpty then return {}
+  return RuleOutput.ofRappSpecs <| expansions.map fun expansion => {
+    goals := #[]
+    postState := expansion.postState
+    successPossibility := ⟨0.1⟩
+    effect := {
+      usedHyps := #[expansion.usedHyp]
+      action := some .closeGoal
+    }
+  }
 
 def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
   let some usedHyp := input.rapp.usedHyp?
@@ -134,5 +192,27 @@ def replay (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
     let rightProof ← mkBIGoal rightHyps target tag
     input.goal.assign q(($removePf).1.trans (or_elim' $leftProof $rightProof))
     return #[leftProof.mvarId!, rightProof.mvarId!]
+
+def replayFalse (input : RuleReplayInput) : ProofModeM (Array MVarId) := do
+  let some usedHyp := input.rapp.usedHyp?
+    | throwError "iaesop(baseline): icasesFalse replay is missing the selected hypothesis"
+  input.goal.withContext do
+    let goalType ← instantiateMVars (← input.goal.getType)
+    let some { hyps, goal := target, .. } := parseIrisGoal? goalType
+      | throwError "iaesop(baseline): icasesFalse replay expected an Iris goal"
+    let some ⟨_, _, _, out, hypType, p, _, removePf⟩ ←
+        hyps.removeG false λ name _ p _ => do
+          match usedHyp with
+          | .spatial hyp =>
+            if hyp.name == name && !isTrue p then return some () else return none
+          | .intuitionistic hyp =>
+            if hyp.name == name && isTrue p then return some () else return none
+          | .lean .. => return none
+      | throwError "iaesop(baseline): icasesFalse replay selected hypothesis disappeared"
+    have : $out =Q iprop(□?$p $hypType) := ⟨⟩
+    let .defEq _ ← isDefEqQ hypType q(iprop(False))
+      | throwError "iaesop(baseline): icasesFalse replay selected hypothesis is not False"
+    input.goal.assign q(($removePf).1.trans (false_elim' (Q := $target)))
+    return #[]
 
 end Iris.ProofMode.Aesop.Rule.ICases

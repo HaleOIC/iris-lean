@@ -23,6 +23,7 @@ def run {Q : Type} [Queue Q] : TacticDescr → RuleRunner Q
   | .applyHyps => Rule.ApplyHyps.run
   | .haveHyps => Rule.HaveHyps.run
   | .icases => Rule.ICases.run
+  | .icasesFalse => Rule.ICases.runFalse
   | .imod => Rule.IMod.run
   | .imodIntro => Rule.IModIntro.run
   | .ipureIntro => Rule.IPureIntro.run
@@ -37,6 +38,7 @@ def replay : TacticDescr → RuleReplayer
   | .applyHyps => Rule.ApplyHyps.replay
   | .haveHyps => Rule.HaveHyps.replay
   | .icases => Rule.ICases.replay
+  | .icasesFalse => Rule.ICases.replayFalse
   | .imod => Rule.IMod.replay
   | .imodIntro => Rule.IModIntro.replay
   | .ipureIntro => Rule.IPureIntro.replay
@@ -91,6 +93,17 @@ def commonICasesRule : Rule RuleInfo where
   id := commonICasesRuleId
   indexingMode := .unindexed
   info := RuleInfo.ofBuilder (.tactic .icases) .almost
+
+def commonICasesFalseRuleId : RuleId where
+  name := `icasesFalse
+  kind := .forward
+  phase := .safe
+  scope := .global
+
+def commonICasesFalseRule : Rule RuleInfo where
+  id := commonICasesFalseRuleId
+  indexingMode := .unindexed
+  info := RuleInfo.ofBuilder (.tactic .icasesFalse) ⟨0.1⟩
 
 def commonIPureIntroRuleId : RuleId where
   name := `ipureIntro
@@ -175,6 +188,7 @@ def commonRuleIndex : Index RuleInfo :=
     |>.add commonApplyHypsRule commonApplyHypsRule.indexingMode
     |>.add commonHaveHypsRule commonHaveHypsRule.indexingMode
     |>.add commonICasesRule commonICasesRule.indexingMode
+    |>.add commonICasesFalseRule commonICasesFalseRule.indexingMode
     |>.add commonIModRule commonIModRule.indexingMode
     |>.add commonIPureIntroRule commonIPureIntroRule.indexingMode
     |>.add commonIExistRule commonIExistRule.indexingMode

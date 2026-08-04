@@ -28,18 +28,62 @@ def collectIncomingMetaInfo (goal : Goal) (state : SavedState) :
       goal.preNormGoal.getMVarDependencies
   collectMetaInfo state incomingMVars
 
-private partial def copyExprMVarDecl (source : SavedState) (mvarId : MVarId) :
-    MetaM Unit := do
-  if ← mvarId.isDeclared then return
+/- A branch-local expression metavariable declaration may mention fresh
+universe metavariables.  Copy those declarations and assignments before the
+expression declaration; otherwise restoring the platform state leaves a
+well-named expression metavariable whose type contains unknown universes. -/
+private def copyUniverseContext (source : SavedState) : MetaM Unit := do
+  let sourceMCtx := source.meta.mctx
+  modifyMCtx fun current =>
+    let lDecls := sourceMCtx.lDecls.foldl (init := current.lDecls) fun decls id decl =>
+      if decls.contains id then decls else decls.insert id decl
+    let lAssignment := sourceMCtx.lAssignment.foldl
+        (init := current.lAssignment) fun assignments id value =>
+      if assignments.contains id then assignments else assignments.insert id value
+    { current with
+      lmvarCounter := max current.lmvarCounter sourceMCtx.lmvarCounter
+      lDecls
+      lAssignment }
+
+/- Local contexts are persistent snapshots.  A declaration copied from one
+branch can refer to another branch-local declaration that is not reachable
+from its target expression alone (for example through a local declaration's
+value).  Transfer the branch's declaration table, but deliberately not its
+expression assignments: assignments are merged separately and checked for
+compatibility. -/
+private def copyBranchDeclarations (source : SavedState) : MetaM Unit := do
+  copyUniverseContext source
+  let sourceMCtx := source.meta.mctx
+  modifyMCtx fun current =>
+    let decls := sourceMCtx.decls.foldl (init := current.decls) fun decls id decl =>
+      if decls.contains id then decls else decls.insert id decl
+    { current with
+      mvarCounter := max current.mvarCounter sourceMCtx.mvarCounter
+      decls }
+
+private partial def copyExprMVarDecl (source : SavedState) (mvarId : MVarId)
+    (visited : Std.HashSet MVarId := {}) : MetaM Unit := do
+  if visited.contains mvarId then return
+  let visited := visited.insert mvarId
   let (decl, dependencies) ← source.runMetaM' do
     let decl ← mvarId.getDecl
     let dependencies ← mvarId.getMVarDependencies (includeDelayed := true)
     return (decl, dependencies)
-  modifyMCtx fun mctx => { mctx with decls := mctx.decls.insert mvarId decl }
+  copyUniverseContext source
+  unless ← mvarId.isDeclared do
+    modifyMCtx fun mctx => {
+      mctx with
+      mvarCounter := max mctx.mvarCounter source.meta.mctx.mvarCounter
+      decls := mctx.decls.insert mvarId decl
+    }
+  /- Even when the declaration itself already exists in the platform state,
+  the source branch can contain additional declarations referenced from its
+  local context.  Do not return early before transferring those dependencies. -/
   for dependency in dependencies do
-    copyExprMVarDecl source dependency
+    copyExprMVarDecl source dependency visited
 
 private def prepareAssignment (assignment : MetaAssignment) : MetaM Unit := do
+  copyBranchDeclarations assignment.sourceState
   for mvarId in ← getMVars assignment.value do
     copyExprMVarDecl assignment.sourceState mvarId
 

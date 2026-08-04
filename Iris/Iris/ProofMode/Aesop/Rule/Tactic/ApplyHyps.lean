@@ -48,9 +48,20 @@ private def conclusionMatches? (conclusion target : Expr) : MetaM Bool := do
   let conclusionMVars ← getMVars conclusion
   let targetMVars ← getMVars target
   if !conclusionMVars.isEmpty || !targetMVars.isEmpty then return true
-  withoutModifyingState do
+  let defEq ← withoutModifyingState do
     try isDefEq conclusion target
     catch _ => return false
+  if defEq then return true
+  /- A negative `isDefEq` probe is not a sound rejection when either head is
+  not a named constant or is a projection.  A projection can reduce to a
+  different named constant once the authoritative `FromAssumption`/`IntoWand`
+  probe assigns its structure argument (for example an OFE `Hom.f` projection
+  can reduce to `bi_least_fixpoint`).  Only reject rigid, distinct constants. -/
+  match conclusion.consumeMData.getAppFn.constName?,
+      target.consumeMData.getAppFn.constName? with
+  | some left, some right =>
+    return left == right || (← isProjectionFn left) || (← isProjectionFn right)
+  | _, _ => return true
 
 private def irisCandidateCouldMatch (type target : Expr) : MetaM Bool := do
   let some conclusion ← candidateConclusion? type | return true
@@ -151,6 +162,14 @@ private partial def collectFromIris
     return (lhsClose ++ rhsClose, lhsApply ++ rhsApply)
   | _, .hyp _ name ivar p ty _ => do
     baseState.restore
+    /- `False` has its own low-priority `icases H with ⟨⟩` rule.  Treating it
+    as a direct assumption here records an `iexact H` replay which does not
+    perform the required empty elimination. -/
+    let instantiatedTy : Q($prop) ← instantiateMVars ty
+    if (← getMVars instantiatedTy).isEmpty then
+      if let .defEq _ ← isDefEqQ instantiatedTy q(iprop(False)) then
+        baseState.restore
+        return (#[], #[])
     unless ← irisCandidateCouldMatch ty irisGoal.goal do
       trace[iaesop.tactic] "applyHyps prefilter skipped Iris hypothesis {name}"
       return (#[], #[])
@@ -308,7 +327,8 @@ def mkCloseCoreProof
     (p : Q(Bool)) (hypType target : Q($prop)) :
     ProofModeM Q($e ∗ □?$p $hypType ⊢ $target) := do
   let some inst ← ProofModeM.trySynthInstanceQ q(FromAssumption $p .in $hypType $target)
-    | throwError "iaesop(baseline): applyHyps replay selected hypothesis cannot close the target"
+    | throwError "iaesop(baseline): applyHyps replay selected hypothesis cannot close the target; \
+        hypothesis: {hypType}; target: {target}"
   let _ : Q(FromAssumption $p .in $hypType $target) := inst
   let some _ ← ProofModeM.trySynthInstanceQ q(TCOr (Affine $e) (Absorbing $target))
     | throwError

@@ -98,7 +98,8 @@ private partial def assignBubble (id : BubbleId) (focus : MVarId) :
       let replaySplits :=
         if obun.kind.isManaged && obun.goals.size > 1 then allSplits else #[]
       trace[iaesop.search.bubble] "iaesop(bubble): replay \
-        {rapp.appliedRule.info.builder} with {children.size} children and \
+        {rapp.appliedRule.id.name} ({rapp.appliedRule.info.builder}) with \
+        {children.size} children and \
         {replaySplits.size} spatial splits"
       obunRef.modify fun obun =>
         obun.setState .proven |>.setFinalizedSpatialSplits replaySplits

@@ -10,7 +10,10 @@ open Lean Meta Iris BI
 
 namespace Rule.Backward
 
-/- Peel Iris-level implications until the remaining expression is the theorem conclusion. -/
+/- Peel Iris-level implications and universal binders until the remaining
+expression is the theorem conclusion.  Backward rules are applied after these
+binders have been introduced, so indexing a rule by the outer `∀` would make
+it invisible when the actual target is its instantiated body. -/
 private partial def peelIrisConclusion? (e : Expr) : MetaM (Option Expr) := do
   let e ← instantiateMVars e
   let e := e.consumeMData
@@ -22,41 +25,80 @@ private partial def peelIrisConclusion? (e : Expr) : MetaM (Option Expr) := do
     match args.back? with
     | some target => peelIrisConclusion? target
     | none => return none
+  else if let some args := e.appM? ``BIBase.forall then
+    let some body := args.back? | return none
+    let bodyType ← whnf (← inferType body)
+    let .forallE _ domain _ _ := bodyType | return none
+    let value ← mkFreshExprMVar domain
+    peelIrisConclusion? (mkApp body value).headBeta
   else
     return some e
 
-/- Extract the Iris proposition proved by a theorem type, if it has a supported shape. -/
-private partial def matchConclusion? (type : Expr) : MetaM (Option Expr) :=
+/- Extract every Iris proposition by which a theorem should be indexed.  An
+Iris equivalence is deliberately symmetric: registering `P ⊣⊢ Q` makes the
+same backward theorem selectable for targets headed by either `P` or `Q`. -/
+private partial def matchConclusions? (type : Expr) : MetaM (Option (Array Expr)) := do
+  let type ← instantiateMVars type
+  if let .forallE _ domain body _ := type then
+    if ← Meta.isProp domain then
+      let proof ← mkFreshExprMVar domain
+      return ← matchConclusions? (body.instantiate1 proof)
+  let type := type.consumeMData
+  if let some args := type.appM? ``BIBase.BiEntails then
+    let some left := args[args.size - 2]?
+      | return none
+    let some right := args.back?
+      | return none
+    let some left ← peelIrisConclusion? left | return none
+    let some right ← peelIrisConclusion? right | return none
+    return some #[left, right]
   match Iris.ProofMode.parseIrisGoal? type with
-  | some irisGoal => peelIrisConclusion? irisGoal.goal
+  | some irisGoal => return (← peelIrisConclusion? irisGoal.goal).map (#[·])
   | none =>
-    match type.consumeMData.appM? ``BIBase.Entails,
-        type.consumeMData.appM? ``BIBase.EmpValid,
-        type.consumeMData.appM? ``BIBase.BiEntails with
-    | some args, _, _ | _, some args, _ | _, _, some args =>
-      match args.back? with
-      | some target => peelIrisConclusion? target
-      | none => return none
-    | none, none, none => return none
+    match type.appM? ``BIBase.Entails, type.appM? ``BIBase.EmpValid with
+    | some args, _ | _, some args =>
+      let some target := args.back? | return none
+      return (← peelIrisConclusion? target).map (#[·])
+    | none, none => return none
 
-/- Instantiate a theorem declaration and all of its forall binders. -/
+/- Instantiate inference parameters, but preserve proposition-valued theorem
+premises. `AsEmpValid` then translates a preserved Lean implication `φ → ψ`
+into the Iris premise `⌜φ⌝ -∗ ψ`, so proof search sees and proves the premise
+instead of leaving a hidden proof metavariable. -/
+private partial def instantiateInferenceBinders (value type : Expr)
+    (mvars : Array Expr := #[]) : MetaM (Expr × Array Expr × Expr) := do
+  let type ← instantiateMVars type
+  match type with
+  | .forallE name domain body binderInfo =>
+    if !binderInfo.isInstImplicit && (← Meta.isProp domain) then
+      return (value, mvars, type)
+    let kind := if binderInfo.isInstImplicit then MetavarKind.synthetic else .natural
+    let mvar ← mkFreshExprMVar domain kind name
+    instantiateInferenceBinders (mkApp value mvar) (body.instantiate1 mvar)
+      (mvars.push mvar)
+  | _ => return (value, mvars, type)
+
+/- Instantiate a theorem declaration's inference binders while leaving its
+ordinary proposition-valued premises visible to `AsEmpValid`. -/
 def instantiateTheorem (decl : Name) : MetaM (Expr × Array Expr × Expr) := do
   let value ← mkConstWithFreshMVarLevels decl
   let type ← instantiateMVars (← inferType value)
-  let ⟨mvars, _, body⟩ ← forallMetaTelescope type
-  return (mkAppN value mvars, mvars, ← instantiateMVars body)
+  instantiateInferenceBinders value type
 
 /- Instantiate a backward theorem and index it by the Iris proposition it can prove. -/
 def mkBackwardIndexingMode (decl : Name) : MetaM IndexingMode :=
   withoutModifyingState do
     let (_, _, body) ← instantiateTheorem decl
-    let target? ← (show MetaM (Option Expr) from do
-      match ← matchConclusion? body with
-      | some target => return some target
-      | none => matchConclusion? (← whnf body))
-    let some target := target?
+    let targets? ← (show MetaM (Option (Array Expr)) from do
+      match ← matchConclusions? body with
+      | some targets => return some targets
+      | none => matchConclusions? (← whnf body))
+    let some targets := targets?
       | throwError m!"iaesop: cannot infer backward rule target for {decl}"
-    IndexingMode.targetMatching target
+    let modes ← targets.mapM IndexingMode.targetMatching
+    match modes with
+    | #[mode] => return mode
+    | _ => return .or modes
 
 end Rule.Backward
 

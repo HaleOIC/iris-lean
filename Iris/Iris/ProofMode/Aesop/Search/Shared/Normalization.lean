@@ -208,6 +208,10 @@ private def canPure {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     (info : IrisHypInfo) : MetaM Bool := do
   let ty ← instantiateMVars info.ty
   let some irisTy ← checkTypeQ ty prop | return false
+  /- Preserve exact `False` as an Iris hypothesis for the dedicated
+  low-priority `icases H with ⟨⟩` search rule. -/
+  if (← getMVars irisTy).isEmpty then
+    if let .defEq _ ← isDefEqQ irisTy q(iprop(False)) then return false
   let φ ← mkFreshExprMVarQ q(Prop)
   match ← ProofMode.trySynthInstanceQ q(IntoPure $irisTy $φ) with
   | .some _ => return true
@@ -219,6 +223,10 @@ private def canIntuitionistic {u : Level} {prop : Q(Type u)} {bi : Q(BI $prop)}
     return false
   let ty ← instantiateMVars info.ty
   let some irisTy ← checkTypeQ ty prop | return false
+  /- Let the dedicated empty-`icases` rule consume `False` directly instead
+  of first moving it to the intuitionistic context. -/
+  if (← getMVars irisTy).isEmpty then
+    if let .defEq _ ← isDefEqQ irisTy q(iprop(False)) then return false
   let persistent ← mkFreshExprMVarQ prop
   match ← ProofMode.trySynthInstanceQ
       q(IntoPersistently false $irisTy $persistent) with
@@ -237,15 +245,36 @@ private def introNormStep : NormStep where
         let some irisGoal := parseIrisGoal? goalType
           | return none
         return forallBinderName? irisGoal.goal
+    let falsePremise ← liftM (m := MetaM) do
+      input.goal.withContext do
+        let goalType ← instantiateMVars (← input.goal.getType)
+        let some irisGoal := parseIrisGoal? goalType | return false
+        let _ : Q(BI $irisGoal.prop) := irisGoal.bi
+        let premise ← mkFreshExprMVarQ irisGoal.prop
+        let rest ← mkFreshExprMVarQ irisGoal.prop
+        let preState ← saveState
+        let result ← match ← ProofMode.trySynthInstanceQ
+            q(FromWand $irisGoal.goal .out $premise $rest) with
+          | .some _ =>
+            let premise : Q($irisGoal.prop) ← instantiateMVars premise
+            if !(← getMVars premise).isEmpty then pure false
+            else
+              match ← isDefEqQ premise q(iprop(False)) with
+              | .defEq _ => pure true
+              | _ => pure false
+          | _ => pure false
+        preState.restore
+        return result
     let pureName ←
       match pureName? with
       | some name => mkBinderFromName name
       | none => mkFreshLeanBinderFromNames names input.depth
-    if let some newGoal ← runIntroPat input.goal (.intro (.pure pureName)) then
-      let tac? ← if input.recordScript then
-        liftM <| some <$> mkIntroTactic (.intro (.pure pureName))
-      else pure none
-      return .changed newGoal tac?
+    if !falsePremise then
+      if let some newGoal ← runIntroPat input.goal (.intro (.pure pureName)) then
+        let tac? ← if input.recordScript then
+          liftM <| some <$> mkIntroTactic (.intro (.pure pureName))
+        else pure none
+        return .changed newGoal tac?
     let name ← mkFreshBinderFromNames names input.depth
     if let some newGoal ← runIntroPat input.goal (.intro (.one name)) then
       let tac? ← if input.recordScript then
@@ -352,10 +381,24 @@ private def simpNormStep : NormStep where
       let preState ← saveState
       try
         input.goal.withContext do
-          let ctx := (← Simp.mkContext {} #[← getSimpTheorems]
+          /- Include local rewrite facts in the simp set. In particular, this
+          lets `iaesop ... simp` use facts such as `Hle : 0 < n`. Restrict
+          this to non-quantified propositions and explicit negations: adding
+          arbitrary quantified hypotheses would turn them into rewrite rules
+          and can change unrelated proof search. -/
+          let mut simpTheorems ← getSimpTheorems
+          let mut fvarIdsToSimp : Array FVarId := #[]
+          for ldecl in ← getLCtx do
+            if ldecl.isImplementationDetail then continue
+            fvarIdsToSimp := fvarIdsToSimp.push ldecl.fvarId
+            let type ← instantiateMVars ldecl.type
+            let isAtomicProp := (← isProp type) && !type.isForall
+            let isRewriteFact := isAtomicProp || (← matchNot? type).isSome
+            if isRewriteFact then
+              simpTheorems ← simpTheorems.add (.fvar ldecl.fvarId) #[]
+                (.fvar ldecl.fvarId)
+          let ctx := (← Simp.mkContext {} #[simpTheorems]
             <| ← getSimpCongrTheorems).setFailIfUnchanged false
-          let fvarIdsToSimp := (← getLCtx).foldl (init := (#[] : Array FVarId)) λ acc ldecl =>
-            if ldecl.isImplementationDetail then acc else acc.push ldecl.fvarId
           match (← Meta.simpGoal input.goal ctx (fvarIdsToSimp := fvarIdsToSimp)).1 with
           | none =>
             if !(← input.goalMVars.anyM (notM ·.isAssignedOrDelayedAssigned)) then

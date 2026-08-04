@@ -55,6 +55,12 @@ def mkReplayTactic (rapp : Rapp) (obun : Obun) (config : SearchConfig) :
           let pat ← `(icasesPat| ($binder:binderIdent | $binder:binderIdent))
           `(tactic| icases $ident:term with $pat:icasesPat)
       | none => pure fallback
+  | .tactic .icasesFalse =>
+      match rapp.usedHyp? >>= appliedHypTacticIdent? with
+      | some ident =>
+          let pat ← `(icasesPat| ⟨⟩)
+          `(tactic| icases $ident:term with $pat:icasesPat)
+      | none => pure fallback
   | .tactic .isplit => `(tactic| isplit)
   | .tactic .ileft => `(tactic| ileft)
   | .tactic .iright => `(tactic| iright)

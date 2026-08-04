@@ -13,6 +13,7 @@ namespace Iris.ProofMode.Aesop
 inductive TacticDescr where
   | identity
   | icases
+  | icasesFalse
   | ipureIntro
   | ileft
   | iright
@@ -31,6 +32,7 @@ instance : ToString TacticDescr where
   toString
     | .identity => "identity"
     | .icases => "icases"
+    | .icasesFalse => "icasesFalse"
     | .ipureIntro => "ipureIntro"
     | .ileft => "ileft"
     | .iright => "iright"

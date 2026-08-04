@@ -132,14 +132,14 @@ private def mkResidualGroup (obunRef : ObunRef) (rootIndex : Nat)
     (prefixConsumed : Array IrisHyp) (prefixMetaInfo : Array MetaAssignment)
     (externalPrefix? : Option BubbleId) (externalAncestors : Array BubbleId)
     (externalConsumed : Array IrisHyp) (externalMetaInfo : Array MetaAssignment)
-    (trigger : BubbleId) (preGroup : GroupId) (preBubble : BubbleId) : BubbleM Q Unit := do
+    (trigger : BubbleId) (preGroup : GroupId) (preBubble : BubbleId) : BubbleM Q Bool := do
   let obun ← obunRef.get
   if indices.isEmpty ||
-      (← groupResidualAlreadySpawned obun.id rootIndex trigger preGroup) then return
-  let some parentRappRef := obun.parent? | return
+      (← groupResidualAlreadySpawned obun.id rootIndex trigger preGroup) then return false
+  let some parentRappRef := obun.parent? | return false
   let parentRapp ← parentRappRef.get
   let allMeta := externalMetaInfo ++ prefixMetaInfo
-  let some refinedState ← applyMetaInfo parentRapp.metaState allMeta | return
+  let some refinedState ← applyMetaInfo parentRapp.metaState allMeta | return false
   let allConsumed := externalConsumed ++ prefixConsumed
   let mut members : Array GroupMember := #[]
   for originalIndex in indices do
@@ -203,6 +203,7 @@ private def mkResidualGroup (obunRef : ObunRef) (rootIndex : Nat)
   enqueueGroup group
   trace[iaesop.search.bubble] "iaesop(bubble): spawned residual group {group.id} for \
     obun {obun.id}; root={rootIndex}; members={indices}; prefix={preBubble}"
+  return true
 
 private def relevantToAnotherMember (group : GoalGroup) (sourceIndex : Nat)
     (bubble : ProofBubble) : BubbleM Q Bool := do
@@ -217,15 +218,15 @@ private def relevantToAnotherMember (group : GoalGroup) (sourceIndex : Nat)
   return false
 
 private def spawnMetaResidualGroup (obunRef : ObunRef) (group : GoalGroup)
-    (sourceIndex : Nat) (bubble : ProofBubble) : BubbleM Q Unit := do
+    (sourceIndex : Nat) (bubble : ProofBubble) : BubbleM Q Bool := do
   if bubble.metaInfo.isEmpty || !(← relevantToAnotherMember group sourceIndex bubble) then
-    return
+    return false
   let some prefixConsumed := appendResources group.platform.resourcePolicy
-      group.prefixConsumed bubble.consumed | return
-  let some parentRappRef := (← obunRef.get).parent? | return
+      group.prefixConsumed bubble.consumed | return false
+  let some parentRappRef := (← obunRef.get).parent? | return false
   let parentRapp ← parentRappRef.get
   let some prefixMetaInfo ← mergeMetaInfo parentRapp.metaState
-      #[group.prefixMetaInfo, bubble.metaInfo] | return
+      #[group.prefixMetaInfo, bubble.metaInfo] | return false
   let some source := group.members[sourceIndex]?
     | throwError "iaesop(bubble): source group member is out of bounds"
   let prefixProofs := group.prefixProofs.push (source.originalIndex, bubble.id)
@@ -299,10 +300,11 @@ private def spawnLinearResidualFrom (obunRef : ObunRef)
   if ← completionCoversRoot completion targetRoot then return
   let obun ← obunRef.get
   let some indices := obun.bubbleDependencyRoots[targetRoot]? | return
-  mkResidualGroup obunRef targetRoot indices #[] #[] #[]
+  let _ ← mkResidualGroup obunRef targetRoot indices #[] #[] #[]
     (some completion.id) (completion.externalAncestors.push completion.id)
     completion.reservedConsumed completion.metaInfo completion.id
     completion.groupId completion.representative
+  return
 
 private def hasLinearResidualFor (obunId : ObunId) (targetRoot : Nat) :
     BubbleM Q Bool :=
@@ -395,6 +397,11 @@ def arriveGoalBubble (bubble : ProofBubble) : BubbleM Q (Array GroupEmission) :=
   let mut emissions := #[]
   for location in locations do
     let group ← getGroup obunRef location.groupId
+    /- A bubble that fixes a metavariable used by another member is a prefix,
+    not an ordinary alternative in the old group.  Only its residual group
+    may combine subsequent sibling bubbles with that assignment. -/
+    if ← spawnMetaResidualGroup obunRef group location.memberIndex bubble then
+      continue
     let candidate : Candidate IrisHyp := {
       id := bubble.id
       childIndex := location.memberIndex
@@ -402,7 +409,6 @@ def arriveGoalBubble (bubble : ProofBubble) : BubbleM Q (Array GroupEmission) :=
     }
     let (platform, combinations) := arrive group.platform candidate
     setGroup obunRef { group with platform }
-    spawnMetaResidualGroup obunRef group location.memberIndex bubble
     for combination in combinations do
       let some completion ← mkCompletion obunRef group combination | continue
       trace[iaesop.search.bubble] "iaesop(bubble): group {group.id} completed as \
