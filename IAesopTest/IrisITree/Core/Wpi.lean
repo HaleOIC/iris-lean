@@ -38,19 +38,24 @@ private def wpiF' {R} (Me : CoPset) (wpi : DiscreteO CoPset × ITree E R × (R �
     DiscreteO CoPset × ITree E R × (R → PROP) → PROP :=
   λ ⟨Ms, t, Φ⟩ => wpiF H (λ Ms t Φ => wpi ⟨⟨Ms⟩, t, Φ⟩) Ms.1 Me t Φ
 
+@[iaesop backward 75%]
 theorem wpiF_mono {R} (wp1 wp2 : CoPset → ITree E R → (R → PROP) → PROP) Me :
     □ (∀ t Φ, wp1 ∅ t Φ -∗ wp2 ∅ t Φ) -∗
     ∀ Ms t Φ, wpiF H wp1 Ms Me t Φ -∗ wpiF H wp2 Ms Me t Φ := by
-  iintro #Hwand %Ms %t %Φ Hwp
-  unfold wpiF; imod Hwp; imodintro
+  unfold wpiF; iintro #Hwand %Ms %t
   cases h : t.unfold with
-  | ret => iassumption
-  | tau t' => iapply Hwand; iassumption
+  | ret => iaesop bubble
+    -- iassumption
+  | tau t' => iaesop bubble
+  -- iapply Hwand; iassumption
   | vis i k =>
-    iapply H.ihandle_mono
-    · iintro %_; iapply Hwand
-    · iintro !> %_; iapply Hwand
-    · iassumption
+  iintro %Φ Hwp; imod Hwp; imodintro
+  iapply H.ihandle_mono i (λ a => wp1 ∅ (k a) Φ) _
+    (λ a => wp1 ∅ (k a) (fun _ => iprop(False))) _
+    <;> iaesop bubble
+  -- · iintro %_; iapply Hwand
+  -- · iintro !> %_; iapply Hwand
+  -- · iassumption
 
 private instance {R Me} : BIMonoPred (wpiF' (R:=R) H Me) where
   mono_pred := by
@@ -58,9 +63,10 @@ private instance {R Me} : BIMonoPred (wpiF' (R:=R) H Me) where
     iintro #H %pair Hsim
     rcases pair with ⟨_, _, _⟩
     simp only [wpiF']
-    iapply wpiF_mono $$ [] Hsim
-    iintro !> %t %Φ1
-    iapply H
+    iaesop bubble simp
+    -- iapply wpiF_mono $$ [] Hsim
+    -- iintro !> %t %Φ1
+    -- iapply H
   mono_pred_ne := by
     intro wp Hwp; constructor; intro n ⟨Ms1, t1, Ψ1⟩ ⟨Ms2, t2, Ψ2⟩ ⟨HMs, Ht, HΨ⟩
     simp at HMs Ht HΨ; subst HMs Ht
@@ -131,11 +137,11 @@ instance elimModal_fupd_wpi p E1 E2 E3 (P : PROP) :
       iprop(|={E1,E2}=> P) P
       iprop(WPi t @> H;E1,E3 {{Φ}}) iprop(WPi t @> H;E2,E3 {{Φ}}) where
   elim_modal _ := by
-    cases p <;> simp
-    · iintro ⟨HP, Hwand⟩; iapply fupd_wpi_empty
-      imod HP; iapply fupd_wpi_empty; iapply Hwand $$ HP
-    · iintro ⟨#HP, Hwand⟩; iapply fupd_wpi_empty
-      imod HP; iapply fupd_wpi_empty; iapply Hwand $$ HP
+    cases p <;> simp <;> iaesop bubble with [backward fupd_wpi_empty]
+    -- · iintro ⟨HP, Hwand⟩; iapply fupd_wpi_empty
+    --   imod HP; iapply fupd_wpi_empty; iapply Hwand $$ HP
+    -- · iintro ⟨#HP, Hwand⟩; iapply fupd_wpi_empty
+    --   imod HP; iapply fupd_wpi_empty; iapply Hwand $$ HP
 
 instance elimModal_wpi_wpi p H1 H2 (t1 : ITree E1 R1) (t2 : ITree E2 R2) Ms Me1 Me2 Φ1 Φ2 :
     ElimModal (PROP:=PROP) True p false
@@ -145,8 +151,9 @@ instance elimModal_wpi_wpi p H1 H2 (t1 : ITree E1 R1) (t2 : ITree E2 R2) Ms Me1 
     cases p <;> simp
     all_goals
       iintro ⟨HΦ, Hwand⟩; ihave HΦ := fupd_wpi_empty $$ HΦ
-      iapply fupd_wpi_empty; imod HΦ; imodintro
-      iapply Hwand $$ HΦ
+      iaesop bubble
+      -- iapply fupd_wpi_empty; imod HΦ; imodintro
+      -- iapply Hwand $$ HΦ
 
 instance elimModal_wpi_fupd p E1 E2 E3 (P : PROP) :
     ElimModal True p false
@@ -156,34 +163,46 @@ instance elimModal_wpi_fupd p E1 E2 E3 (P : PROP) :
     cases p <;> simp
     all_goals
       iintro ⟨HΦ, Hwand⟩; ihave HΦ := fupd_wpi_empty $$ HΦ
-      imod HΦ; iapply Hwand $$ HΦ
+      iaesop bubble
+      -- imod HΦ; iapply Hwand $$ HΦ
 
 end instances
 
 theorem fupd_wpi (Φ : R → PROP) :
     WPi t @> H;Ms,Me {{ Φ }} ⊣⊢ |={Ms}=> WPi t @> H;Ms,Me {{ Φ }} := by
-  isplit <;> iintro Hwp
-  · imodintro; iframe
-  · imod Hwp; iframe
+  iaesop bubble
+  -- isplit <;> iintro Hwp
+  -- · imodintro; iframe
+  -- · imod Hwp; iframe
 
 theorem wpi_pure' {R} (Φ : R → PROP) (r : R) :
   WPi pure r @> H;Ms,Me {{ Φ }} ⊣⊢ (|={Ms, Me}=> Φ r) := (wpi_unfold _ _).trans <| by
   simp [wpiF]
-  isplit
-  · iintro >$
-  · iintro >_; iapply fupd_mask_intro
-    · simp
-    iintro >Hemp !>; iframe
+  iaesop bubble pureBy simp with [backward fupd_mask_intro]
+  -- isplit
+  -- · iintro >$
+  -- · iintro >_; iapply fupd_mask_intro
+  --   · simp
+  --   iintro >Hemp !>; iframe
 
+@[iaesop backward 75%]
 theorem wpi_pure {R} (M : CoPset) (Φ : R → PROP) (r : R) :
     Φ r ⊢ WPi pure r @> H; M {{ Φ }} := by
-  iintro HΦ; iapply wpi_pure'; imodintro; iexact HΦ
+  iaesop bubble with [backward wpi_pure']
+  -- iintro HΦ; iapply wpi_pure'; imodintro; iexact HΦ
 
 theorem wpi_tau {R} (Φ : R → PROP) (t : ITree E R) :
     (WPi t.tau @> H;Ms,Me {{ Φ }}) ⊣⊢ (WPi t @> H;Ms,Me {{ Φ }}) := (wpi_unfold _ _).trans <| by
   simp [wpiF]
-  isplit <;> iintro >$ //
+  iaesop bubble
+  -- isplit <;> iintro >$ //
 
+@[iaesop backward 75%]
+theorem wpi_tau' {R} (Φ : R → PROP) (t : ITree E R) :
+    WPi t @> H;Ms,Me {{ Φ }} ⊢ WPi t.tau @> H;Ms,Me {{ Φ }} := by
+  iaesop bubble with [backward wpi_tau]
+
+@[iaesop backward 75%]
 theorem wpi_vis {R} (Φ : R → PROP) (i : E.I) (k : E.O i → ITree E R) :
     (WPi (ITree.vis i k) @> H;Ms,Me {{ Φ }}) ⊣⊢
     (|={Ms, ∅}=> H.ihandle i
@@ -199,11 +218,16 @@ theorem wpi_trigger_bind {E' A} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     WPi E'.trigger i >>= k @> H; Ms, Me {{ Φ }} := by
   iintro >HH; simp [Effect.trigger]
   iapply wpi_vis; imodintro
-  iapply H.ihandle_mono; rotate_left 2
+  let e := Subeffect.map (E₂ := E) i
+  iapply H.ihandle_mono e.fst (λ a => WPi (k (e.snd a)) @> H; ∅,Me {{ Φ }}) _
+    (λ a => WPi (k (e.snd a)) @> H; ∅,Me {{ fun _ => iprop(False) }}) _
+  rotate_left 2
   · iapply InH.is_inH $$ HH
-  · iintro %r $
-  · iintro !> %a $
+  all_goals iaesop bubble
+  -- · iintro %r $
+  -- · iintro !> %a $
 
+@[iaesop backward 75%]
 theorem wpi_trigger {E'} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     (i : E'.I) (Φ : E'.O i → PROP) :
     (|={Ms, ∅}=> H'.ihandle i
@@ -212,8 +236,11 @@ theorem wpi_trigger {E'} [E' -< E] (H' : IHandler PROP E') [InH H' H]
     WPi (E'.trigger i) @> H; Ms,Me {{ Φ }} := by
   iintro HH; unfold Effect.trigger
   iapply wpi_vis; imod HH; imodintro
-  iapply H.ihandle_mono
-  · iintro %r HΦ; iapply wpi_pure'; iexact HΦ
+  let e := Subeffect.map (E₂ := E) i
+  iapply H.ihandle_mono e.fst (λ a => iprop(|={∅, Me}=> Φ (e.snd a))) _
+    (λ _ => iprop(False)) _
+  · iaesop bubble
+    -- iintro %r HΦ; iapply wpi_pure'; iexact HΦ
   · iintro !> %a Hfalse; icases Hfalse with ⟨⟩
   · iapply InH.is_inH $$ HH
 
@@ -235,9 +262,10 @@ theorem wpi_ind_mask (G : CoPset → ITree E R → (R → PROP) → PROP)
   iintro !> %p HwpiF
   rcases p with ⟨⟨_⟩, _, _⟩
   simp only [wpiF', G']
-  iapply HPre
-  iapply wpiF_mono $$ [] HwpiF
-  iintro !> %_ %_ $
+  iaesop bubble
+  -- iapply HPre
+  -- iapply wpiF_mono $$ [] HwpiF
+  -- iintro !> %_ %_ $
 
 variable (G : ITree E R → (R → PROP) → PROP) [∀ t, OFE.NonExpansive (G t)]
 
@@ -248,23 +276,25 @@ theorem wpi_ind :
   let G' := λ (Ms : CoPset) t Φ => iprop(<affine> ⌜Ms = ∅⌝ -∗ G t Φ)
   have : ∀ Ms t, OFE.NonExpansive (G' Ms t) := by sorry
   iapply wpi_ind_mask G' $$ [] Hwp; rotate_left 1; itrivial
-  iintro !> %Ms %t %Φ Hwpi %hp; subst hp
-  iapply HPre
-  iapply wpiF_mono $$ [] Hwpi
-  iintro !> %_ %_ HG
-  isplit
-  · icases HG with ⟨HG, -⟩; iapply HG $$ [//]
-  · icases HG with ⟨-, $⟩
+  iaesop bubble simp pureBy simp
+  -- iintro !> %Ms %t %Φ Hwpi %hp; subst hp
+  -- iapply HPre
+  -- iapply wpiF_mono $$ [] Hwpi
+  -- iintro !> %_ %_ HG
+  -- isplit
+  -- · icases HG with ⟨HG, -⟩; iapply HG $$ [//]
+  -- · icases HG with ⟨-, $⟩
 
 theorem wpi_iter :
     □ (∀ t Φ, wpiF H (λ _ => G) ∅ Me t Φ -∗ G t Φ) ⊢
     ∀ t Φ, WPi t @> H;∅,Me {{ Φ }} -∗ G t Φ := by
   iintro #HRet %t %Φ
   iapply wpi_ind $$ []
-  iintro !> %t %Φ HwpiF
-  iapply HRet
-  iapply wpiF_mono $$ [] HwpiF
-  iintro !> %_ %_ ⟨$, -⟩
+  iaesop bubble simp
+  -- iintro !> %t %Φ HwpiF
+  -- iapply HRet
+  -- iapply wpiF_mono $$ [] HwpiF
+  -- iintro !> %_ %_ ⟨$, -⟩
 
 theorem wpi_iter' :
     □ (∀ Φ r, (|={∅, Me}=> Φ r) -∗ G (pure r) Φ) -∗
@@ -277,10 +307,10 @@ theorem wpi_iter' :
   iintro #HPure #HTau #HVis %t %Φ
   iapply wpi_iter $$ []
   iintro !> %t %Φ HwpiF; unfold wpiF
-  cases t <;> simp
-  · iapply HPure; imod HwpiF with $
-  · iapply HTau $$ [$]
-  · iapply HVis $$ [$]
+  cases t <;> simp <;> iaesop bubble
+  -- · iapply HPure; imod HwpiF with $
+  -- · iapply HTau $$ [$]
+  -- · iapply HVis $$ [$]
 
 end wpi_induction
 
@@ -288,6 +318,7 @@ section wpi_lemmas
 
 variable {E R} {Ms Me : CoPset} {H : IHandler PROP E}
 
+-- @[iaesop backward 75%]
 theorem wpi_wand (Φ Ψ : R → PROP) :
     WPi t @> H;Ms,Me {{ Φ }} -∗
     (∀ r, Φ r -∗ Ψ r) -∗
@@ -301,15 +332,18 @@ theorem wpi_wand (Φ Ψ : R → PROP) :
     refine forall_ne λ Ψ => wand_ne.ne ?_ .rfl
     exact forall_ne λ r => wand_ne.ne (Hx r) .rfl
   iapply wpi_iter' G $$ [] [] [] Hwp Hwand
-  · iintro !> %Φ %r >Hwpi %Ψ Hwand
-    iapply wpi_pure; iapply Hwand $$ [$]
-  · iintro !> %Φ %t >Hwpi %Ψ Hwand
-    iapply wpi_tau; iapply Hwpi $$ Hwand
+  · iaesop bubble
+    -- iintro !> %Φ %r >Hwpi %Ψ Hwand
+    -- iapply wpi_pure; iapply Hwand $$ [$]
+  · iaesop bubble
+    -- iintro !> %Φ %t >Hwpi %Ψ Hwand
+    -- iapply wpi_tau; iapply Hwpi $$ Hwand
   · iintro !> %Φ %i %k >Hwpi %Ψ Hwand
     iapply wpi_vis; imodintro
     iapply H.ihandle_mono $$ [Hwand] [] Hwpi
-    · iintro %_ HG; iapply HG $$ Hwand
-    · iintro !> %_ HG; iapply HG; iintro %_ ⟨⟩
+      <;> iaesop bubble
+    -- · iintro %_ HG; iapply HG $$ Hwand
+    -- · iintro !> %_ HG; iapply HG; iintro %_ ⟨⟩
 
 theorem wpi_fupd_empty_2 (Φ : R → PROP) :
     WPi t @> H; Ms, ∅ {{ v, iprop(|={∅, Me}=> Φ v) }} ⊢
@@ -324,22 +358,24 @@ theorem wpi_fupd_empty_2 (Φ : R → PROP) :
     refine forall_ne λ Φ => wand_ne.ne ?_ .rfl
     exact forall_ne λ r => wand_ne.ne (HΨ r) .rfl
   iapply wpi_iter' G $$ [] [] [] Hwp
-  · iintro !> %Ψ %r >HΨ %Φ Hwand
-    iapply wpi_pure'
-    iapply Hwand $$ HΨ
-  · iintro !> %Ψ %t >HΨ %Φ Hwand
-    iapply wpi_tau
-    iapply HΨ $$ Hwand
+  · iaesop bubble
+    -- iintro !> %Ψ %r >HΨ %Φ Hwand
+    -- iapply wpi_pure'
+    -- iapply Hwand $$ HΨ
+  · iaesop bubble
+    -- iintro !> %Ψ %t >HΨ %Φ Hwand
+    -- iapply wpi_tau
+    -- iapply HΨ $$ Hwand
   · iintro !> %Ψ %i %k >HΨ %Φ Hwand
-    iapply wpi_vis
-    imodintro
+    iapply wpi_vis; imodintro
     iapply H.ihandle_mono $$ [Hwand] [] HΨ
-    · iintro %_ HG
-      iapply HG $$ Hwand
-    · iintro !> %_ HG
-      iapply HG
-      iintro %_ Hfalse
-      icases Hfalse with ⟨⟩
+      <;> iaesop bubble
+    -- · iintro %_ HG
+    --   iapply HG $$ Hwand
+    -- · iintro !> %_ HG
+    --   iapply HG
+    --   iintro %_ Hfalse
+    --   icases Hfalse with ⟨⟩
   · iintro %r $
 
 theorem wpi_fupd_empty_1 (Φ : R → PROP) :
@@ -355,18 +391,23 @@ theorem wpi_fupd_empty_1 (Φ : R → PROP) :
     exact OFE.NonExpansive.ne (f := wpi H ∅ ∅ t) <|
       λ v => BIFUpdate.ne.ne (HΨ v)
   iapply wpi_iter' G $$ [] [] [] Hwp
-  · iintro !> %Ψ %r HΨ; simp [G]
-    iapply wpi_pure; iframe
-  · iintro !> %Ψ %t >HΨ
-    iapply wpi_tau; iframe
+  · iaesop bubble
+    -- iintro !> %Ψ %r HΨ; simp [G]
+    -- iapply wpi_pure; iframe
+  · iaesop bubble
+    -- iintro !> %Ψ %t >HΨ
+    -- iapply wpi_tau; iframe
   · iintro !> %Ψ %i %k >HΨ; simp [G]
     iapply wpi_vis; imodintro
     iapply H.ihandle_mono $$ [] [] HΨ
     · iintro %_ $
     · iintro !> %_ _
+      -- [TODO] Fix me!!!
+      -- iaesop bubble with [backward wpi_fupd_empty_2 75%]
       iapply wpi_fupd_empty_2
       iapply wpi_wand $$ [$]
-      iintro %_ >⟨⟩
+      iaesop bubble
+      -- iintro %_ >⟨⟩
 
 theorem wpi_fupd_empty (Φ : R → PROP) :
     WPi t @> H; Ms, Me {{ Φ }} ⊣⊢
@@ -378,7 +419,8 @@ theorem wpi_fupd (Φ : R → PROP) :
     (WPi t @> H; Ms, Me {{ v, iprop(|={Me}=> Φ v) }})
      := by
   isplit <;> iintro Hwp
-  · iapply wpi_wand $$ Hwp; iintro %_ $ //
+  · iaesop bubble simp with [backward wpi_wand]
+    -- iapply wpi_wand $$ Hwp; iintro %_ $ //
   · iapply wpi_fupd_empty
     iapply wpi_wand $$ [Hwp]
     · iapply (wpi_fupd_empty (Me:=Me)) $$ Hwp
@@ -394,17 +436,21 @@ theorem wpi_bind' {A} M' t (k : A → ITree E R) (Φ : R → PROP) :
   have : ∀ t, OFE.NonExpansive (G t) := by sorry
   iapply wpi_iter' G $$ [] [] [] Hwp
   rotate_right 1; focus iintro %_ $
-  · iintro !> %Φ %r >Hwpi %Ψ Hwand; simp
-    iapply Hwand $$ [$]
-  · iintro !> %Φ %t >Hwpi %Ψ Hwand; simp
-    iapply wpi_tau; iapply Hwpi $$ Hwand
+  · iaesop bubble simp
+    -- iintro !> %Φ %r >Hwpi %Ψ Hwand; simp
+    -- iapply Hwand $$ [$]
+  · iaesop bubble simp
+    -- iintro !> %Φ %t >Hwpi %Ψ Hwand; simp
+    -- iapply wpi_tau; iapply Hwpi $$ Hwand
   · iintro !> %Φ %i %k >Hwpi %Ψ Hwand; simp
     iapply wpi_vis; imodintro
     iapply H.ihandle_mono $$ [Hwand] [] Hwpi
-    · iintro %_ HG; iapply HG $$ Hwand
-    · iintro !> %_ HG; iapply HG; iintro %_ ⟨⟩
+      <;> iaesop bubble
+    -- · iintro %_ HG; iapply HG $$ Hwand
+    -- · iintro !> %_ HG; iapply HG; iintro %_ ⟨⟩
 
 -- specialized version where M' = Ms. This is especially useful for the Ms = Me case.
+@[iaesop backward 75%]
 theorem wpi_bind {A} t (k : A → ITree E R) (Φ : R → PROP) :
     WPi t @> H; Ms {{ r, WPi k r @> H;Ms,Me {{ Φ }} }} ⊢
     WPi t >>= k @> H; Ms, Me {{ Φ }} := wpi_bind' _ _ _ _
@@ -441,12 +487,13 @@ theorem wpi_translation {R} (t : ITree E1 R) (Φ : R → PROP) :
   iintro >Hwp #HH
   let G : ITree E1 R → (R → PROP) → PROP := λ t Φ => WPi (ITree.interp f t) @> H2; ∅,Me {{Φ}}
   iapply (wpi_iter' G) $$ [] [] [] Hwp
-  · iintro !> %Φ %r >Hret; simp
-    iapply wpi_pure $$ Hret
-  · iintro !> %Φ %t >Htau; simp [interp_tau]
-    iapply wpi_tau $$ Htau
-  · iintro !> %Φ %i %k >Hvis; simp[interp_vis]
-    iapply HH $$ Hvis
+    <;> iaesop bubble simp
+  -- · iintro !> %Φ %r >Hret; simp
+  --   iapply wpi_pure $$ Hret
+  -- · iintro !> %Φ %t >Htau; simp [interp_tau]
+  --   iapply wpi_tau $$ Htau
+  -- · iintro !> %Φ %i %k >Hvis; simp[interp_vis]
+  --   iapply HH $$ Hvis
 
 /-- A sequential special case of `wpi_translation` with a simpler handler-side premise. -/
 theorem wpi_translation_seq {R} (t : ITree E1 R) (Φ : R → PROP) :
@@ -457,8 +504,9 @@ theorem wpi_translation_seq {R} (t : ITree E1 R) (Φ : R → PROP) :
   iintro Hwp #Hwand; iapply wpi_translation $$ Hwp
   iintro !> %i %k %Ψ Hh; iapply wpi_bind; iapply Hwand
   iapply H1.ihandle_mono $$ [] [] Hh
-  · iintro %a $
-  · iintro !> %t Hwp; exact true_intro
+    <;> iaesop bubble pureBy simp
+  -- · iintro %a $
+  -- · iintro !> %t Hwp; exact true_intro
 
 end wp_itree_translation
 
@@ -479,8 +527,9 @@ theorem wpi_wandH {R} (t : ITree E R) (Φ : R → PROP) :
   simp [Effect.trigger]; iapply wpi_vis; imodintro
   iapply Hwand.is_wandH
   iapply H1.ihandle_mono i $$ [] [] Hh
-  · iintro %a $
-  · iintro !> %a $
+    <;> iaesop bubble
+  -- · iintro %a $
+  -- · iintro !> %a $
 
 end wp_itree_mono
 
@@ -499,8 +548,9 @@ theorem wpi_inH {R} (t : ITree E1 R) (Φ : R → PROP) :
     iintro !> %i %k %Ψ Hh
     iapply wpi_trigger_bind; imodintro
     iapply H1.ihandle_mono $$ [] [] Hh
-    · iintro %a $
-    · iintro !> %a $
+      <;> iaesop bubble
+    -- · iintro %a $
+    -- · iintro !> %a $
   · let emb : (i : E1.I) → ITree E2 (E1.O i) := λ i => E1.trigger i
     let G : ITree E2 R → (R → PROP) → PROP := λ u Ψ =>
       iprop(∀ t', ⌜ITree.interp emb t' = u⌝ -∗ (WPi t' @> H1; ∅ {{ Ψ }}))
@@ -520,12 +570,14 @@ theorem wpi_inH {R} (t : ITree E1 R) (Φ : R → PROP) :
         imod Hik; simp [emb] at Heq;
         rcases interp_vis_inv Heq with ⟨i', k', Ht', Hi, Hk⟩
         subst Ht'; subst Hi; iapply wpi_vis; imodintro
-        iapply Hin.is_inH
+        subst Hk; iapply Hin.is_inH
         iapply H2.ihandle_mono (Subeffect.map i').fst $$ [] [] Hik
-        · iintro %a HG; iapply HG; ipureintro; subst Hk; rfl
-        · iintro !> %a HG; iapply HG; ipureintro; subst Hk; rfl
+          <;> iaesop bubble simp pureBy rfl
+        -- · iintro %a HG; iapply HG; ipureintro; rfl
+        -- · iintro !> %a HG; iapply HG; ipureintro; rfl
     simp [G]; imod Hwp; iapply wpi_fupd_empty
     ihave Hwp := wpi_fupd_empty $$ Hwp
-    iapply Hgen $$ Hwp; ipureintro; rfl
+    iaesop bubble pureBy rfl
+    -- iapply Hgen $$ Hwp; ipureintro; rfl
 
 end wp_itree_inH

@@ -109,12 +109,13 @@ theorem wp_lift_pure_step_no_fork [Inhabited State] (E₂ : CoPset) :
   obtain ⟨rfl, rfl, rfl⟩ := Hpure _ _ _ _ _ Hstep
   dsimp only [List.nil_append, List.length_nil]
   imod ι.stateInterp_mono $$ Hσ with $
-  imod Hclose
-  imod H
-  imodintro
-  simp only [Algebra.BigOpL.bigOpL_nil]
-  ispecialize H $$ %_ %_ %_ %_ %Hstep Hcred
-  iframe
+  iaesop bubble simp
+  -- imod Hclose
+  -- imod H
+  -- imodintro
+  -- simp only [Algebra.BigOpL.bigOpL_nil]
+  -- ispecialize H $$ %_ %_ %_ %_ %Hstep Hcred
+  -- iframe
 
 @[rocq_alias wp_lift_pure_stuck]
 theorem wp_lift_pure_stuck [Inhabited State] :

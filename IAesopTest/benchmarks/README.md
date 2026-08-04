@@ -6,6 +6,10 @@ This directory contains the first implementation of the framework described in [
 
 For each target leaf `Qi`, the canonical rule consumes resource `Ri`. A conflict for `Qi` consumes a later resource `Rj`, where `j > i`, while producing the same `Qi`. The decoy is therefore locally relevant but steals the only canonical resource for target `Qj`.
 
+Generated Lean files place rules in the Iris context as boxed wands
+`□ (Ri -∗ Qi)`, rather than as Lean entailment hypotheses. Boxing makes the
+rules persistent, so unused decoys do not become leftover linear resources.
+
 Restricting all decoys to `j > i` makes the resource-to-target graph triangular. The last target must use its canonical resource, then the preceding target must use its canonical resource, and so on. Thus multiple decoys cannot combine into a second successful resource permutation.
 
 The generator distributes decoys across targets before placing several on the same target. With `k = propositions / 2` resource-target pairs, the maximum supported conflict count is `k * (k - 1) / 2`.

@@ -38,25 +38,32 @@ instance (H : IHandler PROP E) (Φ : R → PROP) :
       · intro a; apply Hwp (k a)
       · intro a; apply Hwp (k a)
 
+@[iaesop backward 75%]
 theorem wpiConstF_mono (H : IHandler PROP E) (Φ : R → PROP)
     (wp1 wp2 : ITree E R → PROP) :
     □ (∀ t, wp1 t -∗ wp2 t) -∗
     ∀ t, wpiConstF H Φ wp1 t -∗ wpiConstF H Φ wp2 t := by
   iintro #Hwand %t Hwp
   cases t <;> simp [wpiConstF]
-  case ret => iframe
-  case tau t' => imod Hwp; imodintro; iapply Hwand $$ Hwp
+  case ret =>
+    iaesop bubble
+    -- iframe
+  case tau t' =>
+    iaesop bubble
+    -- imod Hwp; imodintro; iapply Hwand $$ Hwp
   case vis i k =>
     imod Hwp; imodintro; iapply H.ihandle_mono $$ [] [] Hwp
-    · iintro %a Hk; iapply Hwand $$ Hk
-    · iintro !> %a Hk; iapply Hwand $$ Hk
+      <;> iaesop bubble
+    -- · iintro %a Hk; iapply Hwand $$ Hk
+    -- · iintro !> %a Hk; iapply Hwand $$ Hk
 
 instance wp_itree_const_mono (H : IHandler PROP E) (Φ : R → PROP) :
     BIMonoPred (wpiConstF H Φ) where
   mono_pred := by
     intro wp1 wp2 Hne1 Hne2
-    iintro #Hwand %t Hwp
-    iapply wpiConstF_mono $$ Hwand Hwp
+    iaesop bubble simp
+    -- iintro #Hwand %t Hwp
+    -- iapply wpiConstF_mono $$ Hwand Hwp
   mono_pred_ne.ne n t1 t2 Hdist := by
     cases Hdist; rfl
 
@@ -94,6 +101,7 @@ section wpi_tp_section
 
 variable {E : Effect} {R : Type _} {PROP : Type _} [BI PROP] [BIFUpdate PROP] [BIAffine PROP]
 
+@[iaesop backward 75%]
 theorem wpi_tp_intro (t : ITree E R) (H : IHandler PROP E) (Φ : R → PROP) :
     WPi t @> H; ∅ {{ Φ }} ⊢ wpi_tp H [λ P => P t] Φ := by
   letI : ∀ t, OFE.NonExpansive (λ Ψ : R → PROP =>
@@ -107,16 +115,19 @@ theorem wpi_tp_intro (t : ITree E R) (H : IHandler PROP E) (Φ : R → PROP) :
   · iintro !> %t %Ψ Hstep #Hpost
     iapply least_fixpoint_unfold_mpr
     cases t <;> simp [wpiConstF, wpiF]
-    · imod Hstep; imod Hstep; imodintro
-      iapply Hpost $$ [$]
-    · imod Hstep; imodintro
-      icases Hstep with ⟨Hconst, -⟩
-      iapply Hconst $$ [$]
+    · iaesop bubble
+      -- imod Hstep; imod Hstep; imodintro
+      -- iapply Hpost $$ [$]
+    · iaesop bubble
+      -- imod Hstep; imodintro
+      -- icases Hstep with ⟨Hconst, -⟩
+      -- iapply Hconst $$ [$]
     · imod Hstep; imodintro
       iapply H.ihandle_mono $$ [] [] Hstep
-      · iintro %a ⟨Hconst, -⟩; iapply Hconst $$ [$]
-      · iintro !> %a ⟨Hconst, -⟩
-        iapply Hconst; iintro !> %r ⟨⟩
+        <;> iaesop bubble
+      -- · iintro %a ⟨Hconst, -⟩; iapply Hconst $$ [$]
+      -- · iintro !> %a ⟨Hconst, -⟩
+      --   iapply Hconst; iintro !> %r ⟨⟩
   · iintro !> %r $
 
 end wpi_tp_section
@@ -164,20 +175,26 @@ theorem wpi_adequate_ind (Φ : R → PROP)
   rw [← exec.fold] at Hexec; clear this
   cases Hexec with
   | stop _ _ _ HC =>
+    simp only [bi_close]
+    ihave H := lfp_tpF_perm _ Ms.car _ _ _ HMs
     imodintro; iexists t, s, Mss, M
     isplitr; itrivial; iframe Hinv
-    simp only [bi_close]; isplitl [Ht]
-    · iexists t; iframe; itrivial
-    iapply lfp_tp_unfold; iapply lfp_tpF_perm _ Ms.car _ _ _ HMs $$ [$]
-    iintro %Ns1 %Ns2 %Hperm ⟨-, Htp⟩
-    iapply lfp_tp_perm _ _ _ Hperm $$ [$]
+    isplitl [Ht]
+    · iaesop bubble simp pureBy simp
+      -- iexists t; iframe; itrivial
+    iapply lfp_tp_unfold
+    iaesop bubble simp pureBy assumption
+    -- iapply lfp_tpF_perm _ Ms.car _ _ _ HMs $$ [$]
+    -- iintro %Ns1 %Ns2 %Hperm ⟨-, Htp⟩
+    -- iapply lfp_tp_perm _ _ _ Hperm $$ [$]
   | tau t _ _ Hexec =>
     ihave IH := lfp_tpF_perm_close _ _ _ _ HMs $$ IH
     unfold lfp_tpF; ispecialize IH $$ %0 %M %(by simp)
     ihave IH := bi_mono0_mono_l M (λ P => iprop(|={∅}=> P t.tau)) $$ IH [Ht]
     · iframe
     imod bi_mono0_elim $$ IH [] with ⟨%G, Hwpi, Hc⟩
-    · iintro %Q %Q' Hwand >HQ'; imodintro; iapply Hwand $$ [$]
+    · iaesop bubble;
+    --  iintro %Q %Q' Hwand >HQ'; imodintro; iapply Hwand $$ [$]
     simp [wpiConstF]; imod Hwpi
     ispecialize Hc $$ %([λ P => P t]) [Hwpi]
     · simp only [Algebra.BigOpL.bigOpL_cons, Algebra.BigOpL.bigOpL_nil]; iframe
@@ -190,13 +207,15 @@ theorem wpi_adequate_ind (Φ : R → PROP)
     ihave IH := bi_mono0_mono_l M (λ P => iprop(|={∅}=> P (.vis i k))) $$ IH [Ht]
     · iframe
     imod bi_mono0_elim $$ IH [] with ⟨%G, Hwpi, Hc⟩
-    · iintro %Q %Q' Hwand >HQ'; imodintro; iapply Hwand $$ [$]
+    · iaesop bubble;
+      -- iintro %Q %Q' Hwand >HQ'; imodintro; iapply Hwand $$ [$]
     simp [wpiConstF]; imod Hwpi
     imod A.adequate _ _ _ Mss _ _ Hhandle $$ Hwpi Hinv with
       ⟨%t', %s', %M', %Ms', %Msn, %HC, %HpermA, Hspawn, Hinv, Hmod⟩
     ispecialize Hc $$ %Msn Hspawn
     simp only [bi_close]; icases Hc with ⟨%Ns, %HpermClose, ⟨Hadequate, -⟩⟩
-    iapply Hadequate $$ %t' %s' %M' %Ms' %C %HC [] Hinv Hmod
+    ispecialize Hadequate $$ %t' %s' %M' %Ms' %C %HC
+    iapply Hadequate $$ [] Hinv Hmod
     ipureintro; exact HpermA.trans HpermClose |>.symm
 
 theorem wpi_adequate (Φ : R → PROP)
@@ -211,8 +230,9 @@ theorem wpi_adequate (Φ : R → PROP)
   ihave Hwpi := wpi_fupd_empty $$ Hwpi
   iapply wpi_adequate_ind _ _ _ t s [λ P => P t] []
     (λ P => P t) C Hexec (by simp) $$ [Hwpi] Hinv []
-  iapply wpi_tp_intro $$ Hwpi
-  iintro %_ $
+    <;> iaesop bubble
+  -- iapply wpi_tp_intro $$ Hwpi
+  -- iintro %_ $
 
 end wpi_adequate
 
@@ -236,12 +256,15 @@ theorem wpi_adequate_pure (hlc : HasLC) (n : Nat) (m : CoPset)
   intro Hexec Hwp
   apply pure_soundness (PROP := IProp GF)
   apply step_fupdN_soundness (hlc := hlc) 0 n
+  simp only [Nat.repeat]
   iintro %Hinv Hlc
   imod Hwp Hinv $$ Hlc with ⟨%H, %A, %Φ, Hwpi, Hs, Hc⟩
-  imod wpi_adequate H EH Φ t s C m Hexec $$ Hwpi Hs with
-    ⟨%t', %s', %Ms', %M', %HC, Hs', Hclose, Htp⟩
-  imod Hc $$ %t' %s' %Ms' %M' %HC Hs' [$Hclose $Htp] with %HΨ
-  imodintro; simp only [Nat.repeat]; itrivial
+  ihave Hwpi_ad := wpi_adequate H EH Φ t s C m Hexec $$ Hwpi Hs
+  iaesop bubble
+  -- imod wpi_adequate H EH Φ t s C m Hexec $$ Hwpi Hs with
+  --   ⟨%t', %s', %Ms', %M', %HC, Hs', Hclose, Htp⟩
+  -- imod Hc $$ %t' %s' %Ms' %M' %HC Hs' [$Hclose $Htp] with %HΨ
+  -- imodintro; itrivial
 
 end wpi_adequate_pure
 

@@ -172,11 +172,11 @@ example (e e' : Expr) (P P' : IProp GF) Φ
   iintro %s Hs
   ihave ⟨%s', %Hstep, Hupd⟩ := Hstep s $$ [HP Hs]
   . iframe
-  iexists e', s'
   -- set_option trace.iaesop.search.expand true in
-  isplitr
-  · itrivial
-  iaesop
+  iaesop bubble pureBy simp
+  -- iexists e', s'
+  -- isplitr
+  -- · itrivial
   -- iintro !>
   -- imod Hupd with ⟨HP', Hs⟩
   -- iintro !>
@@ -189,7 +189,7 @@ example (e : Expr) Φ (Hloop : ∀ σ : State, step Value (e, σ) = (e, σ)) :
   iapply loeb_weak
   iintro HLöb
   iapply wp_unfold
-  iaesop pureStop
+  iaesop bubble pureStop
   · exact Hloop s
   · exact true_intro
   -- iright

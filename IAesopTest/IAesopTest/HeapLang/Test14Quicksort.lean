@@ -107,8 +107,8 @@ theorem nil_spec (Φ : Val → IProp GF) :
   imodintro
   iapply Hl
   iaesop pureBy simp with [backward isList_nil]
-  iapply isList_nil
-  itrivial
+  -- iapply isList_nil
+  -- itrivial
 
 @[iaesop backward 50%]
 theorem cons_spec x l ls Φ :

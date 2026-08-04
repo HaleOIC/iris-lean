@@ -155,6 +155,22 @@ class GeneratorTests(unittest.TestCase):
         self.assertIn("P4", render_lean(case))
         self.assertEqual(5, len(metadata["propositionNames"]))
 
+    def test_rules_are_rendered_as_boxed_iris_wands(self) -> None:
+        case = build_case(
+            master_seed=31,
+            propositions=6,
+            conflicts=2,
+            variant="canonical",
+            strategy="bestFirst",
+        )
+        rendered = render_lean(case)
+        for rule in case.rules:
+            self.assertIn(
+                f"□ (P{rule.premise} -∗ P{rule.conclusion})",
+                rendered,
+            )
+            self.assertNotIn(f"({rule.name} :", rendered)
+
     def test_invalid_conflict_request_is_rejected(self) -> None:
         with self.assertRaisesRegex(ConfigurationError, "at most 3"):
             build_case(

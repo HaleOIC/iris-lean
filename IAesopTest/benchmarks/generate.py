@@ -15,7 +15,7 @@ from typing import Iterable, Sequence
 
 
 SCHEMA_VERSION = 2
-GENERATOR_VERSION = "2"
+GENERATOR_VERSION = "3"
 RNG_ALGORITHM = "Python random.Random (MT19937)"
 VARIANTS = ("canonical", "adversarial", "random")
 SOURCE_ORDERS = ("canonical", "reversed", "random")
@@ -493,6 +493,7 @@ def case_metadata(case: BenchmarkCase) -> dict[str, object]:
         "generatorVersion": GENERATOR_VERSION,
         "rngAlgorithm": RNG_ALGORITHM,
         "family": "split",
+        "ruleRepresentation": "boxed-iris-wand",
         "logicalId": case.logical_id,
         "caseId": case.case_id,
         "masterSeed": case.master_seed,
@@ -574,6 +575,10 @@ def render_lean(case: BenchmarkCase, *, trace: bool = False) -> str:
     metadata = case_metadata(case)
     sources = [f"P{i}" for i in case.source_order]
     targets = [f"P{case.targets[i]}" for i in case.target_order]
+    rules = [
+        f"□ (P{case.rules[index].premise} -∗ P{case.rules[index].conclusion})"
+        for index in case.rule_order
+    ]
     lines = [
         "module",
         "",
@@ -604,14 +609,9 @@ def render_lean(case: BenchmarkCase, *, trace: bool = False) -> str:
         "example [BI PROP]",
     ])
     lines.extend(_proposition_binders(case.proposition_names))
-    for index in case.rule_order:
-        rule = case.rules[index]
-        lines.append(
-            f"    ({rule.name} : P{rule.premise} ⊢ P{rule.conclusion})"
-        )
     lines.extend(
         [
-            f"    : {_right_associated_sep(sources)} ⊢ {_right_associated_sep(targets)} := by",
+            f"    : {_right_associated_sep(rules + sources)} ⊢ {_right_associated_sep(targets)} := by",
             f"  iaesop {case.strategy}",
             "",
             "end IAesopTest.Benchmark.Generated",

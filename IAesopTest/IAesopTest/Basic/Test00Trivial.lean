@@ -12,6 +12,50 @@ open Iris.BI
 example [BI PROP] (P : PROP) : P ⊢ P := by
    iaesop
 
+/- The original context-copy engine remains explicitly selectable. -/
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop copy
+
+/- `baseline` remains a compatibility alias for `copy`. -/
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop baseline
+
+/- The bubble engine has a separate frontend and implementation entry point. -/
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop bubble
+
+/- A `False` hypothesis is closed by the low-probability empty `icases` rule. -/
+example [BI PROP] (P : PROP) : False ⊢ P := by
+  iaesop? bubble
+
+/- Bubble replay also records the selected path for `Try this` generation. -/
+example [BI PROP] (P : PROP) : P ⊢ P := by
+  iaesop? bubble
+
+/- Bubble search joins independently solved full-context siblings. -/
+example [BI PROP] (P Q : PROP) : P ∗ Q ⊢ Q ∗ P := by
+  iaesop bubble
+
+/- Nested platforms bubble their selected combinations upward. -/
+example [BI PROP] (P Q R : PROP) : P ∗ Q ∗ R ⊢ R ∗ Q ∗ P := by
+  iaesop bubble
+
+/- The first local choices may conflict; later alternatives unlock the join. -/
+example [BI PROP] (P Q : PROP) : P ∗ Q ⊢ (P ∨ Q) ∗ (P ∨ Q) := by
+  iaesop bubble
+
+/- Case-split platforms share, rather than partition, their branch context. -/
+example [BI PROP] [BIAffine PROP] (P Q R : PROP) :
+    (P ∨ Q) ∗ (P -∗ R) ∗ (Q -∗ R) ⊢ R := by
+  iaesop bubble
+
+/- Sibling bubbles must agree on the existential witness metavariable.  The
+first locally successful P/Q choices may disagree, so search must retain later
+compatible alternatives. -/
+example [BI PROP] [BIAffine PROP] (P Q : Nat → PROP) :
+    P 1 ∗ P 2 ∗ Q 2 ∗ Q 1 ⊢ ∃ x, P x ∗ Q x := by
+  iaesop bubble
+
 example [BI PROP] (P : PROP) : P ⊢ P := by
   iaesop bestFirst
 
@@ -114,20 +158,42 @@ example [BI PROP] [BIUpdate PROP] (P : PROP) : |==> |==> P ⊢ |==> P := by
 
 example [BI PROP] [BIAffine PROP] (P Q R S : PROP) :
     S -∗ (P ∨ Q) -∗ (P -∗ R) -∗ (Q -∗ S -∗ R) -∗ (Q -∗ R) -∗ (R ∗ S) := by
-  iaesop
+  iaesop bubble
 
 example [BI PROP] (P Q : α → PROP) (R : PROP) :
     P a -∗ □ (∀ x, (P x -∗ Q x) ∧ R) -∗ Q a := by
-  iaesop
+  iaesop bubble
+
+example [BI PROP] (P : α → PROP) (Q : β → PROP) (R : α → β → PROP) (S : PROP):
+    □ (∀ x y, P x -∗ Q y -∗ R x y -∗ S) -∗
+    P a -∗ Q b -∗
+    R a b -∗ S := by
+  iaesop bubble
 
 /-- Tests `iexists` with anonymous metavariable -/
 example [BI PROP] : ⊢@{PROP} ∃ x, ⌜x = 42⌝ := by
   iaesop pureBy grind
 
 example [BI PROP] (P : α → PROP) : P a ⊢ ∃ x, P x := by
-  iaesop
+  iaesop bubble
 
 section LocalRuleFrontend
+
+/- A backward equivalence is indexed in both directions, and its ordinary
+Lean proposition parameter is exposed as a pure Iris premise. -/
+structure BackwardEquivWitness [BI PROP] (P : PROP) : Prop where
+  equiv : iprop(P ∧ True) ⊣⊢ P
+
+theorem backward_bientails_with_pure [BI PROP] {P : PROP}
+    (h : BackwardEquivWitness P) : iprop(P ∧ True) ⊣⊢ P := h.equiv
+
+example [BI PROP] (P : PROP) (h : BackwardEquivWitness P) : iprop(P ∧ True) ⊢ P := by
+  iaesop bubble pureBy assumption with [backward backward_bientails_with_pure]
+
+example [BI PROP] (P : PROP) (h : BackwardEquivWitness P) : P ⊢ iprop(P ∧ True) := by
+  set_option trace.iaesop.ruleIndex true in
+  set_option trace.iaesop.backward true in
+  iaesop bubble pureBy assumption with [backward backward_bientails_with_pure]
 
 theorem local_rule_added_test [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
   ipureintro
@@ -150,7 +216,7 @@ example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
   iaesop without [backward removable_rule_test]
 
 example [BI PROP] : ⊢@{PROP} ⌜True ∧ True⌝ := by
-  iaesop
+  iaesop bubble
 
 end LocalRuleFrontend
 
@@ -164,6 +230,6 @@ example [BI PROP] (A B C D : PROP) (H : A ⊢ B) :
 example [BI PROP] (P Q R : α → PROP)
     (H₁ : ∀ x, P x ⊢ Q x) (H₂ : ∀ x, Q x ⊢ R x) :
     P a ⊢ R a := by
-  iaesop
+  iaesop bubble
 
 end specialExamples

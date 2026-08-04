@@ -93,16 +93,18 @@ theorem heapH_init  (σ : heapE.T Loc Val) :
   imod Hgmap; icases Hgmap with ⟨%γ, ⟨⟨Hauth, Hauth'⟩, Hfrag⟩⟩
   imod (inv_alloc ((nroot.@"heapH").@"") ∅
     (∃ σ, ghost_map_auth (K := Loc) (V := Option Val) γ (.own $ .half 1) σ)) $$ [Hauth] with #Hinv
-  · inext; iexists σ; iassumption
+  · iaesop bubble
+    -- inext; iexists σ; iassumption
   · imodintro; iexists ⟨Gpre, γ, ""⟩
     unfold heap_inv heapH_inv_name stateInterp_heap pointsto
-    isplitr
-    · iassumption
-    isplitl [Hauth']
-    · isplit; iassumption
-      unfold heap_inv heapH_inv_name
-      iassumption
-    · iframe
+    unfold heap_inv heapH_inv_name
+    iaesop bubble
+    -- isplitr
+    -- · iassumption
+    -- isplitl [Hauth']
+    -- · isplit; iassumption
+    --   iassumption
+    -- · iframe
 
 end initialization
 
@@ -115,6 +117,7 @@ variable {E : Effect} {H : IHandler (IProp GF) E}
 variable [heapE Loc Val -< E] [InH (heapH (G := G)) H]
 
 -- Note: we can extend the following theorems to `Ms,Me` version by having `|={Ms,Me}=> Φ v`
+@[iaesop backward 75%]
 theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦? v -∗
@@ -127,7 +130,8 @@ theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp 
   imod inv_acc_timeless Hmask $$ Hinv with ⟨⟨%σinv, HauthInv⟩, Hclose⟩
   ihave %Heq := ghost_map_auth_agree $$ HauthInv HauthState; subst σinv
   imodintro; isplitl [HauthState]
-  · iframe; iframe Hinv
+  · iaesop bubble
+    -- iframe; iframe Hinv
 
   -- look up and insert operations
   ihave %Hlookup := ghost_map_lookup $$ HauthInv Hpt
@@ -137,6 +141,7 @@ theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp 
     apply Std.ExtTreeMap.ext_getElem?; intro k
     simp only [Iris.Std.insert, Std.ExtTreeMap.getElem?_alter, Std.ExtTreeMap.getElem?_insert]
   rw [Hlookup, Hinsert]
+  simp only [Option.join_some]
 
   iapply wpi_bind' M; iapply wpi_set
   unfold stateInterp_heap heap_inv
@@ -147,19 +152,24 @@ theorem wpi_storeOpt M (l : Loc) (v v' : Option Val) (Φ : Option Val → IProp 
   imod Hclose $$ [Hauth'] with -
   · iexists Std.insert (M := (Std.ExtTreeMap Loc · compare)) σ l v'
     iexact Hauth'
-  imodintro; isplitl [Hauth]
-  · isplit <;> iassumption
-  iapply wpi_pure; simp only [Option.join_some]
-  iapply Hwand $$ [$]
+  iaesop bubble
+  -- imodintro; isplitl [Hauth]
+  -- · isplit <;> iassumption
+  -- iapply wpi_pure;
+  -- iapply Hwand $$ [$]
 
+@[iaesop backward 75%]
 theorem wpi_store? M (l : Loc) (v : Option Val) (v' : Val) (Φ : Option Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦? v -∗
     (l ↦ v' -∗ Φ v) -∗
     WPi (store? l v') @> H; M {{ Φ }} := by
-  iintro %Hmask Hpt Hwand; unfold store?
-  iapply wpi_storeOpt _ _ _ _ _ Hmask $$ Hpt Hwand
+  unfold store?
+  iaesop bubble
+  -- iintro %Hmask Hpt Hwand;
+  -- iapply wpi_storeOpt _ _ _ _ _ Hmask $$ Hpt Hwand
 
+@[iaesop backward 75%]
 theorem wpi_load? M (l : Loc) (v : Val) (dq : DFrac) (Φ : Option Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦{dq} v -∗
@@ -175,31 +185,38 @@ theorem wpi_load? M (l : Loc) (v : Val) (dq : DFrac) (Φ : Option Val → IProp 
     simpa [Iris.Std.get?] using Hlookup
   rw [Hlookup]; simp only [Option.join_some]
 
-  iframe; iframe Hinv
-  imodintro; iapply wpi_pure
-  iapply Hwand $$ [$]
+  iaesop bubble
+  -- iframe; iframe Hinv
+  -- imodintro; iapply wpi_pure
+  -- iapply Hwand $$ [$]
 
 section fail
 
 variable [failE -< E]
 
+@[iaesop backward 75%]
 theorem wpi_store! M (l : Loc) (v v' : Val) (Φ : Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦ v -∗
     (l ↦ v' -∗ Φ v) -∗
     WPi (store! l v') @> H; M {{ Φ }} := by
-  iintro %Hmask Hpt Hwand; unfold store!
-  iapply wpi_bind; iapply wpi_store? _ _ _ _ _ Hmask $$ Hpt
-  iintro Hpt; iapply wpi_pure; iapply Hwand $$ [$]
+  unfold store!
+  iaesop bubble
+  -- iintro %Hmask Hpt Hwand;
+  -- iapply wpi_bind; iapply wpi_store? _ _ _ _ _ Hmask $$ Hpt
+  -- iintro Hpt; iapply wpi_pure; iapply Hwand $$ [$]
 
+@[iaesop backward 75%]
 theorem wpi_load! M (l : Loc) (v : Val) (dq : DFrac) (Φ : Val → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     l ↦{dq} v -∗
     (l ↦{dq} v -∗ Φ v) -∗
     WPi (load! l) @> H; M {{ Φ }} := by
-  iintro %Hmask Hpt Hwand; unfold load!
-  iapply wpi_bind; iapply wpi_load? _ _ _ _ _ Hmask $$ Hpt
-  iintro Hpt; iapply wpi_pure; iapply Hwand $$ Hpt
+  unfold load!
+  iaesop bubble
+  -- iintro %Hmask Hpt Hwand;
+  -- iapply wpi_bind; iapply wpi_load? _ _ _ _ _ Hmask $$ Hpt
+  -- iintro Hpt; iapply wpi_pure; iapply Hwand $$ Hpt
 
 end fail
 
@@ -249,6 +266,7 @@ section alloc
 variable [demonicE Loc -< E] [InH (demonicH (PROP := IProp GF) Loc) H]
 variable [LawfulLoc Loc]
 
+@[iaesop backward 75%]
 theorem wpi_allocN M (n : Nat) (v : Val) (Φ : Loc → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     (∀ l : Loc, ([∗list] i ∈ .range n, (l + Int.ofNat i) ↦ v) -∗ Φ l) -∗
@@ -260,7 +278,8 @@ theorem wpi_allocN M (n : Nat) (v : Val) (Φ : Loc → IProp GF) :
   imod inv_acc_timeless Hmask $$ Hinv with ⟨⟨%σinv, HauthInv⟩, Hclose⟩
   ihave %Heq := ghost_map_auth_agree $$ HauthInv Hauth; subst σinv
   imodintro; isplitl [Hauth]
-  · iframe; iframe Hinv
+  · iaesop bubble
+    -- iframe; iframe Hinv
   iapply wpi_bind; iapply wpi_demonic (Hi := inhabited_free_locs σ LawfulLoc.add_pos_nle)
   iintro %r; rcases r with ⟨l, Hfree⟩; simp only
   iapply wpi_bind' M; iapply wpi_set
@@ -303,14 +322,15 @@ theorem wpi_allocN M (n : Nat) (v : Val) (Φ : Loc → IProp GF) :
     rw [HinsertMany]; iassumption
   imodintro; isplitl [HauthState]
   · rw [HinsertMany']; iframe; iframe Hinv
-  iapply wpi_pure; iapply Hwand
   unfold pointsto
+  iapply wpi_pure; iapply Hwand
   iapply (equiv_iff.mp (BigSepL.bigSepL_map
     (Φ := λ _ kv => ghost_map_elem _ _ kv.1 kv.2)
     (l + Int.ofNat ·, some v)))
   iapply (BigSepM.bigSepM_ofList (M := (Std.ExtTreeMap Loc · compare))) $$ Hpts
   exact Hnodup
 
+@[iaesop backward 75%]
 theorem wpi_alloc M (v : Val) (Φ : Loc → IProp GF) :
     ↑(heapH_inv_name (G := G)) ⊆ M →
     (∀ l, l ↦ v -∗ Φ l) -∗

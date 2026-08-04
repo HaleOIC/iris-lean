@@ -9,30 +9,37 @@ namespace Iris.HeapLang
 
 open ITree ITree.Effects ITree.Exec
 
+@[simp]
 def Val.int! [failE -< E] : Val → ITree E Int
   | .lit (.int i) => return i
   | x => fail s!"{reprStr x} is not Int"
 
+@[simp]
 def Val.bool! [failE -< E] : Val → ITree E Bool
   | .lit (.bool b) => return b
   | x => fail s!"{reprStr x} is not Bool"
 
+@[simp]
 def Val.loc! [failE -< E] : Val → ITree E Loc
   | .lit (.loc l) => return l
   | x => fail s!"{reprStr x} is not Loc"
 
+@[simp]
 def Val.pair! [failE -< E] : Val → ITree E (Val × Val)
   | .pair v1 v2 => return (v1, v2)
   | x => fail s!"{reprStr x} is not Pair"
 
+@[simp]
 def Val.rec! [failE -< E] : Val → ITree E (Binder × Binder × Exp)
   | .rec_ f x e => return (f, x, e)
   | x => fail s!"{reprStr x} is not Rec"
 
+@[simp]
 def Val.injL! [failE -< E] : Val → ITree E Val
   | .injL v => return v
   | x => fail s!"{reprStr x} is not InjL"
 
+@[simp]
 def Val.injR! [failE -< E] : Val → ITree E Val
   | .injR v => return v
   | x => fail s!"{reprStr x} is not InjR"

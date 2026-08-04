@@ -120,7 +120,7 @@ class WandH {PROP E} [BI PROP] (H1 : IHandler PROP E) (H2 : IHandler PROP E) whe
 
 instance {PROP E} [BI PROP] (H : IHandler PROP E) : WandH H H := by
   constructor
-  iaesop
+  iaesop bubble
   -- iintro %i %Φ %s H
   -- iexact H
 
@@ -194,11 +194,13 @@ instance {E GE : Effect.{u} } {R σ : Type _}
     intro G i s Ms C k H0; simp at H0
     iintro Hh Hinv
     ihave >⟨%a, %s', %_, _, _⟩ := A.adequate $$ Hh [$]; assumption
-    imodintro; iexists (k a), _, (λ P => P (k a)), Ms, [λ P => P (k a)]
-    isplitr; itrivial
-    iframe
-    isplitr; itrivial
-    simp; iframe
-    iintro %_ $ !> //
+    iexists (k a), _, (λ P => P (k a)), Ms, [λ P => P (k a)]
+    iaesop bubble simp pureBy simp [*]
+    -- imodintro;
+    -- isplitr; itrivial
+    -- iframe
+    -- isplitr; itrivial
+    -- simp; iframe
+    -- iintro %_ $ !> //
 
 end adequate

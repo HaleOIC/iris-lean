@@ -17,11 +17,13 @@ variable {PROP : Type _} [BI PROP]
 def failH : IHandler PROP failE where
   ihandle := λ _ _ _ => iprop(False)
   ihandle_mono := by
-    iintro %_ %_ %_ %_ %_ _ _ ⟨⟩
+    iaesop bubble
+    -- iintro %_ %_ %_ %_ %_ _ _ ⟨⟩
 
 instance failH_sequential : Sequential (PROP := PROP) failH := by
   constructor
-  iintro %i %Φ %s ⟨⟩
+  iaesop bubble
+  -- iintro %i %Φ %s ⟨⟩
 
 end handler
 
@@ -50,7 +52,8 @@ theorem wpi_assert {M} (P : Prop) [Decidable P] (Φ : PUnit → PROP) :
     Φ ⟨⟩ -∗
     WPi FailE.assert P @> H;M {{ Φ }} := by
   intro hP; unfold FailE.assert; simp [hP]
-  iintro HΦ; iapply wpi_pure $$ [$]
+  iaesop bubble
+  -- iintro HΦ; iapply wpi_pure $$ [$]
 
 end wpi_rules
 
@@ -63,6 +66,7 @@ instance failEH_adequate {PROP : Type _} [BI PROP] [BIFUpdate PROP] :
   inv _ := iprop(True)
   adequate := by
     intro i s C Φ1 Φ2 Hhandle; simp [failH]
-    iintro ⟨⟩
+    iaesop bubble
+    -- iintro ⟨⟩
 
 end exec
