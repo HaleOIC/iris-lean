@@ -1,7 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
-public meta import Iris.ProofMode.Aesop.Search.Names
+public meta import Iris.ProofMode.Aesop.Search.Shared.Names
 public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
@@ -38,7 +38,7 @@ private def mkSplitChildren (goal : MVarId) :
         fullContextIrisSubgoals := fullContextIrisSubgoals.push irisGoal
       return some (children, fullContextIrisSubgoals)
 
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
   let (some (children, fullContextIrisSubgoals), postState) ← liftM do
       restoreState input.state

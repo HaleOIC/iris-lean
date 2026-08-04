@@ -1,6 +1,6 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Search.SearchM
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
 public meta import Iris.ProofMode.Aesop.Rule.Types.Info
 public meta import Iris.ProofMode.Aesop.Rule.Types.Match
 public meta import Iris.ProofMode.Aesop.Tree.Basic
@@ -78,7 +78,7 @@ def ofEffect (postState : SavedState) (effect : RuleEffect)
 end RuleOutput
 
 abbrev RuleRunner (Q : Type) [Queue Q] :=
-  RuleInput → SearchM Q RuleOutput
+  RuleInput → CoreM Q RuleOutput
 
 abbrev RuleReplayer :=
   RuleReplayInput → ProofModeM (Array MVarId)

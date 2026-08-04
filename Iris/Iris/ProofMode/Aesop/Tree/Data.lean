@@ -4,6 +4,7 @@ public import Iris.ProofMode.Expr
 public import Iris.ProofMode.Aesop.Rule.Types.Match
 public import Iris.ProofMode.Aesop.Tree.Types
 public import Iris.ProofMode.Aesop.Util.Basic
+public meta import Iris.ProofMode.Aesop.Search.Bubble.Types
 public meta section
 
 namespace Iris.ProofMode.Aesop
@@ -43,6 +44,7 @@ structure GoalData (RappRef ObunRef : Type) : Type where
   deriving Nonempty
 
 structure ObunData (GoalRef RappRef : Type) : Type where
+  /- ### Shared tree data (Copy and Bubble) -/
   id : ObunId
   parent? : Option RappRef
   goals : Array GoalRef
@@ -50,17 +52,31 @@ structure ObunData (GoalRef RappRef : Type) : Type where
   state : NodeState
   isIrrelevant : Bool
 
-  /- ### Context manage data -/
+  /- ### Shared context-management data (Copy and Bubble) -/
   /- Indicates whether this obligation bundle uses context-management mode. -/
   kind : ObunKind
   /- Nesting depth of active context-management frames. -/
   contextDepth : Nat
   /- Full-context Iris subgoal templates managed by this obligation bundle. -/
   fullContextIrisSubgoals : Array IrisGoal
+
+  /- ### Copy-only data -/
   /- Finalized spatial-context split assignments, ordered by split case. -/
   finalizedSpatialSplits : Array (Array IrisHyp)
 
-  /- ### Script generation data -/
+  /- ### Bubble-only data -/
+  /- Original committed-goal indices, partitioned into connected components
+  through shared unassigned metavariables.  Each component is one outer
+  platform slot. -/
+  bubbleDependencyRoots : Array (Array Nat) := #[]
+  /- All initial and residual groups owned by this Obun.  Residual alternatives
+  are appended here and retain their `preGroup?` link. -/
+  bubbleGroups : Array (Search.Bubble.GoalGroupData GoalRef) := #[]
+  /- The Obun-level incremental join.  A completed group is registered in the
+  slot identified by its `rootIndex`. -/
+  bubblePlatform? : Option (Search.Bubble.Platform IrisHyp) := none
+
+  /- ### Shared script-generation data (Copy and Bubble) -/
   scriptSteps? : Option (Array Script.LazyStep)
 
   deriving Nonempty

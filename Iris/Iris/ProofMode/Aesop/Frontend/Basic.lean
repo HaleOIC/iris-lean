@@ -4,6 +4,12 @@ public section
 
 namespace Iris.ProofMode.Aesop
 
+/- Select the proof-search implementation. -/
+declare_syntax_cat iaesopAlgorithm
+syntax "baseline" : iaesopAlgorithm
+syntax "copy" : iaesopAlgorithm
+syntax "bubble" : iaesopAlgorithm
+
 /- Specify strategy. -/
 declare_syntax_cat iaesopStrategy
 syntax "bestFirst" : iaesopStrategy
@@ -36,9 +42,11 @@ declare_syntax_cat iaesopRuleEdit
 syntax "with" "[" iaesopLocalRule,* "]" : iaesopRuleEdit
 syntax "without" "[" iaesopErasedRule,* "]" : iaesopRuleEdit
 
-syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
+syntax (name := iaesopTactic)  "iaesop"  (ppSpace iaesopAlgorithm)?
+  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
   (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
-syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
+syntax (name := iaesopTactic?) "iaesop?" (ppSpace iaesopAlgorithm)?
+  (ppSpace iaesopStrategy)? (ppSpace iaesopNormMode)?
   (ppSpace iaesopPureSolver)? (ppSpace iaesopRuleEdit)* : tactic
 
 end Iris.ProofMode.Aesop

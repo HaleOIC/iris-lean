@@ -2,13 +2,20 @@ module
 
 public meta import Iris.ProofMode.Tactics.Basic
 public meta import Iris.ProofMode.Aesop.Frontend.Basic
-public meta import Iris.ProofMode.Aesop.Search.Configure
+public meta import Iris.ProofMode.Aesop.Search.Shared.Configure
 
 public meta section
 
 namespace Iris.ProofMode.Aesop
 
 open Lean Elab Tactic
+
+private meta def parseAlgorithm (stx : Syntax) : TermElabM SearchAlgorithm := do
+  match stx with
+  | `(iaesopAlgorithm| baseline) => pure .copy
+  | `(iaesopAlgorithm| copy) => pure .copy
+  | `(iaesopAlgorithm| bubble) => pure .bubble
+  | _ => throwUnsupportedSyntax
 
 private meta def parseNormMode (stx : Syntax) : TermElabM (Bool × Bool) := do
   match stx with
@@ -90,14 +97,19 @@ private meta def parseRuleEdits (edits : Array (TSyntax `iaesopRuleEdit)) :
     erasedTheoremRules := erasedTheoremRules ++ erasedRules
   return (localTheoremRules, erasedTheoremRules)
 
-private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesopStrategy))
+private meta def mkConfig (generateScript? : Bool)
+    (algorithmStx? : Option (TSyntax `iaesopAlgorithm))
+    (strategyStx? : Option (TSyntax `iaesopStrategy))
     (normModeStx? : Option (TSyntax `iaesopNormMode))
     (pureSolverStx? : Option (TSyntax `iaesopPureSolver))
     (ruleEdits : Array (TSyntax `iaesopRuleEdit)) : TermElabM SearchConfig := do
+  let algorithm ← match algorithmStx? with
+    | none => pure .copy
+    | some algorithmStx => parseAlgorithm algorithmStx
   let strategy ← match strategyStx? with
     | none => pure .bestFirst
     | some strategyStx => parseStrategy strategyStx
-  let (enableSimp, enableUnfold) ← match normModeStx? with
+  let (enableSimp?, enableUnfold?) ← match normModeStx? with
     | none => pure (false, false)
     | some normModeStx => parseNormMode normModeStx
   let (pureStop?, pureSolver) ← match pureSolverStx? with
@@ -105,10 +117,11 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
     | some pureSolverStx => parsePureSolver pureSolverStx
   let (localTheoremRules, erasedTheoremRules) ← parseRuleEdits ruleEdits
   return {
-    generateScript? := trace
-    strategy := strategy
-    enableSimp? := enableSimp
-    enableUnfold? := enableUnfold
+    algorithm
+    generateScript?
+    strategy
+    enableSimp?
+    enableUnfold?
     pureSolver
     pureStop?
     localTheoremRules
@@ -119,14 +132,16 @@ private meta def mkConfig (trace : Bool) (strategyStx? : Option (TSyntax `iaesop
 meta def parse (stx : Syntax) : TermElabM SearchConfig := do
   withRef stx do
     match stx with
-    | `(tactic| iaesop $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
+    | `(tactic| iaesop $[$algorithm:iaesopAlgorithm]?
+        $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
         $[$pureSolver:iaesopPureSolver]?
         $[$ruleEdits:iaesopRuleEdit]*) =>
-        mkConfig false strategy normMode pureSolver ruleEdits
-    | `(tactic| iaesop? $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
+        mkConfig false algorithm strategy normMode pureSolver ruleEdits
+    | `(tactic| iaesop? $[$algorithm:iaesopAlgorithm]?
+        $[$strategy:iaesopStrategy]? $[$normMode:iaesopNormMode]?
         $[$pureSolver:iaesopPureSolver]?
         $[$ruleEdits:iaesopRuleEdit]*) =>
-        mkConfig true strategy normMode pureSolver ruleEdits
+        mkConfig true algorithm strategy normMode pureSolver ruleEdits
     | _ =>
         throwUnsupportedSyntax
 

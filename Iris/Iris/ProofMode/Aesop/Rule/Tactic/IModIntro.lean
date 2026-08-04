@@ -1,7 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
-public meta import Iris.ProofMode.Aesop.Search.Names
+public meta import Iris.ProofMode.Aesop.Search.Shared.Names
 public meta import Iris.ProofMode.Tactics.ModIntro
 
 public meta section
@@ -62,7 +62,7 @@ private def mkExpansion? (goal : MVarId) (irisGoal : IrisGoal) :
     return none
 
 /- Search for the possibility of `imodintro` application -/
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
   let some expansion ← liftM (m := ProofModeM) do
     input.state.restore

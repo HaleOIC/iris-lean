@@ -76,9 +76,9 @@ private def tryAssignPureIntro (goal : MVarId)
     return .success (← liftM (m := MetaM) saveState) remainingGoals
 
 /- Search for the possibility of `ipureintro` applications -/
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
-  let config := (← readThe SearchM.Context).config
+  let config := (← readThe CoreM.Context).config
   let pureSolver? := if config.pureStop? then none else some config.pureSolver
   let .success postState _ ← liftM (m := ProofModeM) do
     input.state.restore

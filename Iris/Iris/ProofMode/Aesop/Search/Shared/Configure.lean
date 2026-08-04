@@ -17,6 +17,21 @@ inductive Strategy
   | breadthFirst
   deriving Inhabited, BEq, Repr
 
+/- Proof-search implementation selected for one `iaesop` invocation. -/
+inductive SearchAlgorithm
+  | copy
+  | bubble
+  deriving Inhabited, BEq, Repr
+
+namespace SearchAlgorithm
+
+instance : ToString SearchAlgorithm where
+  toString
+    | .copy => "copy"
+    | .bubble => "bubble"
+
+end SearchAlgorithm
+
 /-- Default solver used for pure Lean goals produced by `ipureintro`. -/
 def defaultPureSolver : Syntax :=
   .node .none ``_root_.Lean.Parser.Tactic.assumption #[.atom .none "assumption"]
@@ -35,6 +50,8 @@ structure ErasedTheoremRule where
   deriving Inhabited
 
 structure SearchConfig where
+  /- proof-search implementation (default: the original context-copy engine) -/
+  algorithm : SearchAlgorithm := .copy
   /- maximum depth of the search tree -/
   maxDepth : Nat := 100
   /- maximum rapp children for each goal -/

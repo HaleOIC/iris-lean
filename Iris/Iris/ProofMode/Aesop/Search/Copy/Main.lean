@@ -1,52 +1,32 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Search.Configure
-public meta import Iris.ProofMode.Aesop.Search.SearchM
-public meta import Iris.ProofMode.Aesop.Search.Expansion
-public meta import Iris.ProofMode.Aesop.Search.Settlement
-public meta import Iris.ProofMode.Aesop.Search.Replay
+public meta import Iris.ProofMode.Aesop.Search.Shared.Configure
+public meta import Iris.ProofMode.Aesop.Search.Shared.RuleIndex
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
+public meta import Iris.ProofMode.Aesop.Search.Copy.Expansion
+public meta import Iris.ProofMode.Aesop.Search.Copy.Settlement
+public meta import Iris.ProofMode.Aesop.Search.Copy.Replay
 public meta import Iris.ProofMode.Aesop.Rule.Backward.Index
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Search
+namespace Iris.ProofMode.Aesop.Search.Copy
 
 open Lean Elab Tactic Meta Qq Std
 open Iris.ProofMode
 open Iris.BI
+open Iris.ProofMode.Aesop
 
 variable {Q : Type} [Queue Q]
 
-private meta def localTheoremRuleIndex (rules : Array LocalTheoremRule) :
-    MetaM (Index RuleInfo) := do
-  let mut idx : Index RuleInfo := {}
-  let mut traceEntries : Array String := #[]
-  for localRule in rules do
-    match localRule.kind with
-    | .backward =>
-        let rule ← Rule.Backward.mkBackwardRule
-          localRule.decl localRule.successProbability .local
-        traceEntries := traceEntries.push
-          s!"backward {localRule.decl} ({localRule.successProbability}): {toString (format rule.indexingMode)}"
-        idx := idx.add rule rule.indexingMode
-    | .forward =>
-        throwError "iaesop: local forward theorem rules are not implemented yet"
-    | kind =>
-        throwError "iaesop: local theorem rule kind '{kind}' is not supported"
-  unless rules.isEmpty do
-    trace[iaesop.ruleIndex] s!"iaesop: generated local theorem index with {rules.size} rules"
-    traceEntries.forM λ entry => do
-      trace[iaesop.ruleIndex] s!"  {entry}"
-  return idx
-
-private meta partial def nextActiveGoal? : SearchM Q (Option GoalRef) := do
+private meta partial def nextActiveGoal? : CoreM Q (Option GoalRef) := do
   let some gref ← popGoal?
     | return none
   if (← (← gref.get).isActive) then
     return some gref
   else nextActiveGoal?
 
-private meta def expandNextGoal : SearchM Q Bool := do
+private meta def expandNextGoal : CoreM Q Bool := do
   let some gref ← nextActiveGoal?
     | return false
   let result ← expandGoal gref
@@ -63,7 +43,7 @@ private meta def expandNextGoal : SearchM Q Bool := do
   /- Check whether new goal's obun child is proven and collected back -/
   if let some rref ← (← gref.get).children.findM? λ r => do
     return (← r.get).state.isProven
-  then Baseline.settleFromRapp rref
+  then Copy.settleFromRapp rref
 
   return true
 
@@ -76,8 +56,8 @@ private meta def Goal.currentMVar? (g : Goal) : Option MVarId :=
     | .normal postGoal .. => some postGoal
     | .provenByNorm .. => none
 
-private meta def collectRemainingGoals : SearchM Q (Array MVarId) := do
-  let queuedGoals ← Queue.toArray (← getThe (SearchM.State Q)).queue
+private meta def collectRemainingGoals : CoreM Q (Array MVarId) := do
+  let queuedGoals ← Queue.toArray (← getThe (CoreM.State Q)).queue
   let refs ←
     if queuedGoals.isEmpty then
       pure #[← getRootGoal]
@@ -88,14 +68,14 @@ private meta def collectRemainingGoals : SearchM Q (Array MVarId) := do
     return goals ++ (Goal.currentMVar? g).toArray
 
 private meta def lazyStepsToScript (ruleName : DisplayRuleId)
-    (steps? : Option (Array Script.LazyStep)) : SearchM Q Script.UScript := do
+    (steps? : Option (Array Script.LazyStep)) : CoreM Q Script.UScript := do
   let some steps := steps?
     | throwError "iaesop?: tactic script generation is not supported by rule {ruleName}"
   return steps
 
 mutual
   private meta partial def extractScriptFromGoal (gref : GoalRef) :
-      SearchM Q Script.UScript := do
+      CoreM Q Script.UScript := do
     let goal ← gref.get
     let normScript ←
       match goal.normalizationState with
@@ -116,7 +96,7 @@ mutual
     return normScript ++ (← extractScriptFromRapp rref)
 
   private meta partial def extractScriptFromRapp (rref : RappRef) :
-      SearchM Q Script.UScript := do
+      CoreM Q Script.UScript := do
     let rapp ← rref.get
     let mut script ← lazyStepsToScript (.ruleId rapp.appliedRule.id) rapp.scriptSteps?
     let obun ← rapp.children.get
@@ -130,12 +110,12 @@ mutual
 end
 
 /-- Check tree status function set -/
-private meta def checkRootProven : SearchM Q (Option (Array MVarId)) := do
+private meta def checkRootProven : CoreM Q (Option (Array MVarId)) := do
   let rootRef := ← getRootGoal
   if (← rootRef.get).state.isProven then
     traceTreeBeforeReplay
-    let remainingGoals ← Baseline.replayProof
-    let config := (← readThe SearchM.Context).config
+    let remainingGoals ← Copy.replayProof
+    let config := (← readThe CoreM.Context).config
     unless config.generateScript? do return some remainingGoals
     let rootRef ← getRootGoal
     let root ← rootRef.get
@@ -147,7 +127,7 @@ private meta def checkRootProven : SearchM Q (Option (Array MVarId)) := do
     return none
 
 /- [Note] Release the restriction from depth factor -/
-private meta partial def searchLoop : SearchM Q (Array MVarId) := do
+private meta partial def searchLoop : CoreM Q (Array MVarId) := do
   checkSystem "iaesop"
   if let some remainingGoals ← checkRootProven then return remainingGoals
   if ← expandNextGoal then
@@ -156,15 +136,19 @@ private meta partial def searchLoop : SearchM Q (Array MVarId) := do
   else
     collectRemainingGoals
 
+/- Both algorithms share the same entry point.-/
 meta def search (goal : MVarId) (config : SearchConfig := {}) :
     ProofModeM (Array MVarId) := do
   goal.checkNotAssigned `iaesop
-  let ruleIndex :=
-    (commonRuleIndex.merge (← backwardRuleIndex)).merge
-      (← localTheoremRuleIndex config.localTheoremRules)
+  let config := {
+    config with maxNormIterations := max config.maxNormIterations config.maxDepth
+  }
+  -- Construct rule index for locating valid rule to apply
+  let ruleIndex := (commonRuleIndex.merge (← backwardRuleIndex)).merge
+    (← Shared.localTheoremRuleIndex config.localTheoremRules)
   Queue.withStrategy config.strategy λ Q => do
-    let (remaining, _, _) ← SearchM.run (Q := Q) config ruleIndex goal do
+    let (remaining, _, _) ← CoreM.run (Q := Q) config ruleIndex goal do
       searchLoop
     return remaining
 
-end Search
+end Iris.ProofMode.Aesop.Search.Copy

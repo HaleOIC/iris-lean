@@ -24,7 +24,7 @@ instance : ToString Side where
     | .right => "iright"
 
 /- Run search according to the given side -/
-private def runSide (side : Side) (input : RuleInput) : SearchM Q RuleOutput := do
+private def runSide (side : Side) (input : RuleInput) : CoreM Q RuleOutput := do
   let some (child, postState) ← liftM (show ProofModeM (Option (SubGoal × SavedState)) from do
       input.state.restore
       input.goal.withContext do
@@ -75,10 +75,10 @@ private def replaySide (side : Side) (input : RuleReplayInput) : ProofModeM (Arr
       input.goal.assign q(from_or_r (Q := $target) (A1 := $lhs) (A2 := $rhs) (inst := $inst) $childProof)
       return #[childProof.mvarId!]
 
-def runLeft (input : RuleInput) : SearchM Q RuleOutput :=
+def runLeft (input : RuleInput) : CoreM Q RuleOutput :=
   runSide .left input
 
-def runRight (input : RuleInput) : SearchM Q RuleOutput :=
+def runRight (input : RuleInput) : CoreM Q RuleOutput :=
   runSide .right input
 
 def replayLeft (input : RuleReplayInput) : ProofModeM (Array MVarId) :=

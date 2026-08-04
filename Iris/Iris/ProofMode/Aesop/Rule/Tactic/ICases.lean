@@ -75,7 +75,7 @@ private partial def collectFromIris
     baseState.restore
     return expansion?.toArray
 
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
   let expansions ← liftM do
     restoreState input.state

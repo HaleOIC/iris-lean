@@ -1,6 +1,6 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Search.SearchM
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
 public meta import Iris.ProofMode.Aesop.Tree.Print
 
 public meta section
@@ -16,7 +16,7 @@ initialize registerTraceClass `iaesop.search.replay
 variable {Q : Type} [Queue Q]
 
 private def findGoalById (oref : ObunRef) (id : GoalId) :
-    SearchM Q (Option GoalRef) := do
+    CoreM Q (Option GoalRef) := do
   (← oref.get).goals.findM? λ gref => do
     return (← gref.get).id == id
 
@@ -31,7 +31,7 @@ private def formatLeanContext : MetaM String := do
     return ""
   return lines.foldl (init := "\nLean context:") λ acc line => acc ++ "\n" ++ line
 
-meta def traceSelectedGoal (gref : GoalRef) : SearchM Q Unit := do
+meta def traceSelectedGoal (gref : GoalRef) : CoreM Q Unit := do
   let g ← gref.get
   let caseIdx? := g.caseId?.map (·.toNat)
   let caseMsg := match caseIdx? with
@@ -69,7 +69,7 @@ meta def traceSelectedGoal (gref : GoalRef) : SearchM Q Unit := do
   trace[iaesop.search.expand] s!"iaesop.expand: selected goal {g.id}, {caseMsg}, \
     origin={g.origin}, mask={repr g.mask}\n{goalText}"
 
-meta def traceTreeBeforeReplay : SearchM Q Unit := do
+meta def traceTreeBeforeReplay : CoreM Q Unit := do
   trace[iaesop.search.replay] ← printSuccessfulSearchPath
 
 /- Trace one replay step: render the focused goal's current Iris context -/

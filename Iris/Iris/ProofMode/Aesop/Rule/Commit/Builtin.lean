@@ -1,7 +1,7 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Search.SearchM
-public meta import Iris.ProofMode.Aesop.Search.Types
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
+public meta import Iris.ProofMode.Aesop.Search.Shared.Types
 public meta import Iris.ProofMode.Aesop.Rule.Types.Runner
 
 public meta section
@@ -24,13 +24,13 @@ private def RappSpec.nodeState (spec : RappSpec) : NodeState :=
   if spec.goals.isEmpty then .proven else .unknown
 
 private def getMVarDependenciesAtState
-    (state : SavedState) (goal : MVarId) : SearchM Q (Std.HashSet MVarId) := do
+    (state : SavedState) (goal : MVarId) : CoreM Q (Std.HashSet MVarId) := do
   liftM (show MetaM _ from do
     restoreState state
     goal.getMVarDependencies)
 
 def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo) (spec : RappSpec) :
-    SearchM Q (RappRef × Array GoalRef) := do
+    CoreM Q (RappRef × Array GoalRef) := do
   let parent ← parentRef.get
   let nodeState := RappSpec.nodeState spec
   let obunKind := RappSpec.obunKind spec

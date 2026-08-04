@@ -77,6 +77,18 @@ def finalizedSpatialSplits (o : Obun) : Array (Array IrisHyp) :=
   o.elim.finalizedSpatialSplits
 
 @[inline]
+def bubbleDependencyRoots (o : Obun) : Array (Array Nat) :=
+  o.elim.bubbleDependencyRoots
+
+@[inline]
+def bubbleGroups (o : Obun) : Array (Search.Bubble.GoalGroupData GoalRef) :=
+  o.elim.bubbleGroups
+
+@[inline]
+def bubblePlatform? (o : Obun) : Option (Search.Bubble.Platform IrisHyp) :=
+  o.elim.bubblePlatform?
+
+@[inline]
 def scriptSteps? (o : Obun) : Option (Array Script.LazyStep) :=
   o.elim.scriptSteps?
 
@@ -117,6 +129,21 @@ def setFullContextIrisSubgoals
 def setFinalizedSpatialSplits
     (finalizedSpatialSplits : Array (Array IrisHyp)) (o : Obun) : Obun :=
   o.modify fun o => { o with finalizedSpatialSplits }
+
+@[inline]
+def setBubbleDependencyRoots
+    (bubbleDependencyRoots : Array (Array Nat)) (o : Obun) : Obun :=
+  o.modify fun o => { o with bubbleDependencyRoots }
+
+@[inline]
+def setBubbleGroups
+    (bubbleGroups : Array (Search.Bubble.GoalGroupData GoalRef)) (o : Obun) : Obun :=
+  o.modify fun o => { o with bubbleGroups }
+
+@[inline]
+def setBubblePlatform?
+    (bubblePlatform? : Option (Search.Bubble.Platform IrisHyp)) (o : Obun) : Obun :=
+  o.modify fun o => { o with bubblePlatform? }
 
 @[inline]
 def setScriptSteps? (scriptSteps? : Option (Array Script.LazyStep))

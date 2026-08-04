@@ -1,7 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
-public meta import Iris.ProofMode.Aesop.Search.Names
+public meta import Iris.ProofMode.Aesop.Search.Shared.Names
 public meta import Iris.ProofMode.Tactics.Cases
 
 public meta section
@@ -78,7 +78,7 @@ private partial def collectFromIris
     }]
 
 /- Search for `imod` applications among current Iris hypotheses. -/
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
   let specs ← liftM (m := ProofModeM) do
     input.state.restore

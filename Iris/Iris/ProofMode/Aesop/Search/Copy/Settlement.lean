@@ -1,11 +1,13 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Search.SearchM
-public meta import Iris.ProofMode.Aesop.Search.Types
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
+public meta import Iris.ProofMode.Aesop.Search.Shared.Types
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Baseline
+namespace Iris.ProofMode.Aesop.Search.Copy
+
+open Iris.ProofMode.Aesop
 
 variable {Q : Type} [Queue Q]
 
@@ -89,7 +91,7 @@ end HypLog
 
 mutual
 
-private meta partial def markGoalIrrelevant (gref : GoalRef) : SearchM Q Unit := do
+private meta partial def markGoalIrrelevant (gref : GoalRef) : CoreM Q Unit := do
   let g ← gref.get
   if g.isIrrelevant then
     return
@@ -98,7 +100,7 @@ private meta partial def markGoalIrrelevant (gref : GoalRef) : SearchM Q Unit :=
   for rref in g.children do
     markRappIrrelevant rref
 
-private meta partial def markRappIrrelevant (rref : RappRef) : SearchM Q Unit := do
+private meta partial def markRappIrrelevant (rref : RappRef) : CoreM Q Unit := do
   let r ← rref.get
   if r.isIrrelevant then
     return
@@ -106,7 +108,7 @@ private meta partial def markRappIrrelevant (rref : RappRef) : SearchM Q Unit :=
   rref.modify λ r => r.setIsIrrelevant true
   markObunIrrelevant r.children
 
-private meta partial def markObunIrrelevant (oref : ObunRef) : SearchM Q Unit := do
+private meta partial def markObunIrrelevant (oref : ObunRef) : CoreM Q Unit := do
   let o ← oref.get
   if o.isIrrelevant then
     return
@@ -118,7 +120,7 @@ private meta partial def markObunIrrelevant (oref : ObunRef) : SearchM Q Unit :=
 end
 
 private def markOtherGoalsIrrelevant
-    (obunRef : ObunRef) (keepId : GoalId) : SearchM Q Unit := do
+    (obunRef : ObunRef) (keepId : GoalId) : CoreM Q Unit := do
   for gref in (← obunRef.get).goals do
     if (← gref.get).id != keepId then
       markGoalIrrelevant gref
@@ -126,12 +128,12 @@ private def markOtherGoalsIrrelevant
 mutual
 
 private meta partial def settleGoal (gref : GoalRef)
-    (hypLog : HypLog) : SearchM Q Unit := do
+    (hypLog : HypLog) : CoreM Q Unit := do
   let goal ← gref.get
   trace[iaesop.settlement] s!"iaesop.settlement: settle goal {goal.id}, state={goal.state}, \
     case={formatCase? goal.caseId?}, log={hypLog.summary}"
   if !goal.state.isProven then
-    throwError "iaesop(baseline): unproved goal should not be propagated"
+    throwError "iaesop(copy): unproved goal should not be propagated"
 
   /- Mark other goals irrelevant, and only keep current goal's id -/
   let obunRef := goal.parent
@@ -151,12 +153,12 @@ private meta partial def settleGoal (gref : GoalRef)
 
 private meta partial def settleObun (obunRef : ObunRef)
     (caseId? : Option CaseId) (usedHyps : HypLog) :
-    SearchM Q Unit := do
+    CoreM Q Unit := do
   let obun ← obunRef.get
   trace[iaesop.settlement] s!"iaesop.settlement: settle obun {obun.id}, state={obun.state}, \
     kind={obun.kind}, depth={obun.contextDepth}, case={formatCase? caseId?}, log={usedHyps.summary}"
   if !obun.state.isProven then
-    throwError "iaesop(baseline): unproved obun should not be propogated"
+    throwError "iaesop(copy): unproved obun should not be propogated"
 
   /- Already reached the root, just return -/
   let some rappRef := obun.parent?
@@ -176,7 +178,7 @@ private meta partial def settleObun (obunRef : ObunRef)
     settleRapp rappRef usedHyps
   | .inherited source _ =>
     let some caseId := caseId?
-      | throwError "iaesop(baseline): inherited obun proven by goal without case id"
+      | throwError "iaesop(copy): inherited obun proven by goal without case id"
     let (cur, usedHyps) := usedHyps.collect obun.contextDepth
     trace[iaesop.settlement] s!"iaesop.settlement: obun {obun.id} inherited collect depth \
       {obun.contextDepth}, case={caseId}, cur={formatHyps cur}, log={usedHyps.summary}"
@@ -186,7 +188,7 @@ private meta partial def settleObun (obunRef : ObunRef)
     settleRapp rappRef usedHyps
   | .managed | .duplicated =>
     let some caseId := caseId?
-      | throwError "iaesop(baseline): managed obun proven by goal without case id"
+      | throwError "iaesop(copy): managed obun proven by goal without case id"
     let (cur, usedHyps) := usedHyps.collect obun.contextDepth
     trace[iaesop.settlement] s!"iaesop.settlement: obun {obun.id} local collect depth \
       {obun.contextDepth}, case={caseId}, cur={formatHyps cur}, log={usedHyps.summary}"
@@ -197,12 +199,12 @@ private meta partial def settleObun (obunRef : ObunRef)
     obunRef.modify λ o => o.setFinalizedSpatialSplits finalized
     settleRapp rappRef usedHyps
 
-private meta partial def settleRapp (rappRef : RappRef) (hypLog : HypLog) : SearchM Q Unit := do
+private meta partial def settleRapp (rappRef : RappRef) (hypLog : HypLog) : CoreM Q Unit := do
   let rapp ← rappRef.get
   trace[iaesop.settlement] s!"iaesop.settlement: settle rapp {rapp.id}, state={rapp.state}, \
     rule={rapp.appliedRule.id}, log={hypLog.summary}"
   if !rapp.state.isProven then
-    throwError "iaesop(baseline): unproved rapp should not be propagated"
+    throwError "iaesop(copy): unproved rapp should not be propagated"
 
   /- Mark other Rapps irrelevant, only keep current rapp's id -/
   let goalRef := rapp.parent
@@ -222,8 +224,8 @@ private meta partial def settleRapp (rappRef : RappRef) (hypLog : HypLog) : Sear
 
 end
 
-/- (Baseline) settlement entry point for a proven rule application. -/
+/- Copy-search settlement entry point for a proven rule application. -/
 partial def settleFromRapp
-    (rref : RappRef) : SearchM Q Unit := do
+    (rref : RappRef) : CoreM Q Unit := do
   trace[iaesop.settlement] "iaesop.settlement: start from rapp"
   settleRapp rref default

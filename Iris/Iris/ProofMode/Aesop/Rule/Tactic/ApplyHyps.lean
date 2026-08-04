@@ -1,6 +1,7 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Rule.Commit.Basic
+public meta import Iris.ProofMode.Aesop.Rule.Backward.Shape
 public meta import Iris.ProofMode.Tactics.Apply
 public meta import Iris.ProofMode.Tactics.Assumption
 public meta import Iris.ProofMode.Tactics.HaveCore
@@ -14,6 +15,55 @@ open Iris.BI
 open Iris.ProofMode
 
 variable {Q : Type} [Queue Q]
+
+/- Extract a cheaply comparable conclusion from the common hypothesis shapes.
+Unknown connectives deliberately return `none`, preserving the complete
+typeclass-driven fallback for modalities and user-defined instances. -/
+private partial def candidateConclusion? (type : Expr) : MetaM (Option Expr) := do
+  let type ← instantiateMVars type
+  let type := type.consumeMData
+  if let some args := type.appM? ``BIBase.wand then
+    let some target := args.back? | return none
+    candidateConclusion? target
+  else if let some args := type.appM? ``BIBase.imp then
+    let some target := args.back? | return none
+    candidateConclusion? target
+  else if let some args := type.appM? ``BIBase.intuitionistically then
+    let some target := args.back? | return none
+    candidateConclusion? target
+  else if let some args := type.appM? ``BIBase.affinely then
+    let some target := args.back? | return none
+    candidateConclusion? target
+  else if let some args := type.appM? ``BIBase.persistently then
+    let some target := args.back? | return none
+    candidateConclusion? target
+  else if type.isAppOfArity ``BIBase.and 4 || type.isAppOfArity ``BIBase.or 4 ||
+      type.isAppOfArity ``BIBase.sep 4 || type.isAppOf ``BIBase.later ||
+      type.isAppOf ``BIBase.forall || type.isAppOf ``BIBase.exists then
+    return none
+  else
+    return some type
+
+private def conclusionMatches? (conclusion target : Expr) : MetaM Bool := do
+  let conclusionMVars ← getMVars conclusion
+  let targetMVars ← getMVars target
+  if !conclusionMVars.isEmpty || !targetMVars.isEmpty then return true
+  withoutModifyingState do
+    try isDefEq conclusion target
+    catch _ => return false
+
+private def irisCandidateCouldMatch (type target : Expr) : MetaM Bool := do
+  let some conclusion ← candidateConclusion? type | return true
+  conclusionMatches? conclusion target
+
+private def leanCandidateCouldMatch (type target : Expr) : MetaM Bool := do
+  let type := type.consumeMData
+  let target? :=
+    (type.appM? ``BIBase.Entails <|> type.appM? ``BIBase.EmpValid <|>
+      type.appM? ``BIBase.BiEntails).bind Array.back?
+  let some candidateTarget := target? | return true
+  let some conclusion ← candidateConclusion? candidateTarget | return true
+  conclusionMatches? conclusion target
 
 /- Record information produced during expansion -/
 private structure ApplyHypExpansion where
@@ -101,6 +151,9 @@ private partial def collectFromIris
     return (lhsClose ++ rhsClose, lhsApply ++ rhsApply)
   | _, .hyp _ name ivar p ty _ => do
     baseState.restore
+    unless ← irisCandidateCouldMatch ty irisGoal.goal do
+      trace[iaesop.tactic] "applyHyps prefilter skipped Iris hypothesis {name}"
+      return (#[], #[])
     /- `p` marks whether this Iris hypothesis lives in the intuitionistic context. -/
     let usedHyp : AppliedHyp :=
       if isTrue p then .intuitionistic { name, ivar } else .spatial { name, ivar }
@@ -142,6 +195,9 @@ private def collectFromLean (irisGoal : IrisGoal) (tag : Name)
     let ty ← instantiateMVars (← instantiateMVars decl.type)
     if ! (← Meta.isProp ty) then continue
     have ty : Q(Prop) := ty
+    unless ← leanCandidateCouldMatch ty target do
+      trace[iaesop.tactic] "applyHyps prefilter skipped Lean hypothesis {decl.userName}"
+      continue
 
     /- Bridge the Lean proposition into the current Iris BI before probing close/apply paths. -/
     let hyp ← mkFreshExprMVarQ prop
@@ -168,7 +224,7 @@ private def collectFromLean (irisGoal : IrisGoal) (tag : Name)
   return closeExpansions ++ applyExpansions
 
 /- Search stage work -/
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   /- Collect possible hypothesis that can be applied in current goal -/
   let goal := input.goal
   let expansions ← liftM do

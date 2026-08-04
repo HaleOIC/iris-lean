@@ -3,9 +3,9 @@ module
 public meta import Lean.Meta.Tactic.Simp.SimpAll
 public meta import Lean.Meta.Tactic.Rewrite
 public meta import Iris.ProofMode.Aesop.Script.Basic
-public meta import Iris.ProofMode.Aesop.Search.Types
-public meta import Iris.ProofMode.Aesop.Search.Names
-public meta import Iris.ProofMode.Aesop.Search.SearchM
+public meta import Iris.ProofMode.Aesop.Search.Shared.Types
+public meta import Iris.ProofMode.Aesop.Search.Shared.Names
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
 public meta import Iris.ProofMode.Tactics.Cases
 public meta import Iris.ProofMode.Tactics.Intro
 
@@ -416,14 +416,14 @@ where
       else return (.unchanged, script)
 
 /- Search stage entry point -/
-def normalizeGoal (gref : GoalRef) : SearchM Q Unit := do
+def normalizeGoal (gref : GoalRef) : CoreM Q Unit := do
   let goal ← gref.get
   match goal.normalizationState with
   | .provenByNorm .. => gref.modify λ g => g.setState .provenByNormalization
   | .normal .. => return
   | .notNormal =>
     let preGoalMVarId := goal.preNormGoal
-    let config := (← readThe SearchM.Context).config
+    let config := (← readThe CoreM.Context).config
     let (result, postState, generatedSpatialHyps, usedSpatialHyps) ← liftM (m := ProofModeM) do
       goal.preNormState.restore
 

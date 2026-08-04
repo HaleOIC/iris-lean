@@ -72,7 +72,7 @@ private def mkExpansion? (decl : Name) (irisGoal : IrisGoal) (tag : Name)
   return some { body, goals, fullContextIrisSubgoals, postState := ← saveState }
 
 /-- Search stage work for a registered backward theorem. -/
-def run {Q : Type} [Queue Q] (input : RuleInput) : SearchM Q RuleOutput := do
+def run {Q : Type} [Queue Q] (input : RuleInput) : CoreM Q RuleOutput := do
   let decl := input.matchResult.rule.id.name
   let expansion? ← liftM do
     restoreState input.state

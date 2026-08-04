@@ -1,7 +1,7 @@
 module
 
 public meta import Lean.Meta.Tactic.Simp.SimpAll
-public meta import Iris.ProofMode.Aesop.Search.SearchM
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
 public meta import Iris.ProofMode.Tactics.Assumption
 public meta import Iris.ProofMode.Tactics.Apply
 public meta import Iris.ProofMode.Tactics.HaveCore
@@ -10,11 +10,12 @@ public meta import Iris.ProofMode.Tactics.Split
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Search
+namespace Iris.ProofMode.Aesop.Search.Copy
 
 open Lean Meta Qq Std
 open Iris.BI
 open Iris.ProofMode
+open Iris.ProofMode.Aesop
 
 variable {Q : Type} [Queue Q]
 
@@ -273,14 +274,14 @@ private def mkLeanApplyHypProof
   return q(Entails.trans $haveProof $coreProof)
 
 private def findProvenRapp? (rrefs : Array RappRef) :
-    SearchM Q (Option RappRef) := do
+    CoreM Q (Option RappRef) := do
   for rref in rrefs do
     let rapp ← rref.get
     if rapp.state.isProven && !rapp.isIrrelevant then
       return some rref
   return none
 
-private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
+private def assignProofFromRapp (rapp : Rapp) : CoreM Q Unit := do
   let parent ← rapp.parent.get
   let childObun ← rapp.children.get
   let fullContextIrisSubgoals := childObun.fullContextIrisSubgoals
@@ -311,7 +312,7 @@ private def assignProofFromRapp (rapp : Rapp) : SearchM Q Unit := do
             fullContextIrisSubgoals finalizedSpatialSplits
       goal.assign proof
 
-private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
+private partial def finalizeGoal (gref : GoalRef) : CoreM Q Unit := do
   let goalNode ← gref.get
   if !goalNode.state.isProven then
     throwError "iaesop: finalization reached an unproven goal"
@@ -332,8 +333,8 @@ private partial def finalizeGoal (gref : GoalRef) : SearchM Q Unit := do
         let proof ← mkAssumptionProof irisGoal.hyps irisGoal.goal
         goal.assign proof
 
-public meta def finalizeProof : SearchM Q Unit := do
+public meta def finalizeProof : CoreM Q Unit := do
   let root ← getRootGoal
   finalizeGoal root
 
-end Iris.ProofMode.Aesop.Search
+end Iris.ProofMode.Aesop.Search.Copy

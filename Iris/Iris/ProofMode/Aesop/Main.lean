@@ -1,7 +1,8 @@
 module
 
 public meta import Iris.ProofMode.Aesop.Frontend.Main
-public meta import Iris.ProofMode.Aesop.Search.Main
+public meta import Iris.ProofMode.Aesop.Search.Copy
+public meta import Iris.ProofMode.Aesop.Search.Bubble
 
 public section
 namespace Iris.ProofMode.Aesop
@@ -15,7 +16,10 @@ private meta def evalIAesopCore (stx : Syntax) : TacticM Unit := do
   -- TODO: add [getRuleSet] here
   let (subgoal, _) ← Iris.ProofMode.startProofMode (← getMainGoal)
   subgoal.withContext do
-    let (remaining, _) ← StateRefT'.run (search subgoal config) {}
+    let searchAction := match config.algorithm with
+      | .copy => Search.Copy.search subgoal config
+      | .bubble => Search.Bubble.search subgoal config
+    let (remaining, _) ← StateRefT'.run searchAction {}
     -- make sure to synthesize everything postponed
     Term.synthesizeSyntheticMVarsNoPostponing (ignoreStuckTC := true)
     -- put the goals that depend on other goals last

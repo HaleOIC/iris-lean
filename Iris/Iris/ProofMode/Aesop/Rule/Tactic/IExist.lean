@@ -15,7 +15,7 @@ variable {Q : Type} [Queue Q]
 
 /- Search only checks that the target has a `FromExists` view and then exposes
 the existential body with a fresh witness metavariable for later rules to solve. -/
-def run (input : RuleInput) : SearchM Q RuleOutput := do
+def run (input : RuleInput) : CoreM Q RuleOutput := do
   let goal := input.goal
   let some (child, postState) ← liftM (show ProofModeM (Option (SubGoal × SavedState)) from do
     input.state.restore

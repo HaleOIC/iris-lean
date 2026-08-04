@@ -1,13 +1,13 @@
 module
 
-public meta import Iris.ProofMode.Aesop.Search.SearchM
-public meta import Iris.ProofMode.Aesop.Search.Types
+public meta import Iris.ProofMode.Aesop.Search.Shared.CoreM
+public meta import Iris.ProofMode.Aesop.Search.Shared.Types
 public meta import Iris.ProofMode.Aesop.Rule.Types.Runner
-public meta import Iris.ProofMode.Aesop.Search.Settlement
+public meta import Iris.ProofMode.Aesop.Search.Copy.Settlement
 
 public meta section
 
-namespace Iris.ProofMode.Aesop.Baseline
+namespace Iris.ProofMode.Aesop.Search.Copy
 
 open Lean Meta
 open Iris.ProofMode.Aesop
@@ -15,14 +15,14 @@ open Iris.ProofMode.Aesop
 variable {Q : Type} [Queue Q]
 
 private def getMVarDependenciesAtState
-    (state : SavedState) (goal : MVarId) : SearchM Q (Std.HashSet MVarId) := do
+    (state : SavedState) (goal : MVarId) : CoreM Q (Std.HashSet MVarId) := do
   liftM (show MetaM _ from do
     restoreState state
     goal.getMVarDependencies)
 
 /- Make an initial rappRef for later modification -/
 private def mkInitialRappRef (parentRef : GoalRef) (childRef : ObunRef)
-    (usedRule : Rule RuleInfo) (postState : SavedState) : SearchM Q RappRef := do
+    (usedRule : Rule RuleInfo) (postState : SavedState) : CoreM Q RappRef := do
   let parent ← parentRef.get
   let child ← childRef.get
   let ruleSuccessProb := usedRule.info.successProbability
@@ -63,7 +63,7 @@ private structure PendingContextGoals where
 
 /- Recursively collect pending information -/
 private meta partial def collectPendingContextGoals (gref : GoalRef)
-    (skip? : Option ObunId) : SearchM Q PendingContextGoals := do
+    (skip? : Option ObunId) : CoreM Q PendingContextGoals := do
   let g ← gref.get
   let parentObun ← g.parent.get
 
@@ -78,7 +78,7 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
     return { pending with involvedHyps := goalHyps }
 
   let some rref := parentObun.parent?
-      | throwError s!"iaesop(baseline): obun {parentObun.id} does not have parent"
+      | throwError s!"iaesop(copy): obun {parentObun.id} does not have parent"
   let rapp ← rref.get
   let rappHyps :=
     rapp.generatedSpatialHyps.map Hyp.generated ++
@@ -91,9 +91,9 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
       let (_, leftIrisGoals) ← parentObun.goals.foldlM (init := (0, #[])) λ (idx, acc) otherRef => do
         let other ← otherRef.get
         let some irisGoal := parentObun.fullContextIrisSubgoals[idx]?
-          | throwError s!"iaesop(baseline): missing full-context iris subgoal at index {idx}"
+          | throwError s!"iaesop(copy): missing full-context iris subgoal at index {idx}"
         let some caseId := other.caseId?
-          | throwError s!"iaesop(baseline): copied sibling does not have caseId"
+          | throwError s!"iaesop(copy): copied sibling does not have caseId"
         -- [TODO]: Not sure whether we should check the sibling's state is irrelevant or proven
         let acc := if other.id != g.id then acc.push (caseId, irisGoal, otherRef) else acc
         return (idx + 1, acc)
@@ -106,11 +106,11 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
           | .managed => pure (parentObun.id, parentObun.contextDepth)
           | .duplicated => pure (parentObun.id, parentObun.contextDepth)
           | .inherited source _ => pure (source, parentObun.contextDepth)
-          | .plain => throwError "iaesop(baseline): plain obun branch should not be reached when collecting pending goals"
+          | .plain => throwError "iaesop(copy): plain obun branch should not be reached when collecting pending goals"
         return { sourceObunId, sourceObunDepth, sourceObunKind := parentObun.kind, leftIrisGoals, involvedHyps := goalHyps }
     | .plain =>
       if parentObun.goals.size > 1 then
-        throwError s!"iaesop(baseline): plain obun {parentObun.id} has more than one subgoal; this case is not supported"
+        throwError s!"iaesop(copy): plain obun {parentObun.id} has more than one subgoal; this case is not supported"
       let pending ← collectPendingContextGoals rapp.parent skip?
       return { pending with involvedHyps := goalHyps ++ rappHyps ++ pending.involvedHyps }
   | some source =>
@@ -120,7 +120,7 @@ private meta partial def collectPendingContextGoals (gref : GoalRef)
 
 /- Make an initial version ObunRef with its initial subgoals. -/
 private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
-    SearchM Q ObunRef := do
+    CoreM Q ObunRef := do
   let parent ← parentRef.get
   let obunRef ← IO.mkRef $ Obun.mk {
     id := ← getAndIncrementNextObunId
@@ -153,7 +153,7 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
       addedInIteration := ← getIteration
       lastExpandedInIteration := .zero
       rulesQueue := {}
-      appendiedGoalId := #[]  -- Not used in baseline
+      appendiedGoalId := #[]  -- Not used in copy search
       caseId? := none
     }
   obunRef.modify λ o => o.setGoals goalRefs
@@ -161,13 +161,13 @@ private def mkInitialObunRef (parentRef : GoalRef) (spec : RappSpec) :
 
 /- Apply multiple goal effect to the given obunRef -/
 private def applyMultipleGoalsEffect (obunRef : ObunRef)
-    (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
+    (irisSubgoals : Array IrisGoal) : CoreM Q Unit := do
   if irisSubgoals.size <= 1 then
-    throwError "iaesop(baseline): multiple subgoal effect must have more than one subgoals"
+    throwError "iaesop(copy): multiple subgoal effect must have more than one subgoals"
 
   let obun ← obunRef.get
   if obun.goals.size != irisSubgoals.size then
-    throwError s!"iaesop(baseline): multiple subgoal effect has {irisSubgoals.size} templates but {obun.goals.size} goals"
+    throwError s!"iaesop(copy): multiple subgoal effect has {irisSubgoals.size} templates but {obun.goals.size} goals"
   let _ ← obun.goals.foldlM (init := 0) λ idx gref => do
     gref.modify λ g => g.setCaseId (CaseId.ofNat idx)
     return idx + 1
@@ -178,14 +178,14 @@ private def applyMultipleGoalsEffect (obunRef : ObunRef)
 
 /- Apply context management effect to the given obunRef -/
 private def applyContextManagementEffect (obunRef : ObunRef)
-    (irisSubgoals : Array IrisGoal) : SearchM Q Unit := do
+    (irisSubgoals : Array IrisGoal) : CoreM Q Unit := do
   -- Single subgoal does not need context management
   if irisSubgoals.size <= 1 then
-    throwError "iaesop(baseline): context management must have more than one templates"
+    throwError "iaesop(copy): context management must have more than one templates"
 
   let obun ← obunRef.get
   if obun.goals.size != irisSubgoals.size then
-    throwError s!"iaesop(baseline): context management has {irisSubgoals.size} templates but {obun.goals.size} goals"
+    throwError s!"iaesop(copy): context management has {irisSubgoals.size} templates but {obun.goals.size} goals"
   let _ ← obun.goals.foldlM (init := 0) λ idx gref => do
     gref.modify λ g => g.setCaseId (CaseId.ofNat idx)
     return idx + 1
@@ -206,9 +206,9 @@ private def removeUsedSpatialHypsFromGoal
 
 /- Apply close goal effect to the given obunRef -/
 private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
-    (spec : RappSpec) : SearchM Q Unit := do
+    (spec : RappSpec) : CoreM Q Unit := do
   let obun ← obunRef.get
-  if !obun.goals.isEmpty then throwError "iaesop(baseline): close-goal obun still has subgoals"
+  if !obun.goals.isEmpty then throwError "iaesop(copy): close-goal obun still has subgoals"
 
   /- Collect pending information from above tree, ready for copying siblings as new subgoals -/
   let pending ← collectPendingContextGoals parentRef none
@@ -242,7 +242,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
         return (caseId, irisGoal, goal, ← goal.getMVarDependencies)
       | .duplicated | .inherited _ false =>
         return (caseId, pendingGoal, source.preNormGoal, ← source.preNormGoal.getMVarDependencies)
-      | _ => throwError "iaesop(baseline): this branch should not be reached during construction of pending goals"
+      | _ => throwError "iaesop(copy): this branch should not be reached during construction of pending goals"
     return (pendingGoals, ← saveState))
   let irisSubgoals := pendingGoals.map λ (_, irisGoal, _, _) => irisGoal
   let goalRefs ← pendingGoals.mapIdxM λ idx (caseId, _, goal, unassignedMvars) => do
@@ -283,7 +283,7 @@ private def applyCloseGoalEffect (parentRef : GoalRef) (obunRef : ObunRef)
 
 /- Make new rapp and goal according to the given RappSpec -/
 def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
-    (spec : RappSpec) : SearchM Q (RappRef × Array GoalRef) := do
+    (spec : RappSpec) : CoreM Q (RappRef × Array GoalRef) := do
   let obunRef ← mkInitialObunRef parentRef spec
   match spec.effect.action with
   | some (.splitGoals subgoals ..) =>
@@ -304,4 +304,25 @@ def mkRappSpec (parentRef : GoalRef) (usedRule : Rule RuleInfo)
     rappRef.modify λ r => r.setState .proven
   return (rappRef, (← obunRef.get).goals)
 
-end Iris.ProofMode.Aesop.Baseline
+def commitRuleOutput (gref : GoalRef) (usedRule : Rule RuleInfo)
+    (output : RuleOutput) : CoreM Q RuleResult := do
+  if output.rappSepcs.isEmpty then return .failed
+  let mut rappRefs := #[]
+  let mut goalsToEnqueue := #[]
+  for spec in output.rappSepcs do
+    let (rappRef, goalRefs) ← mkRappSpec gref usedRule spec
+    rappRefs := rappRefs.push rappRef
+    goalsToEnqueue := goalsToEnqueue ++ goalRefs
+  let provenBy? ← rappRefs.findM? fun rappRef => do
+    return (← rappRef.get).state.isProven
+  gref.modify fun goal =>
+    let goal := goal.setChildren (goal.children ++ rappRefs)
+    match provenBy? with
+    | some _ => goal.setState .provenByRuleApplication
+    | none => goal
+  enqueueGoals goalsToEnqueue
+  match provenBy? with
+  | some _ => return .proved rappRefs
+  | none => return .succeeded rappRefs
+
+end Iris.ProofMode.Aesop.Search.Copy

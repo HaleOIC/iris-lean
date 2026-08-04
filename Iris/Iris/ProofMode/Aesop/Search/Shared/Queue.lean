@@ -1,7 +1,7 @@
 module
 
 public import Iris.ProofMode.Aesop.Util.Basic
-public import Iris.ProofMode.Aesop.Search.Configure
+public import Iris.ProofMode.Aesop.Search.Shared.Configure
 public meta import Iris.ProofMode.Aesop.Tree.Basic
 public meta import Batteries.Data.BinomialHeap.Basic
 
